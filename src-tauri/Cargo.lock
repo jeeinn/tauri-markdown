@@ -1207,6 +1207,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-markdown"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "winres",
+]
+
+[[package]]
 name = "tauri-utils"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1215,16 +1225,6 @@ dependencies = [
  "anyhow",
  "sysinfo",
  "thiserror",
-]
-
-[[package]]
-name = "tauri-vditor-markdown"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "winres",
 ]
 
 [[package]]
