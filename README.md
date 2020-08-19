@@ -37,3 +37,11 @@ npm run lint
 ## Known issue
 
 * Tauri cannot use the hotkey `copy/paste` see: https://github.com/tauri-apps/tauri/pull/644
+
+## TODO
+- [x] Open `*.md` file
+- [x] Save `*.md` file
+- [ ] Design `tauri-markdown` App icon
+- [ ] Toolbar multiple language (eg: en_US, ja_JP, ko_KR, zh_CN)
+- [ ] Open recently `*.md` file
+- [ ] Auto save (Maybe need tauri support, eg: cookie, LocalStorage)

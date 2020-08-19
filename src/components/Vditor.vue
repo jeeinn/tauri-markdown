@@ -7,6 +7,7 @@
     import { MessageBox } from 'element-ui';
     // import { Notification } from 'element-ui';
     import * as dialog from 'tauri/api/dialog'
+    import * as window from 'tauri/api/window'
     import {writeFile, readTextFile} from 'tauri/api/fs'
 
     export default {
@@ -15,6 +16,8 @@
             return {
                 vditor: '',
                 welcome: '# 🎉️ Welcome to use Tauri Markdown!',
+                project_url: 'https://github.com/jeeinn/tauri-markdown',
+                lang: 'zh_CN',
             };
         },
         mounted () {
@@ -22,6 +25,7 @@
             this.vditor = new Vditor('vditor', {
                 // mode: 'sv', 默认为即时渲染模式
                 // cdn: '..',
+                lang: self.lang,
                 cache: {
                     enable: false,
                 },
@@ -53,6 +57,13 @@
                                 icon: '导出MD',
                                 click() {
                                     self.save_md()
+                                }
+                            },
+                            {
+                                name: "open_project_url",
+                                icon: '项目主页',
+                                click() {
+                                    self.open_window(self.project_url)
                                 }
                             },
                         ],
@@ -136,10 +147,13 @@
                 })
             },
             show_about(){
-                MessageBox.alert('这是基于Tauri和Vditor的本地MarkDown工具<br/>欢迎使用~<br/> ©MIT by jeeinn', '', {
+                MessageBox.alert('这是基于 Tauri 和 Vditor 的本地 Markdown 工具<br/>欢迎使用~ <br/> ©MIT by JeeInn', '关于', {
                     dangerouslyUseHTMLString: true
                 });
-            }
+            },
+            open_window(url){
+                window.open(url)
+            },
         },
     }
 </script>
