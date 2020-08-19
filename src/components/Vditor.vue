@@ -52,7 +52,7 @@
                                 name: "export_md",
                                 icon: '导出MD',
                                 click() {
-                                    return self.save_md()
+                                    self.save_md()
                                 }
                             },
                         ],

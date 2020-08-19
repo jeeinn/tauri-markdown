@@ -1,6 +1,10 @@
 # tauri-markdown
 A simple local markdown tool, use Tauri &amp; editor &amp; vue
 
+## Install Tauri & tauri-bundler
+
+See Tauri's official [docs](https://tauri.studio/en/docs/getting-started/intro)
+
 ## Project setup
 
 ```
@@ -12,7 +16,7 @@ npm install
 ```
 npm run serve
 ```
-### Another Terminal
+### Open another Terminal
 
 ```
 npm run tauri dev
@@ -21,7 +25,7 @@ npm run tauri dev
 ### Compiles and minifies for production
 
 ```
-npm run prod
+npm run build && npm run tauri build
 ```
 
 ### Lints and fixes files
@@ -29,3 +33,7 @@ npm run prod
 ```
 npm run lint
 ```
+
+## Known issue
+
+* Tauri cannot use the hotkey `copy/paste` see: https://github.com/tauri-apps/tauri/pull/644
