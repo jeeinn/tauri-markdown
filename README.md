@@ -45,3 +45,7 @@ npm run lint
 - [ ] Toolbar multiple language (eg: en_US, ja_JP, ko_KR, zh_CN)
 - [ ] Open recently `*.md` file
 - [ ] Auto save (Maybe need tauri support, eg: cookie, LocalStorage)
+
+## Thanks
+* [tauri](https://github.com/tauri-apps/tauri)
+* [vditor](https://github.com/Vanessa219/vditor)
