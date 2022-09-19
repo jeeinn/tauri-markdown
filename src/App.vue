@@ -1,7 +1,5 @@
 <template>
-  <div id="app">
-    <Vditor/>
-  </div>
+  <Vditor/>
 </template>
 
 <script>
