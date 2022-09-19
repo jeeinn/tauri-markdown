@@ -11,6 +11,7 @@ import {ElNotification} from 'element-plus';
 import {dialog} from "@tauri-apps/api"
 import {window} from "@tauri-apps/api"
 import {writeFile, readTextFile} from "@tauri-apps/api/fs"
+import {WebviewWindow} from "@tauri-apps/api/window";
 
 export default {
   name: "Vditor.vue",
@@ -139,7 +140,7 @@ export default {
       })
       // ElNotification.info(JSON.stringify(file_path))
       // console.log(JSON.stringify(filePath))
-      let result = await readTextFile(filePath)
+      let result = await readTextFile(filePath.toString(), {})
       // Notification.info(JSON.stringify(result))
       this.vditor.setValue(result)
     },
@@ -161,7 +162,10 @@ export default {
       });
     },
     openWindow(url) {
-      window.open(url)
+      // window.open(url)
+      new WebviewWindow('theUniqueLabel', {
+        url: url
+      })
     },
   },
 }
