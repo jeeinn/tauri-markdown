@@ -4,7 +4,7 @@
     "beforeBuildCommand": "npm run build",
     "devPath": "http://localhost:1420",
     "distDir": "../dist",
-    "withGlobalTauri": false
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "TauriMarkdown",
@@ -12,7 +12,20 @@
   },
   "tauri": {
     "allowlist": {
-      "all": true
+      "all": true,
+      "fs": {
+        "scope": ["$DOCUMENT/*"],
+        "all": true,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "copyFile": true,
+        "createDir": true,
+        "removeDir": true,
+        "removeFile": true,
+        "renameFile": true,
+        "exists": true
+      }
     },
     "bundle": {
       "active": true,
