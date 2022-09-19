@@ -1,19 +1,27 @@
 {
   "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
     "distDir": "../dist",
-    "devPath": "http://localhost:8080",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "withGlobalTauri": false
   },
-  "ctx": {},
+  "package": {
+    "productName": "TauriMarkdown",
+    "version": "0.2.0"
+  },
   "tauri": {
-    "embeddedServer": {
-      "active": true
+    "allowlist": {
+      "all": true
     },
     "bundle": {
       "active": true,
-      "targets": "all",
-      "identifier": "com.tauri.dev",
+      "category": "DeveloperTool",
+      "copyright": "jeeinn",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -21,38 +29,38 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "resources": [],
-      "externalBin": [],
-      "copyright": "",
-      "category": "DeveloperTool",
-      "shortDescription": "",
+      "identifier": "com.jeeinn.tauri-markdown",
       "longDescription": "",
-      "deb": {
-        "depends": [],
-        "useBootstrapper": false
-      },
-      "osx": {
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
         "frameworks": [],
-        "minimumSystemVersion": "",
-        "useBootstrapper": false
+        "providerShortName": null,
+        "signingIdentity": null
       },
-      "exceptionDomain": ""
-    },
-    "allowlist": {
-      "all": true
-    },
-    "window": {
-      "title": "Tauri Markdown",
-      "width": 1000,
-      "height": 600,
-      "resizable": true,
-      "fullscreen": false
+      "resources": [],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
     },
     "security": {
       "csp": "default-src blob: data: filesystem: ws: http: https: 'unsafe-eval' 'unsafe-inline'"
     },
-    "inliner": {
-      "active": true
-    }
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 600,
+        "resizable": true,
+        "title": "Tauri Markdown",
+        "width": 1000
+      }
+    ]
   }
 }
