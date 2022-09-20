@@ -224,8 +224,8 @@ export default {
     async openMdFile() {
       const filePath = await dialog.open({
         filters: [{
-          name: 'MarkDownFile',
-          extensions: ['md']
+          name: 'OpenFile',
+          extensions: ['md','txt']
         }]
       })
       // ElNotification.info(JSON.stringify(file_path))
