@@ -36,12 +36,24 @@ export default {
       placeholder: self.welcome,
       minHeight: 600,
       width: 'auto',
-      outline: true, // 大纲模式
+      outline: {
+        enable: true, // 大纲模式
+      },
       counter: {
-        enable: 102400, // 计数，提示角标问题
+        enable: true, // 计数，提示角标问题
+        // max: 102400
       },
       toolbarConfig: {
         pin: true,
+      },
+      preview: {
+        delay: 300,
+        markdown: {
+          toc: true
+        }
+      },
+      after: () => {
+        // this.vditor.setValue('# 🎉️ Welcome to use Tauri Vditor!')
       },
       toolbar: [
         {
@@ -206,12 +218,6 @@ export default {
             },
           ],
         }],
-      preview: {
-        delay: 200,
-      },
-      after: () => {
-        // this.vditor.setValue('# 🎉️ Welcome to use Tauri Vditor!')
-      }
     })
   },
   methods: {
