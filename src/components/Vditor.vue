@@ -10,7 +10,6 @@ import {ElNotification} from 'element-plus';
 import svgIcons from '../config/vditor-toolbar-svg.js'
 // 导入系统组件
 import {dialog} from "@tauri-apps/api"
-import {window} from "@tauri-apps/api"
 import {writeFile, readTextFile} from "@tauri-apps/api/fs"
 import {WebviewWindow} from "@tauri-apps/api/window";
 
@@ -228,11 +227,12 @@ export default {
           extensions: ['md','txt']
         }]
       })
-      // ElNotification.info(JSON.stringify(file_path))
-      // console.log(JSON.stringify(filePath))
-      let result = await readTextFile(filePath.toString(), {})
-      // Notification.info(JSON.stringify(result))
-      this.vditor.setValue(result)
+      // ElNotification.info(filePath.toString())
+      await readTextFile(filePath.toString(), {}).then((data)=>{
+        this.vditor.setValue(data)
+      },()=>{
+        ElNotification.error('文件打开失败')
+      })
     },
     async saveMdFile() {
       const filePath = await dialog.save({
@@ -244,7 +244,9 @@ export default {
       await writeFile({
         path: filePath,
         contents: this.vditor.getValue()
-      })
+      }).then(()=>{}, ()=>{
+          ElNotification.error('文件保存失败')
+        })
     },
     showAbout() {
       ElMessageBox.alert('这是基于 Tauri 和 Vditor 的本地 Markdown 工具<br/>欢迎使用~ <br/> ©MIT by JeeInn', '关于', {
