@@ -227,11 +227,16 @@ export default {
           extensions: ['md','txt']
         }]
       })
-      // ElNotification.info(filePath.toString())
+      if (filePath==null) {
+        // console.log(filePath)
+        ElNotification.error('文件路径获取失败')
+        return false
+      }
       await readTextFile(filePath.toString(), {}).then((data)=>{
         this.vditor.setValue(data)
       },()=>{
-        ElNotification.error('文件打开失败')
+        ElNotification.error('文件读取失败')
+        return false
       })
     },
     async saveMdFile() {
@@ -241,12 +246,18 @@ export default {
           extensions: ['md']
         }]
       })
+      if (filePath==null) {
+        // console.log(filePath)
+        ElNotification.error('文件路径获取失败')
+        return false
+      }
       await writeFile({
         path: filePath,
         contents: this.vditor.getValue()
       }).then(()=>{}, ()=>{
-          ElNotification.error('文件保存失败')
-        })
+        ElNotification.error('文件保存失败')
+        return false
+      })
     },
     showAbout() {
       ElMessageBox.alert('这是基于 Tauri 和 Vditor 的本地 Markdown 工具<br/>欢迎使用~ <br/> ©MIT by JeeInn', '关于', {
