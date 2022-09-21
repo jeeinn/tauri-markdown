@@ -80,6 +80,7 @@ export default {
               }
             },
           ],
+          click() {}
         },
         "|",
         {
@@ -198,6 +199,7 @@ export default {
         },
         {
           name: "more",
+          tipPosition: 's',
           toolbar: [
             // "export",
             "outline",
@@ -265,7 +267,6 @@ export default {
       });
     },
     openWindow(url) {
-      // window.open(url)
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
