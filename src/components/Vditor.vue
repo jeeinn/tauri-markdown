@@ -213,9 +213,7 @@ export default {
             {
               name: "about",
               icon: '关于',
-              click() {
-                self.showAbout()
-              }
+              click() {self.showAbout()}
             },
           ],
         }],
@@ -262,9 +260,21 @@ export default {
       })
     },
     showAbout() {
-      ElMessageBox.alert('这是基于 Tauri 和 Vditor 的本地 Markdown 工具<br/>欢迎使用~ <br/> ©MIT by JeeInn', '关于', {
-        dangerouslyUseHTMLString: true
-      });
+      ElMessageBox.alert(
+          '&nbsp;&nbsp;&nbsp;&nbsp;' +
+          '这是基于开源项目开发的一个本地 Markdown 写作工具，可以跨平台使用（Windows、macOS、Linux） <br/>' +
+          '项目主页👉 <a target="_blank" href="//github.com/jeeinn/tauri-markdown">github.com/jeeinn/tauri-markdown</a><br/>' +
+          '鸣谢🙏 <br/>' +
+          '<a target="_blank" href="//tauri.app">Tauri</a> 、' +
+          '<a target="_blank" href="//b3log.org/vditor/">Vditor</a> 、' +
+          '<a target="_blank" href="//element-plus.org">Element Plus</a> <br/>' +
+          '<br/>' +
+          'Released under the <a target="_blank" href="//opensource.org/licenses/MIT">MIT License</a> <br/>' +
+          'Made by 💗 <a target="_blank" href="//jeeinn.com">JeeInn</a>',
+          '关于程序',
+          {
+            dangerouslyUseHTMLString: true
+          });
     },
     openWindow(url) {
       new WebviewWindow('theUniqueLabel', {
