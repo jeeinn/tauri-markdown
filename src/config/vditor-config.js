@@ -8,11 +8,12 @@ export default {
         cache: {
             enable: false,
         },
-        placeholder: self.welcome,
+        // placeholder: self.welcome,
         minHeight: 600,
         width: 'auto',
         outline: {
             enable: true, // 大纲模式
+            position: 'left',
         },
         counter: {
             enable: true, // 计数，提示角标问题

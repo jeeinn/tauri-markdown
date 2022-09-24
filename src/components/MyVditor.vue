@@ -26,7 +26,8 @@ export default {
   },
   mounted() {
     let self = this
-    vditorConf.options.lange = this.lang
+    vditorConf.options.lange = this.lang // for i18n
+    vditorConf.options.placeholder = this.welcome
     vditorConf.toolbar.unshift({
       name: "openOrSave",
       tip: "打开/保存",
