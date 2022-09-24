@@ -1,5 +1,13 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+// vditor local cdn
+import fs from "fs-extra"
+try {
+  fs.copySync('node_modules/vditor/dist', 'public/vditor-cdn/dist', {})
+  console.log('Copy vditor dist as local cdn success!')
+} catch (err) {
+  console.error(err)
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
