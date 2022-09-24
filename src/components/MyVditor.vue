@@ -22,6 +22,8 @@ export default {
       welcome: '# 🎉️ Welcome to use Tauri Markdown!',
       project_url: 'https://github.com/jeeinn/tauri-markdown',
       lang: 'zh_CN',
+      // 静态资源 https://cn.vitejs.dev/guide/assets.html#the-public-directory
+      cdn: '/vditor-cdn',
     };
   },
   mounted() {
@@ -29,6 +31,11 @@ export default {
     if (!vditorConf.options.hasOwnProperty('lange')){
       vditorConf.options.lange = this.lang // for i18n
       vditorConf.options.placeholder = this.welcome
+      // conf local cdn
+      vditorConf.options.cdn = this.cdn
+      vditorConf.options.preview.theme.path = this.cdn + '/dist/css/content-theme'
+      vditorConf.options.hint.emojiPath = this.cdn + '/dist/images/emoji'
+      // with tauri toolbar
       vditorConf.toolbar.unshift({
         name: "openOrSave",
         tip: "打开/保存",
