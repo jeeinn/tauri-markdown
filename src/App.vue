@@ -1,14 +1,14 @@
 <template>
-  <Vditor/>
+  <MyVditor/>
 </template>
 
 <script>
-import Vditor from './components/Vditor.vue'
+import MyVditor from './components/MyVditor.vue'
 
 export default {
   name: 'App',
   components: {
-      Vditor,
+    MyVditor,
   }
 }
 </script>
