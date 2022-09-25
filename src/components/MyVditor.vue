@@ -5,8 +5,7 @@
 <script async>
 import Vditor from 'vditor'
 import 'vditor/dist/index.css'
-import {ElMessageBox} from "element-plus"
-import {ElNotification} from 'element-plus';
+import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import svgIcons from '../config/vditor-toolbar-svg.js'
 // 导入系统组件
@@ -28,7 +27,7 @@ export default {
   },
   mounted() {
     let self = this
-    if (!vditorConf.options.hasOwnProperty('lange')){
+    if (!vditorConf.options.hasOwnProperty('lange')) {
       vditorConf.options.lange = this.lang // for i18n
       vditorConf.options.placeholder = this.welcome
       // conf local cdn
@@ -61,7 +60,8 @@ export default {
             }
           },
         ],
-        click() {}
+        click() {
+        }
       })
       vditorConf.toolbar.push({
         name: "more",
@@ -79,7 +79,9 @@ export default {
           {
             name: "about",
             icon: '关于',
-            click() {self.showAbout()}
+            click() {
+              self.showAbout()
+            }
           },
         ],
       })
@@ -92,17 +94,17 @@ export default {
       const filePath = await dialog.open({
         filters: [{
           name: 'OpenFile',
-          extensions: ['md','txt']
+          extensions: ['md', 'txt']
         }]
       })
-      if (filePath==null) {
+      if (filePath == null) {
         // console.log(filePath)
         ElNotification.error('文件路径获取失败')
         return false
       }
-      await readTextFile(filePath.toString(), {}).then((data)=>{
+      await readTextFile(filePath.toString(), {}).then((data) => {
         this.vditor.setValue(data)
-      },()=>{
+      }, () => {
         ElNotification.error('文件读取失败')
         return false
       })
@@ -114,7 +116,7 @@ export default {
           extensions: ['md']
         }]
       })
-      if (filePath==null) {
+      if (filePath == null) {
         // console.log(filePath)
         ElNotification.error('文件路径获取失败')
         return false
@@ -122,7 +124,8 @@ export default {
       await writeFile({
         path: filePath,
         contents: this.vditor.getValue()
-      }).then(()=>{}, ()=>{
+      }).then(() => {
+      }, () => {
         ElNotification.error('文件保存失败')
         return false
       })
