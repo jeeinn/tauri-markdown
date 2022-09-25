@@ -3,6 +3,8 @@ A simple local markdown tool, use Tauri &amp; Vditor &amp; Vue3
 
 Maybe we can call it `TMD` ? 🤔
 
+[简体中文](README.zh.md)
+
 (tag v0.1.0 used vue2)
 
 ## Develop
@@ -32,6 +34,8 @@ npm run tauri build
 ## Known issue
 
 - [x] Tauri cannot use the application hotkey `copy/paste` see: https://github.com/tauri-apps/tauri/pull/644
+- [ ] The outline title does not jump (vditor in tauri)
+- [ ] The `sv mode` cursor problem (vditor in tauri) 
 
 ## Roadmap
 see: https://github.com/jeeinn/tauri-markdown/discussions/1
