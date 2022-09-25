@@ -30,7 +30,7 @@
         "icons/icon.ico"
       ],
       "identifier": "com.jeeinn.tauri-markdown",
-      "longDescription": "",
+      "longDescription": "A local markdown tool made by tauri + vditor",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
@@ -39,7 +39,7 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "",
+      "shortDescription": "A local markdown tool",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,
@@ -56,10 +56,11 @@
     "windows": [
       {
         "fullscreen": false,
+        "center": true,
+        "width": 1000,
         "height": 600,
         "resizable": true,
-        "title": "Tauri Markdown",
-        "width": 1000
+        "title": "Tauri Markdown"
       }
     ]
   }
