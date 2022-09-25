@@ -134,7 +134,7 @@ export default {
       ElMessageBox.alert(
           '&nbsp;&nbsp;&nbsp;&nbsp;' +
           '这是基于开源项目开发的一个本地 Markdown 写作工具，可以跨平台使用（Windows、macOS、Linux） <br/>' +
-          '项目主页👉 <a target="_blank" onclick=alert(123) href="https://github.com/jeeinn/tauri-markdown">github.com/jeeinn/tauri-markdown</a><br/>' +
+          '项目主页👉 <a target="_blank" href="https://github.com/jeeinn/tauri-markdown">github.com/jeeinn/tauri-markdown</a><br/>' +
           '鸣谢🙏 (右键可复制链接)<br/>' +
           '<a target="_blank" href="https://tauri.app">Tauri</a> 、' +
           '<a target="_blank" href="https://b3log.org/vditor/">Vditor</a> 、' +
