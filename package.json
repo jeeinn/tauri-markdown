@@ -20,6 +20,9 @@
     "@tauri-apps/cli": "^1.1.0",
     "@vitejs/plugin-vue": "^3.0.1",
     "fs-extra": "^10.1.0",
+    "unplugin-auto-import": "^0.11.2",
+    "unplugin-element-plus": "^0.4.1",
+    "unplugin-vue-components": "^0.22.7",
     "vite": "^3.0.2"
   }
 }
