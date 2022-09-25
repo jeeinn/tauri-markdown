@@ -35,7 +35,7 @@ npm run tauri build
 
 - [x] Tauri cannot use the application hotkey `copy/paste` see: https://github.com/tauri-apps/tauri/pull/644
 - [ ] The outline title does not jump (vditor in tauri)
-- [ ] The `sv mode` cursor problem (vditor in tauri) 
+- [ ] The `sv mode` cursor problem (vditor in tauri on macOS) 
 
 ## Roadmap
 see: https://github.com/jeeinn/tauri-markdown/discussions/1

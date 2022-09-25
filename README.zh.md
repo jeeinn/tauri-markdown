@@ -35,7 +35,7 @@ npm run tauri build
 
 - [x] Tauri 不能使用应用热键 `copy/paste` 查看问题: https://github.com/tauri-apps/tauri/pull/644
 - [ ] 大纲视图标题不能跳转 (vditor in tauri)
-- [ ] 分屏模式有光标问题 (vditor in tauri)
+- [ ] 分屏模式有光标问题 (vditor in tauri on macOS)
 
 ## 路线图
 查看: https://github.com/jeeinn/tauri-markdown/discussions/1
