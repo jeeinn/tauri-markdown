@@ -1,0 +1,75 @@
+# 设置默认行为 - 自动处理行尾符
+* text=auto
+
+# Web 前端文件 - 使用 LF 行尾符（Unix 风格）
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.vue text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.sass text eol=lf
+*.less text eol=lf
+
+# 配置文件 - 使用 LF 行尾符
+*.json text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+
+# Rust 源代码文件 - 使用 LF 行尾符
+*.rs text eol=lf
+
+# 文档文件 - 使用 LF 行尾符
+*.md text eol=lf
+*.txt text eol=lf
+
+# Shell 脚本 - 使用 LF 行尾符
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows 批处理文件 - 使用 CRLF 行尾符
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制文件 - 不进行文本处理
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.icns binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.7z binary
+*.rar binary
+
+# Tauri 特定文件
+/src-tauri/target/** binary
+/src-tauri/gen/** binary
+
+# Node.js 相关文件
+/node_modules/** binary
+/package-lock.json text eol=lf
+/yarn.lock text eol=lf
+/pnpm-lock.yaml text eol=lf
+
+# IDE 和编辑器文件
+/.vscode/** text eol=lf
+/.idea/** text eol=lf
+*.sln text eol=crlf
+
+# 日志文件
+*.log text eol=lf
+
+# 确保构建脚本在 Windows 上正确执行
+/src-tauri/build.rs text eol=lf
