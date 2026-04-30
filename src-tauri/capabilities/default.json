@@ -7,7 +7,12 @@
   "permissions": [
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": ["**"]
+    },
     "dialog:allow-open",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "store:default"
   ]
 }

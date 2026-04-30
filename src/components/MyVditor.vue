@@ -12,6 +12,7 @@ import svgIcons from '../config/vditor-toolbar-svg.js'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 
 export default {
   name: "MyVditor.vue",
@@ -88,8 +89,35 @@ export default {
       vditorConf.options.toolbar = vditorConf.toolbar;
     }
     this.vditor = new Vditor('vditorEle', vditorConf.options)
+    
+    // 自动加载上一次打开的文件
+    this.autoLoadLastFile()
   },
   methods: {
+    async autoLoadLastFile() {
+      try {
+        console.log('[DEBUG] 开始自动加载上次文件...')
+        const lastFilePath = await getLastFilePath()
+        console.log('[DEBUG] 从 store 获取的文件路径:', lastFilePath)
+        
+        if (lastFilePath) {
+          console.log('[DEBUG] 尝试读取文件:', lastFilePath)
+          const data = await readTextFile(lastFilePath)
+          console.log('[DEBUG] 文件读取成功，长度:', data.length)
+          this.vditor.setValue(data)
+          console.log('[DEBUG] 文件内容已设置到编辑器')
+        } else {
+          console.log('[DEBUG] 没有上次打开的文件记录')
+        }
+      } catch (error) {
+        console.error('[ERROR] 自动加载上次文件失败:', error)
+        console.error('[ERROR] 错误详情:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        })
+      }
+    },
     async openMdFile() {
       const filePath = await open({
         filters: [{
@@ -104,6 +132,7 @@ export default {
       try {
         const data = await readTextFile(filePath)
         this.vditor.setValue(data)
+        await saveLastFilePath(filePath)
       } catch (error) {
         ElNotification.error('文件读取失败')
         return false
@@ -122,6 +151,7 @@ export default {
       }
       try {
         await writeTextFile(filePath, this.vditor.getValue())
+        await saveLastFilePath(filePath)
       } catch (error) {
         ElNotification.error('文件保存失败')
         return false
