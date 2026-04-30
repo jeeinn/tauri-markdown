@@ -42,18 +42,20 @@ export default defineConfig({
   // https://tauri.studio/v1/api/config#buildconfig.beforedevcommand
   envPrefix: ["VITE_", "TAURI_"],
   build: {
-    // Tauri supports es2021
-    target: ["es2021", "chrome100", "safari13"],
+    // Tauri 2 uses modern Chromium
+    target: ["es2022", "chrome105", "safari16"],
     // don't minify for debug builds
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vue": ["vue"],
-          "vditor": ["vditor"],
-          "element-plus": ["element-plus"],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('vue')) return 'vue'
+            if (id.includes('vditor')) return 'vditor'
+            if (id.includes('element-plus')) return 'element-plus'
+          }
         }
       },
 

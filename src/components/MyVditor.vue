@@ -9,9 +9,9 @@ import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import svgIcons from '../config/vditor-toolbar-svg.js'
 // 导入系统组件
-import {dialog} from "@tauri-apps/api"
-import {writeFile, readTextFile} from "@tauri-apps/api/fs"
-import {WebviewWindow} from "@tauri-apps/api/window";
+import { open, save } from '@tauri-apps/plugin-dialog'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 export default {
   name: "MyVditor.vue",
@@ -91,44 +91,41 @@ export default {
   },
   methods: {
     async openMdFile() {
-      const filePath = await dialog.open({
+      const filePath = await open({
         filters: [{
           name: 'OpenFile',
           extensions: ['md', 'txt']
         }]
       })
       if (filePath == null) {
-        // console.log(filePath)
         ElNotification.error('文件路径获取失败')
         return false
       }
-      await readTextFile(filePath.toString(), {}).then((data) => {
+      try {
+        const data = await readTextFile(filePath)
         this.vditor.setValue(data)
-      }, () => {
+      } catch (error) {
         ElNotification.error('文件读取失败')
         return false
-      })
+      }
     },
     async saveMdFile() {
-      const filePath = await dialog.save({
+      const filePath = await save({
         filters: [{
           name: 'MarkDownFile',
           extensions: ['md']
         }]
       })
       if (filePath == null) {
-        // console.log(filePath)
         ElNotification.error('文件路径获取失败')
         return false
       }
-      await writeFile({
-        path: filePath,
-        contents: this.vditor.getValue()
-      }).then(() => {
-      }, () => {
+      try {
+        await writeTextFile(filePath, this.vditor.getValue())
+      } catch (error) {
         ElNotification.error('文件保存失败')
         return false
-      })
+      }
     },
     showAbout() {
       ElMessageBox.alert(
