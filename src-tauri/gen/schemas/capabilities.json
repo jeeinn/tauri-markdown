@@ -1,1 +1,0 @@
-{"default":{"identifier":"default","description":"Default capabilities for the markdown editor app","local":true,"windows":["main"],"permissions":["fs:allow-read-file","fs:allow-write-file","dialog:allow-open","dialog:allow-save"]}}

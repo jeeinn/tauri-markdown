@@ -5,9 +5,14 @@
   "local": true,
   "windows": ["main"],
   "permissions": [
-    "fs:allow-read-file",
-    "fs:allow-write-file",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": ["**"]
+    },
     "dialog:allow-open",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "store:default"
   ]
 }

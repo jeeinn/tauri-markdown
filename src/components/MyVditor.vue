@@ -12,6 +12,7 @@ import svgIcons from '../config/vditor-toolbar-svg.js'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 
 export default {
   name: "MyVditor.vue",
@@ -88,8 +89,55 @@ export default {
       vditorConf.options.toolbar = vditorConf.toolbar;
     }
     this.vditor = new Vditor('vditorEle', vditorConf.options)
+    
+    // 等待 Vditor 完全初始化后再加载上次文件
+    setTimeout(() => {
+      this.autoLoadLastFile()
+    }, 500)
   },
   methods: {
+    async autoLoadLastFile() {
+      try {
+        console.log('[DEBUG] 开始自动加载上次文件...')
+        const lastFilePath = await getLastFilePath()
+        console.log('[DEBUG] 从 store 获取的文件路径:', lastFilePath)
+        
+        if (!lastFilePath) {
+          console.log('[DEBUG] 没有上次打开的文件记录')
+          return
+        }
+        
+        // 检查 Vditor 是否已初始化
+        if (!this.vditor) {
+          console.error('[ERROR] Vditor 未初始化')
+          return
+        }
+        
+        console.log('[DEBUG] 尝试读取文件:', lastFilePath)
+        const data = await readTextFile(lastFilePath)
+        console.log('[DEBUG] 文件读取成功，长度:', data.length)
+        
+        // 设置内容到编辑器
+        this.vditor.setValue(data)
+        console.log('[DEBUG] 文件内容已设置到编辑器')
+        
+        // 可选：显示一个简短的提示（如果用户需要）
+        // ElNotification.success({
+        //   title: '已加载上次文件',
+        //   message: lastFilePath.split('\\').pop() || lastFilePath.split('/').pop(),
+        //   duration: 2000
+        // })
+      } catch (error) {
+        console.error('[ERROR] 自动加载上次文件失败:', error)
+        console.error('[ERROR] 错误详情:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        })
+        // 在生产环境中，如果文件不存在或无法访问，静默失败
+        // 不显示错误提示，避免干扰用户体验
+      }
+    },
     async openMdFile() {
       const filePath = await open({
         filters: [{
@@ -104,6 +152,7 @@ export default {
       try {
         const data = await readTextFile(filePath)
         this.vditor.setValue(data)
+        await saveLastFilePath(filePath)
       } catch (error) {
         ElNotification.error('文件读取失败')
         return false
@@ -122,6 +171,7 @@ export default {
       }
       try {
         await writeTextFile(filePath, this.vditor.getValue())
+        await saveLastFilePath(filePath)
       } catch (error) {
         ElNotification.error('文件保存失败')
         return false

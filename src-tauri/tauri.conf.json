@@ -15,7 +15,7 @@
       {
         "title": "Tauri Markdown",
         "width": 1000,
-        "height": 600,
+        "height": 800,
         "resizable": true,
         "center": true,
         "fullscreen": false
