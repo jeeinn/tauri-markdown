@@ -52,7 +52,6 @@ export default {
     },
   },
   toolbar: [
-    "|",
     {
       hotkey: '⌘z',
       name: 'undo',

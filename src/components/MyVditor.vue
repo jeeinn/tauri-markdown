@@ -5,6 +5,7 @@
 <script async>
 import Vditor from 'vditor'
 import 'vditor/dist/index.css'
+import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import svgIcons from '../config/vditor-toolbar-svg.js'

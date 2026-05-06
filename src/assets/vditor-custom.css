@@ -1,0 +1,12 @@
+/* Vditor 工具栏左对齐样式 */
+/* 确保工具栏从左边缘开始，没有额外的左边距 */
+.vditor .vditor-toolbar {
+  padding-left: 5px !important;
+  text-align: left !important;
+}
+
+/* 确保所有工具栏项都左浮动 */
+.vditor-toolbar__item,
+.vditor-toolbar__divider {
+  float: left !important;
+}
