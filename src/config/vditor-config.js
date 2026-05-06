@@ -9,8 +9,9 @@ export default {
       enable: false,
     },
     // placeholder: self.welcome,
+    height: '100%', // 设置为 100% 填充整个窗口
     minHeight: 600,
-    width: 'auto',
+    width: '100%',
     outline: {
       enable: true, // 大纲模式
       position: 'left',
@@ -48,11 +49,16 @@ export default {
     },
     tab: '\t',
     after: () => {
+      // 编辑器初始化完成后的回调
+      console.log('[Vditor] 编辑器初始化完成');
       // this.vditor.setValue('# 🎉️ Welcome to use Tauri Vditor!')
     },
   },
   toolbar: [
-    "|",
+    {
+      name: 'outline',
+      tipPosition: 's',
+    },
     {
       hotkey: '⌘z',
       name: 'undo',
