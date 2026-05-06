@@ -11,7 +11,7 @@ import vditorConf from '../config/vditor-config.js'
 import svgIcons from '../config/vditor-toolbar-svg.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 
@@ -25,6 +25,11 @@ export default {
       lang: 'zh_CN',
       // 静态资源 https://cn.vitejs.dev/guide/assets.html#the-public-directory
       cdn: '/vditor-cdn',
+      // 文件状态追踪
+      currentFilePath: null, // 当前打开的文件路径
+      isContentModified: false, // 内容是否被修改
+      originalContent: '', // 原始文件内容，用于对比
+      isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
     };
   },
   mounted() {
@@ -91,12 +96,105 @@ export default {
     }
     this.vditor = new Vditor('vditorEle', vditorConf.options)
     
-    // 等待 Vditor 完全初始化后再加载上次文件
-    setTimeout(() => {
+    // 监听编辑器内容变化（支持多种模式）
+    const observeContentChange = () => {
+      if (this.vditor && this.vditor.vditor) {
+        // IR 模式
+        if (this.vditor.vditor.ir && this.vditor.vditor.ir.element) {
+          this.vditor.vditor.ir.element.addEventListener('input', () => {
+            this.checkContentModified()
+          })
+        }
+        // SV 模式
+        if (this.vditor.vditor.sv && this.vditor.vditor.sv.element) {
+          this.vditor.vditor.sv.element.addEventListener('input', () => {
+            this.checkContentModified()
+          })
+        }
+      }
+    }
+    
+    // 等待 Vditor 完全初始化后再设置监听器和加载文件
+    this.vditor.after(() => {
+      console.log('[DEBUG] Vditor 初始化完成')
+      observeContentChange()
       this.autoLoadLastFile()
-    }, 500)
+    })
+    
+    // 添加窗口关闭前的保护（仅适用于浏览器环境）
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isContentModified) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    })
+    
+    // 添加键盘快捷键监听
+    window.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + S 保存
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        this.saveMdFile()
+      }
+      // Ctrl/Cmd + O 打开
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault()
+        this.openMdFile()
+      }
+    })
   },
   methods: {
+    // 检查内容是否被修改
+    checkContentModified() {
+      if (!this.vditor) return
+      
+      // 如果正在保存，跳过检查
+      if (this.isSaving) {
+        console.log('[DEBUG] 正在保存中，跳过内容修改检测')
+        return
+      }
+      
+      const currentContent = this.vditor.getValue()
+      const wasModified = this.isContentModified
+      this.isContentModified = currentContent !== this.originalContent
+      
+      // 调试日志：只在状态变化时输出
+      if (wasModified !== this.isContentModified) {
+        console.log('[DEBUG] 内容修改状态变化:', this.isContentModified ? '已修改' : '未修改')
+      }
+    },
+    
+    // 清除当前文件状态
+    async clearCurrentFile() {
+      this.currentFilePath = null
+      this.originalContent = ''
+      this.isContentModified = false
+      // 清除 store 中的记录
+      const { clearLastFilePath } = await import('../utils/store.js')
+      await clearLastFilePath()
+    },
+    
+    // 显示文件冲突对话框
+    async showFileConflictDialog(filePath) {
+      const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
+      try {
+        await ElMessageBox.confirm(
+          `文件 "${fileName}" 已在外部被修改。\n\n您想覆盖外部修改吗？`,
+          '文件冲突',
+          {
+            confirmButtonText: '覆盖保存',
+            cancelButtonText: '取消',
+            type: 'warning',
+            distinguishCancelAndClose: true
+          }
+        )
+        return true
+      } catch (error) {
+        // 用户取消操作
+        return false
+      }
+    },
+    
     async autoLoadLastFile() {
       try {
         console.log('[DEBUG] 开始自动加载上次文件...')
@@ -114,20 +212,42 @@ export default {
           return
         }
         
+        // 检查文件是否存在
+        console.log('[DEBUG] 检查文件是否存在:', lastFilePath)
+        const fileExists = await exists(lastFilePath)
+        if (!fileExists) {
+          console.log('[DEBUG] 文件不存在，清除记录')
+          // 文件不存在，清除记录
+          await this.clearCurrentFile()
+          ElNotification.warning({
+            title: '文件不存在',
+            message: '上次打开的文件已被删除或移动',
+            duration: 3000
+          })
+          return
+        }
+        
         console.log('[DEBUG] 尝试读取文件:', lastFilePath)
         const data = await readTextFile(lastFilePath)
         console.log('[DEBUG] 文件读取成功，长度:', data.length)
         
         // 设置内容到编辑器
         this.vditor.setValue(data)
+        
+        // 更新文件状态
+        this.currentFilePath = lastFilePath
+        this.originalContent = data
+        this.isContentModified = false
+        
         console.log('[DEBUG] 文件内容已设置到编辑器')
         
-        // 可选：显示一个简短的提示（如果用户需要）
-        // ElNotification.success({
-        //   title: '已加载上次文件',
-        //   message: lastFilePath.split('\\').pop() || lastFilePath.split('/').pop(),
-        //   duration: 2000
-        // })
+        // 显示加载成功提示
+        const fileName = lastFilePath.split('\\').pop() || lastFilePath.split('/').pop()
+        ElNotification.success({
+          title: '已加载上次文件',
+          message: fileName,
+          duration: 2000
+        })
       } catch (error) {
         console.error('[ERROR] 自动加载上次文件失败:', error)
         console.error('[ERROR] 错误详情:', {
@@ -135,8 +255,8 @@ export default {
           name: error.name,
           stack: error.stack
         })
-        // 在生产环境中，如果文件不存在或无法访问，静默失败
-        // 不显示错误提示，避免干扰用户体验
+        // 清除无效的文件记录
+        await this.clearCurrentFile()
       }
     },
     async openMdFile() {
@@ -151,19 +271,41 @@ export default {
         return false
       }
       try {
+        // 检查文件是否存在
+        const fileExists = await exists(filePath)
+        if (!fileExists) {
+          ElNotification.error('文件不存在')
+          return false
+        }
+        
         const data = await readTextFile(filePath)
         this.vditor.setValue(data)
+        
+        // 更新文件状态
+        this.currentFilePath = filePath
+        this.originalContent = data
+        this.isContentModified = false
+        
         await saveLastFilePath(filePath)
+        
+        const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
+        ElNotification.success({
+          title: '文件打开成功',
+          message: fileName,
+          duration: 2000
+        })
       } catch (error) {
+        console.error('文件读取失败:', error)
         ElNotification.error('文件读取失败')
         return false
       }
     },
     async saveMdFile() {
-      let filePath = await getLastFilePath()
+      let filePath = this.currentFilePath
 
       // 如果没有当前文件路径，弹出保存对话框
       if (!filePath) {
+        console.log('[DEBUG] 没有当前文件路径，弹出保存对话框')
         filePath = await save({
           filters: [{
             name: 'MarkDownFile',
@@ -174,13 +316,71 @@ export default {
           ElNotification.error('文件路径获取失败')
           return false
         }
+        console.log('[DEBUG] 用户选择的保存路径:', filePath)
+      } else {
+        console.log('[DEBUG] 使用当前文件路径:', filePath)
       }
 
       try {
-        await writeTextFile(filePath, this.vditor.getValue())
+        // 设置保存标志，防止保存过程中触发修改检测
+        this.isSaving = true
+        
+        // 检查内容是否有修改
+        const currentContent = this.vditor.getValue()
+        if (!this.isContentModified && this.originalContent !== '') {
+          // 内容未修改，提示用户
+          this.isSaving = false
+          ElNotification.info({
+            title: '提示',
+            message: '内容未修改，无需保存',
+            duration: 2000
+          })
+          return true
+        }
+        
+        // 如果文件已存在，检查是否被外部修改
+        const fileExists = await exists(filePath)
+        if (fileExists && this.currentFilePath === filePath) {
+          // 读取当前磁盘上的文件内容
+          const diskContent = await readTextFile(filePath)
+          
+          // 如果磁盘内容与原始内容不同，说明文件被外部修改
+          if (diskContent !== this.originalContent) {
+            const confirmed = await this.showFileConflictDialog(filePath)
+            if (!confirmed) {
+              this.isSaving = false
+              return false
+            }
+          }
+        }
+
+        // 执行保存
+        console.log('[DEBUG] 开始保存文件到:', filePath)
+        await writeTextFile(filePath, currentContent)
+        
+        // 立即更新状态（在显示通知之前）
+        this.currentFilePath = filePath
+        this.originalContent = currentContent
+        this.isContentModified = false
+        
+        // 保存到 store
         await saveLastFilePath(filePath)
-        ElNotification.success('文件保存成功')
+        
+        // 清除保存标志
+        this.isSaving = false
+        console.log('[DEBUG] 文件保存成功，状态已更新')
+        
+        const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
+        ElNotification.success({
+          title: '文件保存成功',
+          message: fileName,
+          duration: 2000
+        })
+        return true
       } catch (error) {
+        // 确保在错误时也清除保存标志
+        this.isSaving = false
+        console.error('[ERROR] 文件保存失败:', error)
         ElNotification.error('文件保存失败')
         return false
       }
