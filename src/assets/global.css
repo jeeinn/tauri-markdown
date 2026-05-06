@@ -1,0 +1,50 @@
+/* 全局样式 - 移除默认边距，让应用填充整个窗口 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Vditor 编辑器样式优化 - 移除边框间距 */
+.vditor {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* 确保编辑器内容区域也填充整个空间 */
+.vditor-content {
+  height: 100% !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+/* 工具栏样式 */
+.vditor-toolbar {
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0 !important;
+}
+
+/* 大纲侧栏样式 */
+.vditor-outline {
+  border-right: 1px solid var(--border-color);
+}

@@ -9,9 +9,9 @@ export default {
       enable: false,
     },
     // placeholder: self.welcome,
-    height: 'auto', // 设置为 auto 让编辑器自适应高度，确保大纲导航正常工作
+    height: '100%', // 设置为 100% 填充整个窗口
     minHeight: 600,
-    width: 'auto',
+    width: '100%',
     outline: {
       enable: true, // 大纲模式
       position: 'left',
