@@ -159,19 +159,26 @@ export default {
       }
     },
     async saveMdFile() {
-      const filePath = await save({
-        filters: [{
-          name: 'MarkDownFile',
-          extensions: ['md']
-        }]
-      })
-      if (filePath == null) {
-        ElNotification.error('文件路径获取失败')
-        return false
+      let filePath = await getLastFilePath()
+
+      // 如果没有当前文件路径，弹出保存对话框
+      if (!filePath) {
+        filePath = await save({
+          filters: [{
+            name: 'MarkDownFile',
+            extensions: ['md']
+          }]
+        })
+        if (filePath == null) {
+          ElNotification.error('文件路径获取失败')
+          return false
+        }
       }
+
       try {
         await writeTextFile(filePath, this.vditor.getValue())
         await saveLastFilePath(filePath)
+        ElNotification.success('文件保存成功')
       } catch (error) {
         ElNotification.error('文件保存失败')
         return false
