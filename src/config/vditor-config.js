@@ -9,6 +9,7 @@ export default {
       enable: false,
     },
     // placeholder: self.welcome,
+    height: 'auto', // 设置为 auto 让编辑器自适应高度，确保大纲导航正常工作
     minHeight: 600,
     width: 'auto',
     outline: {
@@ -48,10 +49,16 @@ export default {
     },
     tab: '\t',
     after: () => {
+      // 编辑器初始化完成后的回调
+      console.log('[Vditor] 编辑器初始化完成');
       // this.vditor.setValue('# 🎉️ Welcome to use Tauri Vditor!')
     },
   },
   toolbar: [
+    {
+      name: 'outline',
+      tipPosition: 's',
+    },
     {
       hotkey: '⌘z',
       name: 'undo',

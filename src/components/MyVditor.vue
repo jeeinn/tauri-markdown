@@ -1,5 +1,5 @@
 <template>
-  <div id="vditorEle" class="vditor vditor--fullscreen"></div>
+  <div id="vditorEle" class="vditor"></div>
 </template>
 
 <script async>
@@ -70,7 +70,7 @@ export default {
         tipPosition: 's',
         toolbar: [
           // "export",
-          "outline",
+          // "outline",  // 已移至工具栏主位置
           "preview",
           "both",
           "code-theme",
