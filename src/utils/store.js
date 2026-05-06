@@ -1,13 +1,21 @@
 import { Store } from '@tauri-apps/plugin-store'
 
-const STORE_PATH = 'app_store.json'
+// 使用应用数据目录存储，确保在不同环境下都能正常工作
+const STORE_PATH = 'store.json'
 const LAST_FILE_KEY = 'last_opened_file'
 
 let storeInstance = null
 
 async function getStore() {
   if (!storeInstance) {
-    storeInstance = await Store.load(STORE_PATH)
+    try {
+      console.log('[DEBUG Store] 加载 store:', STORE_PATH)
+      storeInstance = await Store.load(STORE_PATH)
+      console.log('[DEBUG Store] Store 加载成功')
+    } catch (error) {
+      console.error('[ERROR Store] Store 加载失败:', error)
+      throw error
+    }
   }
   return storeInstance
 }
