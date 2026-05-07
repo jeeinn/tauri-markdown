@@ -73,6 +73,7 @@ export default {
           lang: this.lang,
           placeholder: this.welcome,
           cdn: this.cdn,
+          toolbar: vditorConf.toolbar, // 明确传递 toolbar 配置
         },
       }));
       

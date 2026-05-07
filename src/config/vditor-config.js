@@ -55,10 +55,7 @@ export default {
     },
   },
   toolbar: [
-    {
-      name: 'outline',
-      tipPosition: 's',
-    },
+    "outline",
     {
       hotkey: '⌘z',
       name: 'undo',
@@ -172,6 +169,21 @@ export default {
       // hotkey: '',
       name: 'edit-mode',
       tipPosition: 's',
+    },
+    "|",
+    {
+      name: 'more',
+      tipPosition: 's',
+      toolbar: [
+        'both',
+        'code-theme', 
+        'content-theme',
+        'export',
+        'preview',
+        'devtools',
+        'info',
+        'help'
+      ]
     },
   ]
 }
