@@ -3,6 +3,7 @@ import { Store } from '@tauri-apps/plugin-store'
 // 使用应用数据目录存储，确保在不同环境下都能正常工作
 const STORE_PATH = 'store.json'
 const LAST_FILE_KEY = 'last_opened_file'
+const THEME_KEY = 'app_theme'
 
 let storeInstance = null
 
@@ -52,5 +53,26 @@ export async function clearLastFilePath() {
     await store.save()
   } catch (error) {
     console.error('清除文件路径失败:', error)
+  }
+}
+
+export async function saveTheme(theme) {
+  try {
+    const store = await getStore()
+    await store.set(THEME_KEY, theme)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存主题偏好失败:', error)
+  }
+}
+
+export async function getTheme() {
+  try {
+    const store = await getStore()
+    const theme = await store.get(THEME_KEY)
+    return theme || 'auto'
+  } catch (error) {
+    console.error('[Store] 获取主题偏好失败:', error)
+    return 'auto'
   }
 }

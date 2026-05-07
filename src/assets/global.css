@@ -48,3 +48,35 @@ html, body {
 .vditor-outline {
   border-right: 1px solid var(--border-color);
 }
+
+/* 暗色模式全局样式 */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #141414;
+  color: #e5eaf3;
+}
+
+html.dark .app-menubar {
+  background: #1d1e1f;
+  border-bottom-color: #363637;
+}
+
+html.dark .menu-item {
+  color: #cfd3dc;
+}
+
+html.dark .menu-item:hover {
+  background: #363637;
+  color: #409eff;
+}
+
+html.dark .shortcut {
+  color: #8d9095;
+}
+
+html.dark .language-label {
+  color: #cfd3dc;
+}

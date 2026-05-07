@@ -27,6 +27,30 @@
           </template>
         </el-dropdown>
 
+        <!-- 主题菜单 -->
+        <el-dropdown trigger="click" @command="handleThemeMenu">
+          <span class="menu-item">
+            {{ menuTheme.label }}
+            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="auto">
+                {{ menuTheme.auto }}
+                <span v-if="currentTheme === 'auto'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="light">
+                {{ menuTheme.light }}
+                <span v-if="currentTheme === 'light'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="dark">
+                {{ menuTheme.dark }}
+                <span v-if="currentTheme === 'dark'" class="theme-check">✓</span>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
         <!-- 帮助菜单 -->
         <el-dropdown trigger="click" @command="handleHelpMenu">
           <span class="menu-item">
@@ -62,6 +86,7 @@
 import MyVditor from './components/MyVditor.vue'
 import menuI18nConfig from './config/menu-i18n.js'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { getTheme, saveTheme } from './utils/store.js'
 
 export default {
   name: 'App',
@@ -71,7 +96,8 @@ export default {
   },
   data() {
     return {
-      currentLang: 'zh_CN'
+      currentLang: 'zh_CN',
+      currentTheme: 'auto',
     }
   },
   computed: {
@@ -82,16 +108,26 @@ export default {
     // 当前语言的快捷键文本
     menuShortcuts() {
       return menuI18nConfig[this.currentLang]?.shortcuts || menuI18nConfig.zh_CN.shortcuts;
+    },
+    // 当前语言的主题菜单文本
+    menuTheme() {
+      return menuI18nConfig[this.currentLang]?.theme || menuI18nConfig.zh_CN.theme;
     }
   },
   mounted() {
     // 添加全局键盘快捷键监听
     window.addEventListener('keydown', this.handleKeyboardShortcut);
+    // 初始化主题
+    this.initTheme();
   },
   
   beforeUnmount() {
     // 移除键盘快捷键监听
     window.removeEventListener('keydown', this.handleKeyboardShortcut);
+    // 移除系统主题变化监听
+    if (this._systemThemeMedia) {
+      this._systemThemeMedia.removeEventListener('change', this._systemThemeHandler);
+    }
   },
   
   methods: {
@@ -152,6 +188,49 @@ export default {
       if (this.$refs.vditor) {
         this.$refs.vditor.switchLanguage(lang);
       }
+    },
+
+    // 初始化主题
+    async initTheme() {
+      const savedTheme = await getTheme();
+      this.currentTheme = savedTheme;
+      this.applyTheme(savedTheme);
+
+      // 监听系统主题变化
+      this._systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+      this._systemThemeHandler = () => {
+        if (this.currentTheme === 'auto') {
+          this.applyTheme('auto');
+        }
+      };
+      this._systemThemeMedia.addEventListener('change', this._systemThemeHandler);
+    },
+
+    // 处理主题菜单命令
+    handleThemeMenu(command) {
+      this.currentTheme = command;
+      this.applyTheme(command);
+      saveTheme(command);
+    },
+
+    // 应用主题
+    applyTheme(theme) {
+      const isDark = theme === 'dark' || (theme === 'auto' && this.getSystemTheme() === 'dark');
+      const html = document.documentElement;
+
+      if (isDark) {
+        html.classList.add('dark');
+      } else {
+        html.classList.remove('dark');
+      }
+
+      // 同步 Vditor 编辑器主题
+      this.$refs.vditor?.setVditorTheme(isDark);
+    },
+
+    // 获取系统主题
+    getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
   }
 }
@@ -211,5 +290,11 @@ export default {
 .language-label {
   font-size: 13px;
   color: #606266;
+}
+
+.theme-check {
+  margin-left: 20px;
+  color: #409eff;
+  font-weight: bold;
 }
 </style>
