@@ -8,6 +8,7 @@ export default {
   zh_CN: {
     menu: {
       file: '文件',
+      new: '新建',
       open: '打开',
       save: '保存',
       export: '导出',
@@ -16,6 +17,7 @@ export default {
       theme: '主题',
     },
     shortcuts: {
+      new: 'Ctrl+N',
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
@@ -28,6 +30,15 @@ export default {
       dark: '深色',
     },
     notifications: {
+      // 新建文件
+      newFile: {
+        unsavedChanges: {
+          title: '提示',
+          message: '当前文档有未保存的修改，是否继续新建？',
+          confirmButtonText: '继续',
+          cancelButtonText: '取消',
+        },
+      },
       // 文件冲突对话框
       fileConflict: {
         title: '文件冲突',
@@ -98,6 +109,7 @@ export default {
   en_US: {
     menu: {
       file: 'File',
+      new: 'New',
       open: 'Open',
       save: 'Save',
       export: 'Export',
@@ -106,6 +118,7 @@ export default {
       theme: 'Theme',
     },
     shortcuts: {
+      new: 'Ctrl+N',
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
@@ -118,6 +131,14 @@ export default {
       dark: 'Dark',
     },
     notifications: {
+      newFile: {
+        unsavedChanges: {
+          title: 'Notice',
+          message: 'Current document has unsaved changes. Continue to create a new file?',
+          confirmButtonText: 'Continue',
+          cancelButtonText: 'Cancel',
+        },
+      },
       fileConflict: {
         title: 'File Conflict',
         message: 'File "{fileName}" has been modified externally.\n\nDo you want to overwrite the external changes?',
@@ -182,6 +203,7 @@ export default {
   ja_JP: {
     menu: {
       file: 'ファイル',
+      new: '新規作成',
       open: '開く',
       save: '保存',
       export: 'エクスポート',
@@ -190,6 +212,7 @@ export default {
       theme: 'テーマ',
     },
     shortcuts: {
+      new: 'Ctrl+N',
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
@@ -202,6 +225,14 @@ export default {
       dark: 'ダーク',
     },
     notifications: {
+      newFile: {
+        unsavedChanges: {
+          title: 'お知らせ',
+          message: '現在のドキュメントには未保存の変更があります。新規作成を続行しますか？',
+          confirmButtonText: '続行',
+          cancelButtonText: 'キャンセル',
+        },
+      },
       fileConflict: {
         title: 'ファイルの競合',
         message: 'ファイル "{fileName}" は外部で変更されました。\n\n外部の変更を上書きしますか？',
@@ -265,6 +296,7 @@ export default {
   ko_KR: {
     menu: {
       file: '파일',
+      new: '새로 만들기',
       open: '열기',
       save: '저장',
       export: '내보내기',
@@ -273,6 +305,7 @@ export default {
       theme: '테마',
     },
     shortcuts: {
+      new: 'Ctrl+N',
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
@@ -285,6 +318,14 @@ export default {
       dark: '다크',
     },
     notifications: {
+      newFile: {
+        unsavedChanges: {
+          title: '알림',
+          message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 새로 만들기를 계속하시겠습니까?',
+          confirmButtonText: '계속',
+          cancelButtonText: '취소',
+        },
+      },
       fileConflict: {
         title: '파일 충돌',
         message: '파일 "{fileName}"이(가) 외부에서 수정되었습니다.\n\n외부 변경 사항을 덮어쓰시겠습니까?',

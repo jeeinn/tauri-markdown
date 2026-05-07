@@ -257,6 +257,35 @@ export default {
         await this.clearCurrentFile()
       }
     },
+    // 新建空白文档
+    async newFile() {
+      // 如果当前有未保存的修改，提示用户
+      if (this.isContentModified) {
+        try {
+          await ElMessageBox.confirm(
+            this.t.newFile.unsavedChanges.message,
+            this.t.newFile.unsavedChanges.title,
+            {
+              confirmButtonText: this.t.newFile.unsavedChanges.confirmButtonText,
+              cancelButtonText: this.t.newFile.unsavedChanges.cancelButtonText,
+              type: 'warning'
+            }
+          )
+        } catch {
+          // 用户取消操作
+          return false
+        }
+      }
+      
+      // 清空编辑器内容
+      this.vditor.setValue('')
+      
+      // 清除文件状态
+      await this.clearCurrentFile()
+      
+      console.log('[New] 已创建新空白文档')
+      return true
+    },
     async openMdFile() {
       const filePath = await open({
         filters: [{
