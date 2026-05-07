@@ -21,6 +21,7 @@
     "core:path:allow-dirname",
     "core:path:allow-join",
     "core:path:allow-normalize",
+    "core:window:allow-set-title",
     "store:default"
   ]
 }
