@@ -14,6 +14,7 @@ import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
+import imagePathMapper from '../utils/image-path-mapper.js'
 
 export default {
   name: "MyVditor.vue",
@@ -73,8 +74,28 @@ export default {
           lang: this.lang,
           placeholder: this.welcome,
           cdn: this.cdn,
+          toolbar: vditorConf.toolbar, // 明确传递 toolbar 配置
         },
       }));
+      
+      // 设置自定义上传 handler
+      vditorConfCopy.options.upload.handler = async (files) => {
+        const result = await this.handleImageUpload(files);
+        
+        // 如果有成功的图片，手动插入到编辑器
+        if (result && result[0] && result[0].data && result[0].data.succMap) {
+          const succMap = result[0].data.succMap;
+          for (const [originalName, imageUrl] of Object.entries(succMap)) {
+            // 插入 asset URL（由 handleImageUpload 统一生成）
+            const markdownImage = `![${originalName}](${imageUrl})`;
+            this.vditor.insertValue(markdownImage + '\n');
+            
+            console.log('[Upload] 插入 Markdown:', markdownImage);
+          }
+        }
+        
+        return result;
+      };
       
       vditorConfCopy.options.after = () => {
         this.observeContentChange();
@@ -190,8 +211,16 @@ export default {
         const data = await readTextFile(lastFilePath)
         console.log('[DEBUG] 文件读取成功，长度:', data.length)
         
+        // 获取文件所在目录
+        const { dirname } = await import('@tauri-apps/api/path');
+        const baseDir = await dirname(lastFilePath);
+        
+        // 将相对路径转换为 asset URL（让图片能显示）
+        const convertedContent = await imagePathMapper.convertToAssetUrl(data, baseDir);
+        console.log('[Load] 已转换相对路径为 asset URL');
+        
         // 设置内容到编辑器
-        this.vditor.setValue(data)
+        this.vditor.setValue(convertedContent)
         
         // 更新文件状态
         this.currentFilePath = lastFilePath
@@ -238,7 +267,16 @@ export default {
         }
         
         const data = await readTextFile(filePath)
-        this.vditor.setValue(data)
+        
+        // 获取文件所在目录
+        const { dirname } = await import('@tauri-apps/api/path');
+        const baseDir = await dirname(filePath);
+        
+        // 将相对路径转换为 asset URL（让图片能显示）
+        const convertedContent = await imagePathMapper.convertToAssetUrl(data, baseDir);
+        console.log('[Open] 已转换相对路径为 asset URL');
+        
+        this.vditor.setValue(convertedContent)
         
         // 更新文件状态
         this.currentFilePath = filePath
@@ -285,7 +323,12 @@ export default {
         this.isSaving = true
         
         // 检查内容是否有修改
-        const currentContent = this.vditor.getValue()
+        let currentContent = this.vditor.getValue()
+                
+        // 使用工具模块将 asset URL 转换为相对路径（保存前处理）
+        currentContent = imagePathMapper.convertToRelative(currentContent);
+        console.log('[Save] 已转换 asset URL 为相对路径');
+        
         if (!this.isContentModified && this.originalContent !== '') {
           // 内容未修改，提示用户
           this.isSaving = false
@@ -408,6 +451,163 @@ export default {
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
+    },
+    
+    // 计算文件的 SHA256 Hash
+    async calculateFileHash(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    },
+    
+    // 处理图片上传
+    async handleImageUpload(files) {
+      console.log('[Upload] 开始处理图片上传, 文件数量:', files.length);
+      
+      const errFiles = [];
+      const succMap = {};
+      
+      for (const file of files) {
+        try {
+          console.log('[Upload] 处理文件:', file.name);
+          
+          // 获取当前 md 文件所在目录
+          if (!this.currentFilePath) {
+            console.warn('[Upload] 未打开文件，无法确定保存位置');
+            errFiles.push(file.name);
+            continue;
+          }
+          
+          // 使用 path 模块处理路径，确保跨平台兼容
+          const { dirname, join, normalize } = await import('@tauri-apps/api/path');
+          const currentDir = await dirname(this.currentFilePath);
+          console.log('[Upload] 当前文件目录:', currentDir);
+          
+          // 创建 assets/images 目录路径（使用相对路径方式）
+          const assetsDirPath = 'assets/images';
+          console.log('[Upload] 相对目录路径:', assetsDirPath);
+          
+          // 检查目录是否存在（相对于 md 文件所在目录）
+          const fullAssetsPath = await normalize(await join(currentDir, assetsDirPath));
+          const assetsDirExists = await exists(fullAssetsPath);
+          console.log('[Upload] 完整路径:', fullAssetsPath);
+          console.log('[Upload] 目录是否存在:', assetsDirExists);
+          
+          // 如果目录不存在，创建它
+          if (!assetsDirExists) {
+            console.log('[Upload] 开始创建目录...');
+            const { mkdir } = await import('@tauri-apps/plugin-fs');
+            
+            try {
+              // 方法1: 尝试直接使用完整路径创建（使用 parents 参数）
+              await mkdir(fullAssetsPath, { parents: true });
+              console.log('[Upload] 目录创建成功');
+            } catch (mkdirError) {
+              console.error('[Upload] mkdir 失败:', mkdirError);
+              
+              // 方法2: 如果失败，尝试逐级创建
+              try {
+                console.log('[Upload] 尝试逐级创建目录...');
+                const assetsPath = await normalize(await join(currentDir, 'assets'));
+                const assetsExists = await exists(assetsPath);
+                
+                if (!assetsExists) {
+                  await mkdir(assetsPath, { parents: true });
+                  console.log('[Upload] assets 目录创建成功');
+                }
+                
+                await mkdir(fullAssetsPath, { parents: true });
+                console.log('[Upload] images 目录创建成功');
+              } catch (secondError) {
+                console.error('[Upload] 逐级创建也失败:', secondError);
+                throw new Error(`创建目录失败: ${secondError.message || '未知错误'}`);
+              }
+            }
+          }
+          
+          // 读取文件内容并计算 Hash
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          // 计算文件的 SHA256 Hash
+          const fileHash = await this.calculateFileHash(file);
+          console.log('[Upload] 文件 Hash:', fileHash.substring(0, 16) + '...');
+          
+          // 使用 Hash 作为文件名（避免重复）
+          const ext = file.name.split('.').pop();
+          const hashFileName = `${fileHash}.${ext}`;
+          const destPath = await normalize(await join(fullAssetsPath, hashFileName));
+          
+          console.log('[Upload] 目标路径:', destPath);
+          
+          // 检查文件是否已存在（去重）
+          const fileExists = await exists(destPath);
+          if (fileExists) {
+            console.log('[Upload] 文件已存在，跳过写入（去重）');
+          } else {
+            // 写入文件（使用 writeFile 进行二进制写入）
+            const { writeFile } = await import('@tauri-apps/plugin-fs');
+            await writeFile(destPath, uint8Array);
+            console.log('[Upload] 文件写入成功');
+          }
+          
+          // 生成相对路径（保存到 Markdown 文件时使用）
+          const relativePath = `./assets/images/${hashFileName}`;
+          console.log('[Upload] 相对路径:', relativePath);
+          
+          // 统一使用 convertFileSrc 转换本地路径为 asset URL
+          const { convertFileSrc } = await import('@tauri-apps/api/core');
+          const imageUrl = convertFileSrc(destPath);
+          console.log('[Upload] 转换后的 URL:', imageUrl);
+          
+          succMap[file.name] = imageUrl;
+          
+          // 添加映射关系到工具模块（asset URL → 相对路径）
+          imagePathMapper.addMapping(imageUrl, relativePath);
+          console.log('[Upload] 已添加映射关系');
+        } catch (error) {
+          console.error('[Upload] 文件上传失败:', file.name, error);
+          console.error('[Upload] 错误详情:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack
+          });
+          errFiles.push(file.name);
+        }
+      }
+      
+      console.log('[Upload] 上传完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
+      
+      // 如果有失败的文件，显示用户提示
+      if (errFiles.length > 0) {
+        ElNotification.error({
+          title: this.t.uploadFailed?.title || '上传失败',
+          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
+          duration: 5000
+        });
+      }
+      
+      // 如果有成功的文件，显示成功提示
+      if (Object.keys(succMap).length > 0) {
+        ElNotification.success({
+          title: this.t.uploadSuccess?.title || '上传成功',
+          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
+          duration: 3000
+        });
+      }
+      
+      return [
+        {
+          code: 0,
+          msg: '',
+          data: {
+            errFiles: errFiles,
+            succMap: succMap
+          }
+        }
+      ];
     },
   },
 }
