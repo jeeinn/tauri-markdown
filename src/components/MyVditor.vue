@@ -453,6 +453,15 @@ export default {
       })
     },
     
+    // 计算文件的 SHA256 Hash
+    async calculateFileHash(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    },
+    
     // 处理图片上传
     async handleImageUpload(files) {
       console.log('[Upload] 开始处理图片上传, 文件数量:', files.length);
@@ -518,25 +527,34 @@ export default {
             }
           }
           
-          // 生成唯一文件名（避免重名）
-          const timestamp = Date.now();
-          const ext = file.name.split('.').pop();
-          const uniqueFileName = `image_${timestamp}.${ext}`;
-          const destPath = await normalize(await join(fullAssetsPath, uniqueFileName));
-          
-          console.log('[Upload] 目标路径:', destPath);
-          
-          // 读取文件内容
+          // 读取文件内容并计算 Hash
           const arrayBuffer = await file.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
           
-          // 写入文件（使用 writeFile 进行二进制写入）
-          const { writeFile } = await import('@tauri-apps/plugin-fs');
-          await writeFile(destPath, uint8Array);
-          console.log('[Upload] 文件写入成功');
+          // 计算文件的 SHA256 Hash
+          const fileHash = await this.calculateFileHash(file);
+          console.log('[Upload] 文件 Hash:', fileHash.substring(0, 16) + '...');
+          
+          // 使用 Hash 作为文件名（避免重复）
+          const ext = file.name.split('.').pop();
+          const hashFileName = `${fileHash}.${ext}`;
+          const destPath = await normalize(await join(fullAssetsPath, hashFileName));
+          
+          console.log('[Upload] 目标路径:', destPath);
+          
+          // 检查文件是否已存在（去重）
+          const fileExists = await exists(destPath);
+          if (fileExists) {
+            console.log('[Upload] 文件已存在，跳过写入（去重）');
+          } else {
+            // 写入文件（使用 writeFile 进行二进制写入）
+            const { writeFile } = await import('@tauri-apps/plugin-fs');
+            await writeFile(destPath, uint8Array);
+            console.log('[Upload] 文件写入成功');
+          }
           
           // 生成相对路径（保存到 Markdown 文件时使用）
-          const relativePath = `./assets/images/${uniqueFileName}`;
+          const relativePath = `./assets/images/${hashFileName}`;
           console.log('[Upload] 相对路径:', relativePath);
           
           // 统一使用 convertFileSrc 转换本地路径为 asset URL
