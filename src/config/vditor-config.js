@@ -42,10 +42,18 @@ export default {
         current: 'light',
         list: {"ant-design": "Ant Design", dark: "Dark", light: "Light", wechat: "WeChat"},
       },
+      // 配置图片懒加载，允许本地 file:// 协议图片显示
+      lazyLoadImage: '',
     },
     hint: {
       parse: true,
       delay: 500,
+    },
+    upload: {
+      accept: 'image/*,.gif,.jpg,.jpeg,.png,.bmp,.webp',
+      multiple: true,
+      max: 10 * 1024 * 1024, // 10MB
+      // handler 将在 MyVditor.vue 中动态设置
     },
     tab: '\t',
     after: () => {
@@ -161,8 +169,8 @@ export default {
       name: 'insert-after',
       tipPosition: 's',
     },
-    // "|",
-    // "upload",
+    "|",
+    "upload",
     // "record",
     "|",
     {

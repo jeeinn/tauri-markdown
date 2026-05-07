@@ -77,6 +77,28 @@ export default {
         },
       }));
       
+      // 设置自定义上传 handler
+      vditorConfCopy.options.upload.handler = async (files) => {
+        const result = await this.handleImageUpload(files);
+        
+        // 如果有成功的图片，手动插入到编辑器
+        // 注意：
+        // - 开发环境：插入 file:// URL，图片立即显示
+        // - 生产环境：插入相对路径，直接可用
+        if (result && result[0] && result[0].data && result[0].data.succMap) {
+          const succMap = result[0].data.succMap;
+          for (const [originalName, imageUrl] of Object.entries(succMap)) {
+            // 直接插入 imageUrl（已由 handleImageUpload 根据环境生成）
+            const markdownImage = `![${originalName}](${imageUrl})`;
+            this.vditor.insertValue(markdownImage + '\n');
+            
+            console.log('[Upload] 插入 Markdown:', markdownImage);
+          }
+        }
+        
+        return result;
+      };
+      
       vditorConfCopy.options.after = () => {
         this.observeContentChange();
         this.autoLoadLastFile();
@@ -286,7 +308,18 @@ export default {
         this.isSaving = true
         
         // 检查内容是否有修改
-        const currentContent = this.vditor.getValue()
+        let currentContent = this.vditor.getValue()
+        
+        // 开发环境下，将 file:// URL 转换为相对路径（保存前处理）
+        if (import.meta.env.DEV && this.$imageRelativePaths) {
+          for (const [fileUrl, relativePath] of Object.entries(this.$imageRelativePaths)) {
+            // 转义特殊字符用于正则替换
+            const escapedUrl = fileUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\]\\(${escapedUrl}\\)`, 'g');
+            currentContent = currentContent.replace(regex, `](${relativePath})`);
+          }
+        }
+        
         if (!this.isContentModified && this.originalContent !== '') {
           // 内容未修改，提示用户
           this.isSaving = false
@@ -409,6 +442,159 @@ export default {
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
+    },
+    
+    // 处理图片上传
+    async handleImageUpload(files) {
+      console.log('[Upload] 开始处理图片上传, 文件数量:', files.length);
+      
+      const errFiles = [];
+      const succMap = {};
+      
+      for (const file of files) {
+        try {
+          console.log('[Upload] 处理文件:', file.name);
+          
+          // 获取当前 md 文件所在目录
+          if (!this.currentFilePath) {
+            console.warn('[Upload] 未打开文件，无法确定保存位置');
+            errFiles.push(file.name);
+            continue;
+          }
+          
+          // 使用 path 模块处理路径，确保跨平台兼容
+          const { dirname, join, normalize } = await import('@tauri-apps/api/path');
+          const currentDir = await dirname(this.currentFilePath);
+          console.log('[Upload] 当前文件目录:', currentDir);
+          
+          // 创建 assets/images 目录路径（使用相对路径方式）
+          const assetsDirPath = 'assets/images';
+          console.log('[Upload] 相对目录路径:', assetsDirPath);
+          
+          // 检查目录是否存在（相对于 md 文件所在目录）
+          const fullAssetsPath = await normalize(await join(currentDir, assetsDirPath));
+          const assetsDirExists = await exists(fullAssetsPath);
+          console.log('[Upload] 完整路径:', fullAssetsPath);
+          console.log('[Upload] 目录是否存在:', assetsDirExists);
+          
+          // 如果目录不存在，创建它
+          if (!assetsDirExists) {
+            console.log('[Upload] 开始创建目录...');
+            const { mkdir } = await import('@tauri-apps/plugin-fs');
+            
+            try {
+              // 方法1: 尝试直接使用完整路径创建（使用 parents 参数）
+              await mkdir(fullAssetsPath, { parents: true });
+              console.log('[Upload] 目录创建成功');
+            } catch (mkdirError) {
+              console.error('[Upload] mkdir 失败:', mkdirError);
+              
+              // 方法2: 如果失败，尝试逐级创建
+              try {
+                console.log('[Upload] 尝试逐级创建目录...');
+                const assetsPath = await normalize(await join(currentDir, 'assets'));
+                const assetsExists = await exists(assetsPath);
+                
+                if (!assetsExists) {
+                  await mkdir(assetsPath, { parents: true });
+                  console.log('[Upload] assets 目录创建成功');
+                }
+                
+                await mkdir(fullAssetsPath, { parents: true });
+                console.log('[Upload] images 目录创建成功');
+              } catch (secondError) {
+                console.error('[Upload] 逐级创建也失败:', secondError);
+                throw new Error(`创建目录失败: ${secondError.message || '未知错误'}`);
+              }
+            }
+          }
+          
+          // 生成唯一文件名（避免重名）
+          const timestamp = Date.now();
+          const ext = file.name.split('.').pop();
+          const uniqueFileName = `image_${timestamp}.${ext}`;
+          const destPath = await normalize(await join(fullAssetsPath, uniqueFileName));
+          
+          console.log('[Upload] 目标路径:', destPath);
+          
+          // 读取文件内容
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          // 写入文件（使用 writeFile 进行二进制写入）
+          const { writeFile } = await import('@tauri-apps/plugin-fs');
+          await writeFile(destPath, uint8Array);
+          console.log('[Upload] 文件写入成功');
+          
+          // 生成相对路径（保存到 Markdown 文件时使用）
+          const relativePath = `./assets/images/${uniqueFileName}`;
+          console.log('[Upload] 相对路径:', relativePath);
+          
+          // 环境判断：开发环境使用 asset 协议，生产环境使用相对路径
+          const isDev = import.meta.env.DEV;
+          let imageUrl;
+          
+          if (isDev) {
+            // 开发环境：使用 Tauri 的 convertFileSrc 将本地路径转换为可访问的 URL
+            const { convertFileSrc } = await import('@tauri-apps/api/core');
+            imageUrl = convertFileSrc(destPath);
+            console.log('[Upload] 转换后的 URL:', imageUrl);
+          } else {
+            // 生产环境：直接使用相对路径
+            imageUrl = relativePath;
+          }
+          
+          console.log('[Upload] 当前环境:', isDev ? '开发' : '生产');
+          console.log('[Upload] 图片 URL:', imageUrl);
+          
+          succMap[file.name] = imageUrl;
+          
+          // 开发环境下，存储映射关系以便保存时转换
+          if (isDev) {
+            this.$imageRelativePaths = this.$imageRelativePaths || {};
+            this.$imageRelativePaths[imageUrl] = relativePath;
+          }
+        } catch (error) {
+          console.error('[Upload] 文件上传失败:', file.name, error);
+          console.error('[Upload] 错误详情:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack
+          });
+          errFiles.push(file.name);
+        }
+      }
+      
+      console.log('[Upload] 上传完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
+      
+      // 如果有失败的文件，显示用户提示
+      if (errFiles.length > 0) {
+        ElNotification.error({
+          title: this.t.uploadFailed?.title || '上传失败',
+          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
+          duration: 5000
+        });
+      }
+      
+      // 如果有成功的文件，显示成功提示
+      if (Object.keys(succMap).length > 0) {
+        ElNotification.success({
+          title: this.t.uploadSuccess?.title || '上传成功',
+          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
+          duration: 3000
+        });
+      }
+      
+      return [
+        {
+          code: 0,
+          msg: '',
+          data: {
+            errFiles: errFiles,
+            succMap: succMap
+          }
+        }
+      ];
     },
   },
 }

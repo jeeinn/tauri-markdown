@@ -22,7 +22,17 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self' ipc: http://ipc.localhost",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "style-src": "'self' 'unsafe-inline' http://asset.localhost",
+        "script-src": "'self' 'unsafe-inline' 'unsafe-eval' http://asset.localhost",
+        "connect-src": "'self' http://ipc.localhost ws://localhost:1420"
+      },
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**", "$DOCUMENT/**", "$DESKTOP/**", "$HOME/**"]
+      }
     }
   },
   "bundle": {

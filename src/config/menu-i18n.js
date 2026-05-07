@@ -75,6 +75,15 @@ export default {
       about: {
         title: '关于程序',
       },
+      // 图片上传
+      uploadSuccess: {
+        title: '图片上传成功',
+        message: '{count} 个文件上传成功',
+      },
+      uploadFailed: {
+        title: '图片上传失败',
+        message: '{count} 个文件上传失败，请检查文件权限和存储空间',
+      },
     },
   },
   
@@ -142,6 +151,15 @@ export default {
       },
       about: {
         title: 'About',
+      },
+      // Image upload
+      uploadSuccess: {
+        title: 'Upload Successful',
+        message: '{count} file(s) uploaded successfully',
+      },
+      uploadFailed: {
+        title: 'Upload Failed',
+        message: '{count} file(s) failed to upload, please check file permissions and storage space',
       },
     },
   },
@@ -211,6 +229,14 @@ export default {
       about: {
         title: 'について',
       },
+      uploadSuccess: {
+        title: 'アップロード成功',
+        message: '{count} ファイルを正常にアップロードしました',
+      },
+      uploadFailed: {
+        title: 'アップロード失敗',
+        message: '{count} ファイルのアップロードに失敗しました。ファイルの権限とストレージ容量を確認してください',
+      },
     },
   },
   
@@ -279,6 +305,14 @@ export default {
       about: {
         title: '정보',
       },
+      uploadSuccess: {
+        title: '업로드 성공',
+        message: '{count} 파일을 성공적으로 업로드했습니다',
+      },
+      uploadFailed: {
+        title: '업로드 실패',
+        message: '{count} 파일 업로드에 실패했습니다. 파일 권한과 저장 공간을 확인해주세요',
+      },
     },
   },
-}
+};
