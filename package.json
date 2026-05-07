@@ -10,16 +10,16 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-dialog": "^2.7.0",
-    "@tauri-apps/plugin-fs": "^2.5.0",
-    "@tauri-apps/plugin-store": "^2.4.2",
+    "@tauri-apps/api": "~2.10.0",
+    "@tauri-apps/plugin-dialog": "~2.7.0",
+    "@tauri-apps/plugin-fs": "~2.5.0",
+    "@tauri-apps/plugin-store": "~2.4.0",
     "element-plus": "^2.13.7",
     "vditor": "^3.11.2",
     "vue": "^3.5.33"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/cli": "~2.10.0",
     "@vitejs/plugin-vue": "^6.0.6",
     "esbuild": "^0.28.0",
     "fs-extra": "^11.3.4",
