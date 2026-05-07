@@ -93,11 +93,31 @@ export default {
         ],
       })
       vditorConf.options.toolbar = vditorConf.toolbar;
+      
+      // 添加 after 回调，在 Vditor 初始化完成后执行
+      vditorConf.options.after = () => {
+        console.log('[DEBUG] Vditor 初始化完成')
+        this.observeContentChange()
+        this.autoLoadLastFile()
+      }
     }
     this.vditor = new Vditor('vditorEle', vditorConf.options)
     
+
+    
+    // 添加窗口关闭前的保护（仅适用于浏览器环境）
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isContentModified) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    })
+    
+
+  },
+  methods: {
     // 监听编辑器内容变化（支持多种模式）
-    const observeContentChange = () => {
+    observeContentChange() {
       if (this.vditor && this.vditor.vditor) {
         // IR 模式
         if (this.vditor.vditor.ir && this.vditor.vditor.ir.element) {
@@ -112,38 +132,8 @@ export default {
           })
         }
       }
-    }
+    },
     
-    // 等待 Vditor 完全初始化后再设置监听器和加载文件
-    this.vditor.after(() => {
-      console.log('[DEBUG] Vditor 初始化完成')
-      observeContentChange()
-      this.autoLoadLastFile()
-    })
-    
-    // 添加窗口关闭前的保护（仅适用于浏览器环境）
-    window.addEventListener('beforeunload', (e) => {
-      if (this.isContentModified) {
-        e.preventDefault()
-        e.returnValue = ''
-      }
-    })
-    
-    // 添加键盘快捷键监听
-    window.addEventListener('keydown', (e) => {
-      // Ctrl/Cmd + S 保存
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        this.saveMdFile()
-      }
-      // Ctrl/Cmd + O 打开
-      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-        e.preventDefault()
-        this.openMdFile()
-      }
-    })
-  },
-  methods: {
     // 检查内容是否被修改
     checkContentModified() {
       if (!this.vditor) return
