@@ -45,14 +45,12 @@ export default {
       vditorConf.toolbar.unshift({
         name: "openOrSave",
         tip: "打开/保存",
-        // icon: '<svg t="1597727407471" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1167" width="32" height="32"><path d="M376.832 474.112H130.048c-33.792 0-61.44-27.648-61.44-61.44V165.888c0-33.792 27.648-61.44 61.44-61.44h247.296c33.792 0 61.44 27.648 61.44 61.44v247.296c-0.512 33.792-27.648 60.928-61.952 60.928zM130.048 165.888v247.296h247.296V165.888H130.048zM739.84 525.312c-16.384 0-31.744-6.144-43.52-17.92L521.728 332.8c-11.776-11.776-17.92-27.136-17.92-43.52s6.144-31.744 17.92-43.52L696.32 71.168c11.776-11.776 27.136-17.92 43.52-17.92s31.744 6.144 43.52 17.92L957.952 245.76c11.776 11.776 17.92 27.136 17.92 43.52s-6.144 31.744-17.92 43.52L783.36 507.392c-11.776 11.776-27.136 17.92-43.52 17.92z m0-411.136l-174.592 174.592 174.592 174.592 174.592-174.592-174.592-174.592zM376.832 960.512H130.048c-33.792 0-61.44-27.648-61.44-61.44v-247.296c0-33.792 27.648-61.44 61.44-61.44h247.296c33.792 0 61.44 27.648 61.44 61.44v247.296c-0.512 34.304-27.648 61.44-61.952 61.44z m-246.784-308.224v247.296h247.296v-247.296H130.048zM863.232 960.512h-247.296c-33.792 0-61.44-27.648-61.44-61.44v-247.296c0-33.792 27.648-61.44 61.44-61.44h247.296c33.792 0 61.44 27.648 61.44 61.44v247.296c0 34.304-27.136 61.44-61.44 61.44z m-246.784-308.224v247.296h247.296v-247.296h-247.296z" p-id="1168"></path></svg>',
         icon: svgIcons.folder,
         tipPosition: 'e',
         toolbar: [
           {
             hotkey: '⌘o',
             name: "openMdFile",
-            tipPosition: 's',
             icon: '打开文件',
             click() {
               self.openMdFile()
@@ -60,10 +58,18 @@ export default {
           },
           {
             hotkey: '⌘s',
-            name: "exportMdFile",
-            icon: '导出...',
+            name: "saveMdFile",
+            icon: '保存',
             click() {
               self.saveMdFile()
+            }
+          },
+          {
+            hotkey: '⌘⇧s',
+            name: "exportFile",
+            icon: '导出',
+            click() {
+              self.exportFile()
             }
           },
         ],
@@ -74,8 +80,6 @@ export default {
         name: "more",
         tipPosition: 's',
         toolbar: [
-          // "export",
-          // "outline",  // 已移至工具栏主位置
           "preview",
           "both",
           "code-theme",
@@ -372,6 +376,49 @@ export default {
         this.isSaving = false
         console.error('[ERROR] 文件保存失败:', error)
         ElNotification.error('文件保存失败')
+        return false
+      }
+    },
+    async exportFile() {
+      try {
+        const content = this.vditor.getValue()
+        
+        // 检查内容是否为空
+        if (!content.trim()) {
+          ElNotification.warning({
+            title: '提示',
+            message: '编辑器内容为空，无法导出',
+            duration: 2000
+          })
+          return false
+        }
+        
+        // 打开保存对话框
+        const filePath = await save({
+          filters: [{
+            name: 'MarkDownFile',
+            extensions: ['md']
+          }]
+        })
+        
+        if (!filePath) {
+          ElNotification.error('文件路径获取失败')
+          return false
+        }
+        
+        console.log('[DEBUG] 开始导出文件到:', filePath)
+        await writeTextFile(filePath, content)
+        
+        const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
+        ElNotification.success({
+          title: '文件导出成功',
+          message: fileName,
+          duration: 2000
+        })
+        return true
+      } catch (error) {
+        console.error('[ERROR] 文件导出失败:', error)
+        ElNotification.error('文件导出失败')
         return false
       }
     },
