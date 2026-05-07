@@ -14,6 +14,7 @@ import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
+import imagePathMapper from '../utils/image-path-mapper.js'
 
 export default {
   name: "MyVditor.vue",
@@ -82,13 +83,10 @@ export default {
         const result = await this.handleImageUpload(files);
         
         // 如果有成功的图片，手动插入到编辑器
-        // 注意：
-        // - 开发环境：插入 file:// URL，图片立即显示
-        // - 生产环境：插入相对路径，直接可用
         if (result && result[0] && result[0].data && result[0].data.succMap) {
           const succMap = result[0].data.succMap;
           for (const [originalName, imageUrl] of Object.entries(succMap)) {
-            // 直接插入 imageUrl（已由 handleImageUpload 根据环境生成）
+            // 插入 asset URL（由 handleImageUpload 统一生成）
             const markdownImage = `![${originalName}](${imageUrl})`;
             this.vditor.insertValue(markdownImage + '\n');
             
@@ -213,8 +211,16 @@ export default {
         const data = await readTextFile(lastFilePath)
         console.log('[DEBUG] 文件读取成功，长度:', data.length)
         
+        // 获取文件所在目录
+        const { dirname } = await import('@tauri-apps/api/path');
+        const baseDir = await dirname(lastFilePath);
+        
+        // 将相对路径转换为 asset URL（让图片能显示）
+        const convertedContent = await imagePathMapper.convertToAssetUrl(data, baseDir);
+        console.log('[Load] 已转换相对路径为 asset URL');
+        
         // 设置内容到编辑器
-        this.vditor.setValue(data)
+        this.vditor.setValue(convertedContent)
         
         // 更新文件状态
         this.currentFilePath = lastFilePath
@@ -261,7 +267,16 @@ export default {
         }
         
         const data = await readTextFile(filePath)
-        this.vditor.setValue(data)
+        
+        // 获取文件所在目录
+        const { dirname } = await import('@tauri-apps/api/path');
+        const baseDir = await dirname(filePath);
+        
+        // 将相对路径转换为 asset URL（让图片能显示）
+        const convertedContent = await imagePathMapper.convertToAssetUrl(data, baseDir);
+        console.log('[Open] 已转换相对路径为 asset URL');
+        
+        this.vditor.setValue(convertedContent)
         
         // 更新文件状态
         this.currentFilePath = filePath
@@ -309,16 +324,10 @@ export default {
         
         // 检查内容是否有修改
         let currentContent = this.vditor.getValue()
-        
-        // 开发环境下，将 file:// URL 转换为相对路径（保存前处理）
-        if (import.meta.env.DEV && this.$imageRelativePaths) {
-          for (const [fileUrl, relativePath] of Object.entries(this.$imageRelativePaths)) {
-            // 转义特殊字符用于正则替换
-            const escapedUrl = fileUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\]\\(${escapedUrl}\\)`, 'g');
-            currentContent = currentContent.replace(regex, `](${relativePath})`);
-          }
-        }
+                
+        // 使用工具模块将 asset URL 转换为相对路径（保存前处理）
+        currentContent = imagePathMapper.convertToRelative(currentContent);
+        console.log('[Save] 已转换 asset URL 为相对路径');
         
         if (!this.isContentModified && this.originalContent !== '') {
           // 内容未修改，提示用户
@@ -530,30 +539,16 @@ export default {
           const relativePath = `./assets/images/${uniqueFileName}`;
           console.log('[Upload] 相对路径:', relativePath);
           
-          // 环境判断：开发环境使用 asset 协议，生产环境使用相对路径
-          const isDev = import.meta.env.DEV;
-          let imageUrl;
-          
-          if (isDev) {
-            // 开发环境：使用 Tauri 的 convertFileSrc 将本地路径转换为可访问的 URL
-            const { convertFileSrc } = await import('@tauri-apps/api/core');
-            imageUrl = convertFileSrc(destPath);
-            console.log('[Upload] 转换后的 URL:', imageUrl);
-          } else {
-            // 生产环境：直接使用相对路径
-            imageUrl = relativePath;
-          }
-          
-          console.log('[Upload] 当前环境:', isDev ? '开发' : '生产');
-          console.log('[Upload] 图片 URL:', imageUrl);
+          // 统一使用 convertFileSrc 转换本地路径为 asset URL
+          const { convertFileSrc } = await import('@tauri-apps/api/core');
+          const imageUrl = convertFileSrc(destPath);
+          console.log('[Upload] 转换后的 URL:', imageUrl);
           
           succMap[file.name] = imageUrl;
           
-          // 开发环境下，存储映射关系以便保存时转换
-          if (isDev) {
-            this.$imageRelativePaths = this.$imageRelativePaths || {};
-            this.$imageRelativePaths[imageUrl] = relativePath;
-          }
+          // 添加映射关系到工具模块（asset URL → 相对路径）
+          imagePathMapper.addMapping(imageUrl, relativePath);
+          console.log('[Upload] 已添加映射关系');
         } catch (error) {
           console.error('[Upload] 文件上传失败:', file.name, error);
           console.error('[Upload] 错误详情:', {
