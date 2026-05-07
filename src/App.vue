@@ -84,7 +84,45 @@ export default {
       return menuI18nConfig[this.currentLang]?.shortcuts || menuI18nConfig.zh_CN.shortcuts;
     }
   },
+  mounted() {
+    // 添加全局键盘快捷键监听
+    window.addEventListener('keydown', this.handleKeyboardShortcut);
+  },
+  
+  beforeUnmount() {
+    // 移除键盘快捷键监听
+    window.removeEventListener('keydown', this.handleKeyboardShortcut);
+  },
+  
   methods: {
+    // 处理键盘快捷键
+    handleKeyboardShortcut(event) {
+      // 判断是否为 Mac 系统
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
+      
+      // Ctrl/Cmd + O: 打开文件
+      if (ctrlOrCmd && event.key === 'o' && !event.shiftKey) {
+        event.preventDefault();
+        this.$refs.vditor?.openMdFile();
+        return;
+      }
+      
+      // Ctrl/Cmd + S: 保存文件
+      if (ctrlOrCmd && event.key === 's' && !event.shiftKey) {
+        event.preventDefault();
+        this.$refs.vditor?.saveMdFile();
+        return;
+      }
+      
+      // Ctrl/Cmd + Shift + S: 导出文件
+      if (ctrlOrCmd && event.shiftKey && event.key === 'S') {
+        event.preventDefault();
+        this.$refs.vditor?.exportFile();
+        return;
+      }
+    },
+    
     // 处理文件菜单命令
     handleFileMenu(command) {
       switch (command) {
