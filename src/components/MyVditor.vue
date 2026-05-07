@@ -13,6 +13,7 @@ import menuI18nConfig from '../config/menu-i18n.js'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
 
@@ -37,6 +38,10 @@ export default {
     // 获取当前语言的通知配置
     t() {
       return menuI18nConfig[this.lang]?.notifications || menuI18nConfig.zh_CN.notifications;
+    },
+    // 获取当前语言的窗口标题配置
+    wt() {
+      return menuI18nConfig[this.lang]?.windowTitle || menuI18nConfig.zh_CN.windowTitle;
     }
   },
   mounted() {
@@ -110,6 +115,8 @@ export default {
       vditorConfCopy.options.after = () => {
         this.observeContentChange();
         this.autoLoadLastFile();
+        // 初始化窗口标题
+        this.updateWindowTitle();
       };
       
       // 创建新实例
@@ -151,6 +158,31 @@ export default {
       // 调试日志：只在状态变化时输出
       if (wasModified !== this.isContentModified) {
         console.log('[DEBUG] 内容修改状态变化:', this.isContentModified ? '已修改' : '未修改')
+        // 更新窗口标题（添加/移除修改标记）
+        this.updateWindowTitle()
+      }
+    },
+    
+    // 更新窗口标题
+    async updateWindowTitle() {
+      try {
+        const window = getCurrentWindow();
+        const { appName, untitled, modifiedMarker } = this.wt;
+        let title = appName;
+        
+        if (this.currentFilePath) {
+          // 有打开的文件
+          const fileName = this.currentFilePath.split('\\').pop() || this.currentFilePath.split('/').pop();
+          title = this.isContentModified ? `${appName} - ${modifiedMarker} ${fileName}` : `${appName} - ${fileName}`;
+        } else {
+          // 新建文件，未保存
+          title = this.isContentModified ? `${appName} - ${modifiedMarker} ${untitled}` : `${appName} - ${untitled}`;
+        }
+        
+        await window.setTitle(title);
+        console.log('[Title] 窗口标题已更新:', title);
+      } catch (error) {
+        console.error('[Title] 更新窗口标题失败:', error);
       }
     },
     
@@ -162,6 +194,8 @@ export default {
       // 清除 store 中的记录
       const { clearLastFilePath } = await import('../utils/store.js')
       await clearLastFilePath()
+      // 更新窗口标题
+      await this.updateWindowTitle()
     },
     
     // 显示文件冲突对话框
@@ -236,6 +270,9 @@ export default {
         this.currentFilePath = lastFilePath
         this.originalContent = data
         this.isContentModified = false
+        
+        // 更新窗口标题
+        await this.updateWindowTitle()
         
         console.log('[DEBUG] 文件内容已设置到编辑器')
         
@@ -324,6 +361,9 @@ export default {
         
         await saveLastFilePath(filePath)
         
+        // 更新窗口标题
+        await this.updateWindowTitle()
+        
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
           title: this.t.openFile.success.title,
@@ -410,6 +450,9 @@ export default {
         // 清除保存标志
         this.isSaving = false
         console.log('[DEBUG] 文件保存成功，状态已更新')
+        
+        // 更新窗口标题（移除修改标记）
+        await this.updateWindowTitle()
         
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({

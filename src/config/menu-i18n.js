@@ -16,6 +16,11 @@ export default {
       about: '关于',
       theme: '主题',
     },
+    windowTitle: {
+      appName: 'Tauri Markdown',
+      untitled: '未命名',
+      modifiedMarker: '●',
+    },
     shortcuts: {
       new: 'Ctrl+N',
       open: 'Ctrl+O',
@@ -117,6 +122,11 @@ export default {
       about: 'About',
       theme: 'Theme',
     },
+    windowTitle: {
+      appName: 'Tauri Markdown',
+      untitled: 'Untitled',
+      modifiedMarker: '●',
+    },
     shortcuts: {
       new: 'Ctrl+N',
       open: 'Ctrl+O',
@@ -211,6 +221,11 @@ export default {
       about: 'について',
       theme: 'テーマ',
     },
+    windowTitle: {
+      appName: 'Tauri Markdown',
+      untitled: '無題',
+      modifiedMarker: '●',
+    },
     shortcuts: {
       new: 'Ctrl+N',
       open: 'Ctrl+O',
@@ -303,6 +318,11 @@ export default {
       help: '도움말',
       about: '정보',
       theme: '테마',
+    },
+    windowTitle: {
+      appName: 'Tauri Markdown',
+      untitled: '제목 없음',
+      modifiedMarker: '●',
     },
     shortcuts: {
       new: 'Ctrl+N',
