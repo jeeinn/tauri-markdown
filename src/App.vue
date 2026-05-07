@@ -11,6 +11,10 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item command="new">
+                <span>{{ menuI18n.new }}</span>
+                <span class="shortcut">{{ menuShortcuts.new }}</span>
+              </el-dropdown-item>
               <el-dropdown-item command="open">
                 <span>{{ menuI18n.open }}</span>
                 <span class="shortcut">{{ menuShortcuts.open }}</span>
@@ -137,6 +141,13 @@ export default {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
       
+      // Ctrl/Cmd + N: 新建文件
+      if (ctrlOrCmd && event.key === 'n' && !event.shiftKey) {
+        event.preventDefault();
+        this.$refs.vditor?.newFile();
+        return;
+      }
+      
       // Ctrl/Cmd + O: 打开文件
       if (ctrlOrCmd && event.key === 'o' && !event.shiftKey) {
         event.preventDefault();
@@ -162,6 +173,9 @@ export default {
     // 处理文件菜单命令
     handleFileMenu(command) {
       switch (command) {
+        case 'new':
+          this.$refs.vditor?.newFile();
+          break;
         case 'open':
           this.$refs.vditor?.openMdFile();
           break;
