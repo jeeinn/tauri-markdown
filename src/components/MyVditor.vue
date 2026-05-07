@@ -8,7 +8,6 @@ import 'vditor/dist/index.css'
 import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
-import svgIcons from '../config/vditor-toolbar-svg.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
@@ -33,81 +32,7 @@ export default {
     };
   },
   mounted() {
-    let self = this
-    if (!vditorConf.options.hasOwnProperty('lange')) {
-      vditorConf.options.lange = this.lang // for i18n
-      vditorConf.options.placeholder = this.welcome
-      // conf local cdn
-      vditorConf.options.cdn = this.cdn
-      vditorConf.options.preview.theme.path = this.cdn + '/dist/css/content-theme'
-      vditorConf.options.hint.emojiPath = this.cdn + '/dist/images/emoji'
-      // with tauri toolbar
-      vditorConf.toolbar.unshift({
-        name: "openOrSave",
-        tip: "打开/保存",
-        icon: svgIcons.folder,
-        tipPosition: 'e',
-        toolbar: [
-          {
-            hotkey: '⌘o',
-            name: "openMdFile",
-            icon: '打开文件',
-            click() {
-              self.openMdFile()
-            }
-          },
-          {
-            hotkey: '⌘s',
-            name: "saveMdFile",
-            icon: '保存',
-            click() {
-              self.saveMdFile()
-            }
-          },
-          {
-            hotkey: '⌘⇧s',
-            name: "exportFile",
-            icon: '导出',
-            click() {
-              self.exportFile()
-            }
-          },
-        ],
-        click() {
-        }
-      })
-      vditorConf.toolbar.push({
-        name: "more",
-        tipPosition: 's',
-        toolbar: [
-          "preview",
-          "both",
-          "code-theme",
-          "content-theme",
-          "devtools",
-          // "info",
-          "help",
-          {
-            name: "about",
-            icon: '关于',
-            click() {
-              self.showAbout()
-            }
-          },
-        ],
-      })
-      vditorConf.options.toolbar = vditorConf.toolbar;
-      
-      // 添加 after 回调，在 Vditor 初始化完成后执行
-      vditorConf.options.after = () => {
-        console.log('[DEBUG] Vditor 初始化完成')
-        this.observeContentChange()
-        this.autoLoadLastFile()
-      }
-    }
-    this.vditor = new Vditor('vditorEle', vditorConf.options)
-    
-
+    this.initVditor();
     
     // 添加窗口关闭前的保护（仅适用于浏览器环境）
     window.addEventListener('beforeunload', (e) => {
@@ -116,10 +41,43 @@ export default {
         e.returnValue = ''
       }
     })
-    
-
   },
   methods: {
+    // 切换语言
+    switchLanguage(lang) {
+      if (this.lang === lang) return;
+      
+      this.lang = lang;
+      // 重新初始化 Vditor 以应用新的语言配置
+      this.initVditor();
+    },
+    
+    // 初始化 Vditor 编辑器
+    initVditor() {
+      // 销毁现有实例
+      if (this.vditor) {
+        this.vditor.destroy();
+      }
+      
+      // 创建配置
+      const vditorConfCopy = JSON.parse(JSON.stringify({
+        options: {
+          ...vditorConf.options,
+          lang: this.lang,
+          placeholder: this.welcome,
+          cdn: this.cdn,
+        },
+      }));
+      
+      vditorConfCopy.options.after = () => {
+        this.observeContentChange();
+        this.autoLoadLastFile();
+      };
+      
+      // 创建新实例
+      this.vditor = new Vditor('vditorEle', vditorConfCopy.options);
+    },
+    
     // 监听编辑器内容变化（支持多种模式）
     observeContentChange() {
       if (this.vditor && this.vditor.vditor) {
