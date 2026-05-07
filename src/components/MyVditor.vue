@@ -271,6 +271,9 @@ export default {
         this.originalContent = data
         this.isContentModified = false
         
+        // 更新窗口标题
+        await this.updateWindowTitle()
+        
         console.log('[DEBUG] 文件内容已设置到编辑器')
         
         // 显示加载成功提示
