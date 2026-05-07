@@ -8,6 +8,7 @@ import 'vditor/dist/index.css'
 import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
+import menuI18nConfig from '../config/menu-i18n.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
@@ -19,7 +20,7 @@ export default {
   data() {
     return {
       vditor: '',
-      welcome: '# 🎉️ Welcome to use Tauri Markdown!',
+      welcome: '# ️ Welcome to use Tauri Markdown!',
       project_url: 'https://github.com/jeeinn/tauri-markdown',
       lang: 'zh_CN',
       // 静态资源 https://cn.vitejs.dev/guide/assets.html#the-public-directory
@@ -30,6 +31,12 @@ export default {
       originalContent: '', // 原始文件内容，用于对比
       isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
     };
+  },
+  computed: {
+    // 获取当前语言的通知配置
+    t() {
+      return menuI18nConfig[this.lang]?.notifications || menuI18nConfig.zh_CN.notifications;
+    }
   },
   mounted() {
     this.initVditor();
@@ -131,11 +138,11 @@ export default {
       const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
       try {
         await ElMessageBox.confirm(
-          `文件 "${fileName}" 已在外部被修改。\n\n您想覆盖外部修改吗？`,
-          '文件冲突',
+          this.t.fileConflict.message.replace('{fileName}', fileName),
+          this.t.fileConflict.title,
           {
-            confirmButtonText: '覆盖保存',
-            cancelButtonText: '取消',
+            confirmButtonText: this.t.fileConflict.confirmButtonText,
+            cancelButtonText: this.t.fileConflict.cancelButtonText,
             type: 'warning',
             distinguishCancelAndClose: true
           }
@@ -172,8 +179,8 @@ export default {
           // 文件不存在，清除记录
           await this.clearCurrentFile()
           ElNotification.warning({
-            title: '文件不存在',
-            message: '上次打开的文件已被删除或移动',
+            title: this.t.autoLoad.fileNotExist.title,
+            message: this.t.autoLoad.fileNotExist.message,
             duration: 3000
           })
           return
@@ -196,7 +203,7 @@ export default {
         // 显示加载成功提示
         const fileName = lastFilePath.split('\\').pop() || lastFilePath.split('/').pop()
         ElNotification.success({
-          title: '已加载上次文件',
+          title: this.t.autoLoad.success.title,
           message: fileName,
           duration: 2000
         })
@@ -219,14 +226,14 @@ export default {
         }]
       })
       if (filePath == null) {
-        ElNotification.error('文件路径获取失败')
+        ElNotification.error(this.t.openFile.pathError)
         return false
       }
       try {
         // 检查文件是否存在
         const fileExists = await exists(filePath)
         if (!fileExists) {
-          ElNotification.error('文件不存在')
+          ElNotification.error(this.t.openFile.notExist)
           return false
         }
         
@@ -242,13 +249,13 @@ export default {
         
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
-          title: '文件打开成功',
+          title: this.t.openFile.success.title,
           message: fileName,
           duration: 2000
         })
       } catch (error) {
         console.error('文件读取失败:', error)
-        ElNotification.error('文件读取失败')
+        ElNotification.error(this.t.openFile.readError)
         return false
       }
     },
@@ -265,7 +272,7 @@ export default {
           }]
         })
         if (filePath == null) {
-          ElNotification.error('文件路径获取失败')
+          ElNotification.error(this.t.saveFile.pathError)
           return false
         }
         console.log('[DEBUG] 用户选择的保存路径:', filePath)
@@ -283,8 +290,8 @@ export default {
           // 内容未修改，提示用户
           this.isSaving = false
           ElNotification.info({
-            title: '提示',
-            message: '内容未修改，无需保存',
+            title: this.t.saveFile.notModified.title,
+            message: this.t.saveFile.notModified.message,
             duration: 2000
           })
           return true
@@ -324,7 +331,7 @@ export default {
         
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
-          title: '文件保存成功',
+          title: this.t.saveFile.success.title,
           message: fileName,
           duration: 2000
         })
@@ -333,7 +340,7 @@ export default {
         // 确保在错误时也清除保存标志
         this.isSaving = false
         console.error('[ERROR] 文件保存失败:', error)
-        ElNotification.error('文件保存失败')
+        ElNotification.error(this.t.saveFile.saveError)
         return false
       }
     },
@@ -344,8 +351,8 @@ export default {
         // 检查内容是否为空
         if (!content.trim()) {
           ElNotification.warning({
-            title: '提示',
-            message: '编辑器内容为空，无法导出',
+            title: this.t.exportFile.emptyContent.title,
+            message: this.t.exportFile.emptyContent.message,
             duration: 2000
           })
           return false
@@ -360,7 +367,7 @@ export default {
         })
         
         if (!filePath) {
-          ElNotification.error('文件路径获取失败')
+          ElNotification.error(this.t.exportFile.pathError)
           return false
         }
         
@@ -369,14 +376,14 @@ export default {
         
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
-          title: '文件导出成功',
+          title: this.t.exportFile.success.title,
           message: fileName,
           duration: 2000
         })
         return true
       } catch (error) {
         console.error('[ERROR] 文件导出失败:', error)
-        ElNotification.error('文件导出失败')
+        ElNotification.error(this.t.exportFile.exportError)
         return false
       }
     },
@@ -392,7 +399,7 @@ export default {
           '<br/>' +
           'Released under the <a target="_blank" href="https://opensource.org/licenses/MIT">MIT License</a> <br/>' +
           'Made by 💗 <a target="_blank" href="https://jeeinn.com">JeeInn</a>',
-          '关于程序',
+          this.t.about.title,
           {
             dangerouslyUseHTMLString: true
           });
