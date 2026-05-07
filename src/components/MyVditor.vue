@@ -54,10 +54,20 @@ export default {
     // 切换语言
     switchLanguage(lang) {
       if (this.lang === lang) return;
-      
+
       this.lang = lang;
       // 重新初始化 Vditor 以应用新的语言配置
       this.initVditor();
+    },
+
+    // 设置编辑器主题
+    setVditorTheme(isDark) {
+      if (!this.vditor) return;
+      const theme = isDark ? 'dark' : 'classic';
+      const contentTheme = isDark ? 'dark' : 'light';
+      const codeTheme = isDark ? 'github-dark' : 'github';
+      const contentThemePath = this.cdn + '/dist/css/content-theme';
+      this.vditor.setTheme(theme, contentTheme, codeTheme, contentThemePath);
     },
     
     // 初始化 Vditor 编辑器

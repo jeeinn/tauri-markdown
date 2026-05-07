@@ -13,6 +13,7 @@ export default {
       export: '导出',
       help: '帮助',
       about: '关于',
+      theme: '主题',
     },
     shortcuts: {
       open: 'Ctrl+O',
@@ -20,6 +21,12 @@ export default {
       export: 'Ctrl+Shift+S',
     },
     language: '语言',
+    theme: {
+      label: '主题',
+      auto: '跟随系统',
+      light: '浅色',
+      dark: '深色',
+    },
     notifications: {
       // 文件冲突对话框
       fileConflict: {
@@ -96,6 +103,7 @@ export default {
       export: 'Export',
       help: 'Help',
       about: 'About',
+      theme: 'Theme',
     },
     shortcuts: {
       open: 'Ctrl+O',
@@ -103,6 +111,12 @@ export default {
       export: 'Ctrl+Shift+S',
     },
     language: 'Language',
+    theme: {
+      label: 'Theme',
+      auto: 'Auto',
+      light: 'Light',
+      dark: 'Dark',
+    },
     notifications: {
       fileConflict: {
         title: 'File Conflict',
@@ -173,6 +187,7 @@ export default {
       export: 'エクスポート',
       help: 'ヘルプ',
       about: 'について',
+      theme: 'テーマ',
     },
     shortcuts: {
       open: 'Ctrl+O',
@@ -180,6 +195,12 @@ export default {
       export: 'Ctrl+Shift+S',
     },
     language: '言語',
+    theme: {
+      label: 'テーマ',
+      auto: 'システムに従う',
+      light: 'ライト',
+      dark: 'ダーク',
+    },
     notifications: {
       fileConflict: {
         title: 'ファイルの競合',
@@ -249,6 +270,7 @@ export default {
       export: '내보내기',
       help: '도움말',
       about: '정보',
+      theme: '테마',
     },
     shortcuts: {
       open: 'Ctrl+O',
@@ -256,6 +278,12 @@ export default {
       export: 'Ctrl+Shift+S',
     },
     language: '언어',
+    theme: {
+      label: '테마',
+      auto: '시스템 따르기',
+      light: '라이트',
+      dark: '다크',
+    },
     notifications: {
       fileConflict: {
         title: '파일 충돌',
