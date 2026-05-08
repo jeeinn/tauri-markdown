@@ -558,8 +558,23 @@ export default {
           // 获取当前 md 文件所在目录
           if (!this.currentFilePath) {
             console.warn('[Upload] 未打开文件，无法确定保存位置');
-            errFiles.push(file.name);
-            continue;
+            // 弹窗提示用户先保存文件
+            const noFileTip = this.t.uploadNoFile || {};
+            ElMessageBox.alert(
+              noFileTip.message || '当前文档尚未保存到本地，无法确定图片存储位置。请先保存文件（Ctrl+S）后再上传图片。',
+              noFileTip.title || '请先保存文件',
+              {
+                confirmButtonText: noFileTip.confirmButtonText || '我知道了',
+                type: 'warning',
+              }
+            );
+            return [
+              {
+                code: 1,
+                msg: 'File not saved',
+                data: { errFiles: files.map(f => f.name), succMap: {} }
+              }
+            ];
           }
           
           // 使用 path 模块处理路径，确保跨平台兼容

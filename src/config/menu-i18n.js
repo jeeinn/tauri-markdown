@@ -107,6 +107,11 @@ export default {
         title: '图片上传失败',
         message: '{count} 个文件上传失败，请检查文件权限和存储空间',
       },
+      uploadNoFile: {
+        title: '请先保存文件',
+        message: '当前文档尚未保存到本地，无法确定图片存储位置。请先保存文件（Ctrl+S）后再上传图片。',
+        confirmButtonText: '我知道了',
+      },
     },
   },
   
@@ -206,6 +211,11 @@ export default {
         title: 'Upload Failed',
         message: '{count} file(s) failed to upload, please check file permissions and storage space',
       },
+      uploadNoFile: {
+        title: 'Save File First',
+        message: 'The current document has not been saved locally. Please save the file (Ctrl+S) before uploading images.',
+        confirmButtonText: 'OK',
+      },
     },
   },
   
@@ -304,6 +314,11 @@ export default {
         title: 'アップロード失敗',
         message: '{count} ファイルのアップロードに失敗しました。ファイルの権限とストレージ容量を確認してください',
       },
+      uploadNoFile: {
+        title: 'ファイルを先に保存してください',
+        message: '現在のドキュメントはローカルに保存されていません。画像をアップロードする前に、ファイルを保存（Ctrl+S）してください。',
+        confirmButtonText: '了解',
+      },
     },
   },
   
@@ -401,6 +416,11 @@ export default {
       uploadFailed: {
         title: '업로드 실패',
         message: '{count} 파일 업로드에 실패했습니다. 파일 권한과 저장 공간을 확인해주세요',
+      },
+      uploadNoFile: {
+        title: '파일을 먼저 저장하세요',
+        message: '현재 문서가 로컬에 저장되지 않았습니다. 이미지를 업로드하기 전에 파일을 저장(Ctrl+S)해주세요.',
+        confirmButtonText: '확인',
       },
     },
   },
