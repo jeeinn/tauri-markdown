@@ -258,10 +258,14 @@ export default {
         // 获取文件所在目录
         const { dirname } = await import('@tauri-apps/api/path');
         const baseDir = await dirname(lastFilePath);
-        
-        // 将相对路径转换为 asset URL（让图片能显示）
-        const convertedContent = await imagePathMapper.convertToAssetUrl(data, baseDir);
-        console.log('[Load] 已转换相对路径为 asset URL');
+
+        // 通知 Rust 端当前 md 文件所在目录（tmd 协议需要）
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_current_dir', { dir: baseDir });
+
+        // 将相对路径转换为 tmd URL（让图片能显示）
+        const convertedContent = imagePathMapper.convertToAssetUrl(data);
+        console.log('[Load] 已转换相对路径为 tmd URL');
         
         // 设置内容到编辑器
         this.vditor.setValue(convertedContent)
@@ -347,10 +351,14 @@ export default {
         // 获取文件所在目录
         const { dirname } = await import('@tauri-apps/api/path');
         const baseDir = await dirname(filePath);
-        
-        // 将相对路径转换为 asset URL（让图片能显示）
-        const convertedContent = await imagePathMapper.convertToAssetUrl(data, baseDir);
-        console.log('[Open] 已转换相对路径为 asset URL');
+
+        // 通知 Rust 端当前 md 文件所在目录（tmd 协议需要）
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_current_dir', { dir: baseDir });
+
+        // 将相对路径转换为 tmd URL（让图片能显示）
+        const convertedContent = imagePathMapper.convertToAssetUrl(data);
+        console.log('[Open] 已转换相对路径为 tmd URL');
         
         this.vditor.setValue(convertedContent)
         
@@ -404,9 +412,9 @@ export default {
         // 检查内容是否有修改
         let currentContent = this.vditor.getValue()
                 
-        // 使用工具模块将 asset URL 转换为相对路径（保存前处理）
+        // 使用工具模块将 tmd URL 转换为相对路径（保存前处理）
         currentContent = imagePathMapper.convertToRelative(currentContent);
-        console.log('[Save] 已转换 asset URL 为相对路径');
+        console.log('[Save] 已转换 tmd URL 为相对路径');
         
         if (!this.isContentModified && this.originalContent !== '') {
           // 内容未修改，提示用户
@@ -639,10 +647,9 @@ export default {
           const relativePath = `./assets/images/${hashFileName}`;
           console.log('[Upload] 相对路径:', relativePath);
           
-          // 统一使用 convertFileSrc 转换本地路径为 asset URL
-          const { convertFileSrc } = await import('@tauri-apps/api/core');
-          const imageUrl = convertFileSrc(destPath);
-          console.log('[Upload] 转换后的 URL:', imageUrl);
+          // 使用 tmd 自定义协议生成 URL（支持相对路径解析）
+          const imageUrl = `http://tmd.localhost/${relativePath}`;
+          console.log('[Upload] 生成的 URL:', imageUrl);
           
           succMap[file.name] = imageUrl;
           
