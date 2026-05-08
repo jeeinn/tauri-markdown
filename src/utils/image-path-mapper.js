@@ -90,13 +90,12 @@ class ImagePathMapper {
   }
 
   /**
-   * 将内容中的相对路径转换为 asset URL(加载时使用)
+   * 将内容中的相对路径转换为 tmd URL(加载时使用)
    * @param {string} content - Markdown 内容
-   * @param {string} baseDir - md 文件所在目录
-   * @returns {Promise<string>} 转换后的内容
+   * @returns {string} 转换后的内容
    */
-  async convertToAssetUrl(content, baseDir) {
-    if (!content || !baseDir) return content;
+  convertToAssetUrl(content) {
+    if (!content) return content;
     
     let result = content;
     let match;
@@ -109,16 +108,9 @@ class ImagePathMapper {
       const [fullMatch, alt, fileName] = match;
       
       try {
-        // 动态导入 Tauri API
-        const { convertFileSrc } = await import('@tauri-apps/api/core');
-        const { join, normalize } = await import('@tauri-apps/api/path');
-        
-        // 构建完整路径
-        const fullPath = await normalize(await join(baseDir, 'assets', 'images', fileName));
-        
-        // 转换为 asset URL
-        const assetUrl = convertFileSrc(fullPath);
-        
+        // 使用 tmd 自定义协议生成 URL（支持相对路径解析）
+        const assetUrl = `http://tmd.localhost/./assets/images/${fileName}`;
+
         // 添加映射关系
         const relativePath = `./assets/images/${fileName}`;
         this.addMapping(assetUrl, relativePath);
