@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 /public/vditor-cdn/*
 nul
+
+#Agents
+.claude
+.lingma
