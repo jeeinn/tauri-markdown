@@ -15,8 +15,8 @@ class ImagePathMapper {
     this.imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
     this.linkPattern = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
 
-    // 匹配 Markdown 中的相对路径（图片和文件）
-    this.relativePathPattern = /(?:!?\[([^\]]*)\])\(\.\/(assets\/(?:images|files)\/([^)]+))\)/g;
+    // 匹配 Markdown 中 ./ 开头的相对路径图片（任意目录，不限定 assets/）
+    this.relativePathPattern = /!\[([^\]]*)\]\(\.\/(([^)]+?)\.(jpg|jpeg|png|gif|webp|bmp|svg|ico|avif))\)/gi;
   }
 
   /**
@@ -69,7 +69,7 @@ class ImagePathMapper {
 
   /**
    * 将内容中的相对路径转换为 tmd URL（加载时使用）
-   * 同时处理 ./assets/images/ 和 ./assets/files/
+   * 匹配任意 ./ 开头的相对路径图片（不限定目录）
    *
    * @param {string} content - Markdown 内容
    * @returns {string} 转换后的内容
