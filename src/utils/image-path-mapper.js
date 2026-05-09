@@ -86,7 +86,7 @@ class ImagePathMapper {
       const [fullMatch, alt, relPath, fileName] = match;
 
       try {
-        const tmdUrl = `http://tmd.localhost/./${relPath}`;
+        const tmdUrl = `http://tmd.localhost/${relPath}`;
         const relativePath = `./${relPath}`;
         this.addMapping(tmdUrl, relativePath);
 
