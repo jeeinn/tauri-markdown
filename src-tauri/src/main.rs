@@ -100,6 +100,19 @@ fn log_message(msg: String) {
     log(&format!("[JS] {msg}"));
 }
 
+/// JS 端调用，在文件管理器中打开日志文件所在目录并选中该文件
+#[tauri::command]
+fn open_log_folder() {
+    let path = current_log_path();
+    log(&format!("open_log_folder: {:?}", path));
+    #[cfg(target_os = "windows")]
+    { let _ = std::process::Command::new("explorer").args(["/select,", &path.to_string_lossy()]).spawn(); }
+    #[cfg(target_os = "macos")]
+    { let _ = std::process::Command::new("open").args(["-R", &path.to_string_lossy()]).spawn(); }
+    #[cfg(target_os = "linux")]
+    { let _ = std::process::Command::new("xdg-open").arg(path.parent().unwrap_or(&path)).spawn(); }
+}
+
 // ── tmd 协议 ─────────────────────────────────────────
 
 /// 从 request URI 中提取相对路径
@@ -255,7 +268,7 @@ fn main() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .manage(CurrentDir(Mutex::new(None)))
         .manage(OpenedFile(Mutex::new(opened_file)))
-        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message])
+        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder])
         .register_uri_scheme_protocol("tmd", tmd_protocol_handler)
         .setup(|app| {
             switch_log_to_app_data(app.handle());
