@@ -678,7 +678,7 @@ export default {
           
           // 生成相对路径和 tmd URL
           const relativePath = `./${subDir}/${hashFileName}`;
-          const fileUrl = `http://tmd.localhost/${relativePath}`;
+          const fileUrl = `http://tmd.localhost/${subDir}/${hashFileName}`;
           console.log('[Upload] 相对路径:', relativePath);
           console.log('[Upload] 生成的 URL:', fileUrl);
 

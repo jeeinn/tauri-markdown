@@ -98,18 +98,17 @@ export default {
       about: {
         title: '关于程序',
       },
-      // 图片上传
       uploadSuccess: {
-        title: '图片上传成功',
+        title: '上传成功',
         message: '{count} 个文件上传成功',
       },
       uploadFailed: {
-        title: '图片上传失败',
+        title: '上传失败',
         message: '{count} 个文件上传失败，请检查文件权限和存储空间',
       },
       uploadNoFile: {
         title: '请先保存文件',
-        message: '当前文档尚未保存到本地，无法确定图片存储位置。请先保存文件（Ctrl+S）后再上传图片。',
+        message: '当前文档尚未保存到本地，无法确定存储位置。请先保存文件（Ctrl+S）后再上传。',
         confirmButtonText: '我知道了',
       },
     },
@@ -202,7 +201,6 @@ export default {
       about: {
         title: 'About',
       },
-      // Image upload
       uploadSuccess: {
         title: 'Upload Successful',
         message: '{count} file(s) uploaded successfully',
@@ -213,7 +211,7 @@ export default {
       },
       uploadNoFile: {
         title: 'Save File First',
-        message: 'The current document has not been saved locally. Please save the file (Ctrl+S) before uploading images.',
+        message: 'The current document has not been saved locally. Please save the file (Ctrl+S) before uploading.',
         confirmButtonText: 'OK',
       },
     },
@@ -316,7 +314,7 @@ export default {
       },
       uploadNoFile: {
         title: 'ファイルを先に保存してください',
-        message: '現在のドキュメントはローカルに保存されていません。画像をアップロードする前に、ファイルを保存（Ctrl+S）してください。',
+        message: '現在のドキュメントはローカルに保存されていません。アップロードする前に、ファイルを保存（Ctrl+S）してください。',
         confirmButtonText: '了解',
       },
     },
@@ -419,7 +417,7 @@ export default {
       },
       uploadNoFile: {
         title: '파일을 먼저 저장하세요',
-        message: '현재 문서가 로컬에 저장되지 않았습니다. 이미지를 업로드하기 전에 파일을 저장(Ctrl+S)해주세요.',
+        message: '현재 문서가 로컬에 저장되지 않았습니다. 업로드하기 전에 파일을 저장(Ctrl+S)해주세요.',
         confirmButtonText: '확인',
       },
     },
