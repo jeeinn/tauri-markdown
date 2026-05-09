@@ -63,6 +63,7 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item command="viewLog">{{ menuI18n.viewLog }}</el-dropdown-item>
               <el-dropdown-item command="about">{{ menuI18n.about }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -189,8 +190,11 @@ export default {
     },
     
     // 处理帮助菜单命令
-    handleHelpMenu(command) {
-      if (command === 'about') {
+    async handleHelpMenu(command) {
+      if (command === 'viewLog') {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('open_log_folder');
+      } else if (command === 'about') {
         this.$refs.vditor?.showAbout();
       }
     },
