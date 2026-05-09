@@ -7,6 +7,26 @@ Maybe we can call it `TMD` ? 🤔
 
 (tag v0.1.0 used vue2)
 
+## Screenshots
+
+### Light Theme
+![Light Theme](imgs/tmd_theme_light.png)
+
+### Dark Theme
+![Dark Theme](imgs/tmd_theme_dark.png)
+
+## What's New in v0.3.2
+
+### New Features
+- **File Association Support**: Double-click .md/.markdown files to open directly in the app (Windows/Linux/macOS)
+- **View Logs Feature**: Added "View Logs" option in Help menu to quickly access application logs
+- **Tauri 2.11.1 Upgrade**: Updated to latest Tauri version with improved stability and performance
+
+### Improvements
+- **macOS Integration**: Added Info.plist for proper macOS file association support
+- **Code Refactoring**: Extracted common file loading logic to reduce code duplication
+- **Logging System**: Enhanced logging with cross-platform log directory support
+
 ## What's New in v0.3.1
 
 ### New Features
