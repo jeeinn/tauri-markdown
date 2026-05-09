@@ -50,9 +50,9 @@ export default {
       delay: 500,
     },
     upload: {
-      accept: 'image/*,.gif,.jpg,.jpeg,.png,.bmp,.webp',
+      accept: '*/*',
       multiple: true,
-      max: 10 * 1024 * 1024, // 10MB
+      max: 50 * 1024 * 1024, // 50MB
       // handler 将在 MyVditor.vue 中动态设置
     },
     tab: '\t',
