@@ -6,14 +6,69 @@ on:
       - 'v*' # 匹配所有以 v 开头的标签，如 v0.2.0, v1.0.0 等
 
 jobs:
-  release:
+  create-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Tauri Markdown ${{ github.ref_name }}"
+          draft: true
+          prerelease: true
+          body: |
+            ## 下载说明 / Download Guide
+
+            根据您的操作系统和芯片架构选择对应的安装包：
+
+            ### macOS
+
+            | 芯片架构 | 安装包 |
+            |----------|--------|
+            | Apple Silicon (M1/M2/M3/M4) | `TauriMarkdown_aarch64.app.tar.gz` |
+            | Intel | `TauriMarkdown_x64.app.tar.gz` |
+            | 通用 (Universal) | `TauriMarkdown.app.tar.gz` |
+
+            > 下载 `.app.tar.gz` 后解压，将 `.app` 拖入「应用程序」文件夹即可。
+
+            ### Linux (Ubuntu / Debian)
+
+            | 格式 | 安装包 |
+            |------|--------|
+            | deb | `tauri-markdown_amd64.deb` |
+            | AppImage | `tauri-markdown_amd64.AppImage` |
+
+            > deb: `sudo dpkg -i <file>.deb`
+            > AppImage: `chmod +x <file>.AppImage && ./<file>.AppImage`
+
+            ### Windows
+
+            | 格式 | 安装包 |
+            |------|--------|
+            | NSIS 安装程序 | `TauriMarkdown_x64-setup.exe` |
+            | MSI 安装包 | `TauriMarkdown_version_x64_en-US.msi` |
+
+            > 推荐下载 NSIS 安装程序，双击运行即可安装。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-upload:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-22.04, windows-latest]
+        include:
+          - platform: macos-latest
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            rust_targets: ''
+          - platform: windows-latest
+            rust_targets: ''
 
     runs-on: ${{ matrix.platform }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,7 +82,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust_targets }}
 
       - name: Install dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
@@ -38,19 +93,13 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri app
+      - name: Build and upload to release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Tauri Markdown ${{ github.ref_name }}"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: true # 设置为草稿版本，审核后再发布
-          prerelease: true # 标记为预发布版本
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: tauri-markdown-${{ matrix.platform }}
-          path: src-tauri/target/release/bundle/**/*
+          releaseDraft: true
+          prerelease: true
+          updaterJsonPreferNsis: true

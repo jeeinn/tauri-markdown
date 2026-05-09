@@ -7,6 +7,21 @@
 
 (tag v0.1.0 used vue2)
 
+## v0.3.1 新功能
+
+### 新增功能
+- **自定义 tmd 协议**: 通过自定义 `tmd://` 协议，在编辑器中渲染相对路径图片
+- **文件上传支持**: 文件上传与图片上传分离处理，支持更多文件类型
+
+### 问题修复
+- **相对路径图片**: 支持任意目录下的相对路径图片渲染
+- **上传提示语**: 去掉「图片」限定，适配文件上传场景
+- **Chromium URL 规范化**: tmd URL 去掉 `./` 前缀避免 Chromium normalize 问题
+- **未保存文档上传**: 新建文档未保存时上传图片，弹窗提示用户先保存
+
+### 改进优化
+- **tmd 协议优化**: 优化自定义协议的内部实现
+
 ## v0.3.0+ 新功能
 
 ### 重大升级
@@ -55,12 +70,6 @@ npm run tauri dev
 ```
 npm run tauri build
 ```
-
-## 已知问题
-
-- [x] Tauri 不能使用应用热键 `copy/paste` 查看问题: https://github.com/tauri-apps/tauri/pull/644
-- [ ] 大纲视图标题不能跳转 (vditor in tauri)
-- [ ] 分屏模式有光标问题 (vditor in tauri on macOS)
 
 ## 路线图
 查看: https://github.com/jeeinn/tauri-markdown/discussions/1

@@ -7,6 +7,21 @@ Maybe we can call it `TMD` ? 🤔
 
 (tag v0.1.0 used vue2)
 
+## What's New in v0.3.1
+
+### New Features
+- **Custom tmd Protocol**: Render relative-path images in the editor via a custom `tmd://` protocol
+- **File Upload Support**: Separate file upload from image upload, supporting more file types
+
+### Bug Fixes
+- **Relative Path Images**: Support rendering images from any directory with relative paths
+- **Upload Prompts**: Remove "image-only" wording to fit file upload scenarios
+- **Chromium URL Normalize**: Strip `./` prefix from tmd URLs to avoid Chromium normalization issues
+- **Unsaved Document Upload**: Prompt user to save the document before uploading when file is not yet saved
+
+### Improvements
+- **tmd Protocol Optimization**: Refined internal implementation of the custom protocol
+
 ## What's New in v0.3.0+
 
 ### Major Upgrades
@@ -55,12 +70,6 @@ npm run tauri dev
 ```
 npm run tauri build
 ```
-
-## Known issue
-
-- [x] Tauri cannot use the application hotkey `copy/paste` see: https://github.com/tauri-apps/tauri/pull/644
-- [ ] The outline title does not jump (vditor in tauri)
-- [ ] The `sv mode` cursor problem (vditor in tauri on macOS) 
 
 ## Roadmap
 see: https://github.com/jeeinn/tauri-markdown/discussions/1
