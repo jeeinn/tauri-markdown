@@ -21,6 +21,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 mime_guess = "2"
+url = "2"
 
 [features]
 default = [ "custom-protocol" ]

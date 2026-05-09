@@ -48,6 +48,14 @@
     "category": "DeveloperTool",
     "copyright": "jeeinn",
     "shortDescription": "A local markdown tool",
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown File",
+        "description": "Markdown Document",
+        "mimeType": "text/markdown"
+      }
+    ],
     "longDescription": "A local markdown tool made by tauri + vditor",
     "linux": {
       "deb": {

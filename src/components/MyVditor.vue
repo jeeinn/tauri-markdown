@@ -46,7 +46,7 @@ export default {
   },
   mounted() {
     this.initVditor();
-    
+
     // 添加窗口关闭前的保护（仅适用于浏览器环境）
     window.addEventListener('beforeunload', (e) => {
       if (this.isContentModified) {
@@ -54,6 +54,7 @@ export default {
         e.returnValue = ''
       }
     })
+
   },
   methods: {
     // 切换语言
@@ -224,27 +225,40 @@ export default {
     
     async autoLoadLastFile() {
       try {
+        const { invoke } = await import('@tauri-apps/api/core');
+
+        // 优先处理通过"打开方式"传入的文件（由 Rust 端通过 command 获取）
+        const openedFile = await invoke('take_opened_file');
+        await invoke('log_message', { msg: `autoLoadLastFile: take_opened_file returned: ${openedFile}` });
+        if (openedFile) {
+          console.log('[DEBUG] 检测到通过打开方式传入的文件:', openedFile);
+          const success = await this.loadFileByPath(openedFile);
+          await invoke('log_message', { msg: `autoLoadLastFile: loadFileByPath(${openedFile}) => ${success}` });
+          return;
+        }
+
         console.log('[DEBUG] 开始自动加载上次文件...')
+        await invoke('log_message', { msg: 'autoLoadLastFile: no opened file, loading last file from store' });
         const lastFilePath = await getLastFilePath()
         console.log('[DEBUG] 从 store 获取的文件路径:', lastFilePath)
-        
+        await invoke('log_message', { msg: `autoLoadLastFile: lastFilePath from store: ${lastFilePath}` });
+
         if (!lastFilePath) {
           console.log('[DEBUG] 没有上次打开的文件记录')
           return
         }
-        
+
         // 检查 Vditor 是否已初始化
         if (!this.vditor) {
           console.error('[ERROR] Vditor 未初始化')
           return
         }
-        
+
         // 检查文件是否存在
         console.log('[DEBUG] 检查文件是否存在:', lastFilePath)
         const fileExists = await exists(lastFilePath)
         if (!fileExists) {
           console.log('[DEBUG] 文件不存在，清除记录')
-          // 文件不存在，清除记录
           await this.clearCurrentFile()
           ElNotification.warning({
             title: this.t.autoLoad.fileNotExist.title,
@@ -253,36 +267,9 @@ export default {
           })
           return
         }
-        
-        console.log('[DEBUG] 尝试读取文件:', lastFilePath)
-        const data = await readTextFile(lastFilePath)
-        console.log('[DEBUG] 文件读取成功，长度:', data.length)
-        
-        // 获取文件所在目录
-        const { dirname } = await import('@tauri-apps/api/path');
-        const baseDir = await dirname(lastFilePath);
 
-        // 通知 Rust 端当前 md 文件所在目录（tmd 协议需要）
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('set_current_dir', { dir: baseDir });
+        await this.loadFileByPath(lastFilePath)
 
-        // 将相对路径转换为 tmd URL（让图片能显示）
-        const convertedContent = imagePathMapper.convertToAssetUrl(data);
-        console.log('[Load] 已转换相对路径为 tmd URL');
-        
-        // 设置内容到编辑器
-        this.vditor.setValue(convertedContent)
-        
-        // 更新文件状态
-        this.currentFilePath = lastFilePath
-        this.originalContent = data
-        this.isContentModified = false
-        
-        // 更新窗口标题
-        await this.updateWindowTitle()
-        
-        console.log('[DEBUG] 文件内容已设置到编辑器')
-        
         // 显示加载成功提示
         const fileName = lastFilePath.split('\\').pop() || lastFilePath.split('/').pop()
         ElNotification.success({
@@ -297,9 +284,49 @@ export default {
           name: error.name,
           stack: error.stack
         })
-        // 清除无效的文件记录
         await this.clearCurrentFile()
       }
+    },
+
+    // 根据路径加载文件（供 autoLoadLastFile / openMdFile / 打开方式 共用）
+    async loadFileByPath(filePath) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('log_message', { msg: `loadFileByPath: ${filePath}` });
+
+      if (!this.vditor) {
+        console.error('[ERROR] Vditor 未初始化')
+        await invoke('log_message', { msg: 'loadFileByPath: Vditor not initialized!' });
+        return false
+      }
+
+      const fileExists = await exists(filePath)
+      if (!fileExists) {
+        ElNotification.error(this.t.openFile.notExist)
+        await invoke('log_message', { msg: `loadFileByPath: file not exists: ${filePath}` });
+        return false
+      }
+
+      const data = await readTextFile(filePath)
+
+      const { dirname } = await import('@tauri-apps/api/path');
+      const baseDir = await dirname(filePath);
+
+      await invoke('set_current_dir', { dir: baseDir });
+
+      const convertedContent = imagePathMapper.convertToAssetUrl(data);
+      console.log('[Load] 已转换相对路径为 tmd URL');
+
+      this.vditor.setValue(convertedContent)
+
+      this.currentFilePath = filePath
+      this.originalContent = data
+      this.isContentModified = false
+
+      await saveLastFilePath(filePath)
+      await this.updateWindowTitle()
+
+      await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
+      return true
     },
     // 新建空白文档
     async newFile() {
@@ -342,39 +369,9 @@ export default {
         return false
       }
       try {
-        // 检查文件是否存在
-        const fileExists = await exists(filePath)
-        if (!fileExists) {
-          ElNotification.error(this.t.openFile.notExist)
-          return false
-        }
-        
-        const data = await readTextFile(filePath)
-        
-        // 获取文件所在目录
-        const { dirname } = await import('@tauri-apps/api/path');
-        const baseDir = await dirname(filePath);
+        const success = await this.loadFileByPath(filePath)
+        if (!success) return false
 
-        // 通知 Rust 端当前 md 文件所在目录（tmd 协议需要）
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('set_current_dir', { dir: baseDir });
-
-        // 将相对路径转换为 tmd URL（让图片能显示）
-        const convertedContent = imagePathMapper.convertToAssetUrl(data);
-        console.log('[Open] 已转换相对路径为 tmd URL');
-        
-        this.vditor.setValue(convertedContent)
-        
-        // 更新文件状态
-        this.currentFilePath = filePath
-        this.originalContent = data
-        this.isContentModified = false
-        
-        await saveLastFilePath(filePath)
-        
-        // 更新窗口标题
-        await this.updateWindowTitle()
-        
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
           title: this.t.openFile.success.title,
