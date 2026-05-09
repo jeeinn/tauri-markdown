@@ -53,23 +53,9 @@ fn urldecode(input: &str) -> String {
 
 /// 根据扩展名猜测 MIME Type
 fn guess_mime(path: &str) -> String {
-    let ext = PathBuf::from(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-    match ext.as_str() {
-        "jpg" | "jpeg" => "image/jpeg",
-        "png" => "image/png",
-        "gif" => "image/gif",
-        "webp" => "image/webp",
-        "bmp" => "image/bmp",
-        "svg" => "image/svg+xml",
-        "ico" => "image/x-icon",
-        "avif" => "image/avif",
-        _ => "application/octet-stream",
-    }
-    .to_string()
+    mime_guess::from_path(path)
+        .first_or_octet_stream()
+        .to_string()
 }
 
 /// tmd 自定义协议 handler

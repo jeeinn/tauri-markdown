@@ -95,17 +95,20 @@ export default {
       
       // 设置自定义上传 handler
       vditorConfCopy.options.upload.handler = async (files) => {
-        const result = await this.handleImageUpload(files);
-        
-        // 如果有成功的图片，手动插入到编辑器
+        const result = await this.handleUpload(files);
+
+        // 根据文件类型插入不同的 Markdown 语法
         if (result && result[0] && result[0].data && result[0].data.succMap) {
           const succMap = result[0].data.succMap;
-          for (const [originalName, imageUrl] of Object.entries(succMap)) {
-            // 插入 asset URL（由 handleImageUpload 统一生成）
-            const markdownImage = `![${originalName}](${imageUrl})`;
-            this.vditor.insertValue(markdownImage + '\n');
-            
-            console.log('[Upload] 插入 Markdown:', markdownImage);
+          for (const [originalName, entry] of Object.entries(succMap)) {
+            let markdown;
+            if (entry.isImage) {
+              markdown = `![${originalName}](${entry.url})`;
+            } else {
+              markdown = `[${originalName}](${entry.url})`;
+            }
+            this.vditor.insertValue(markdown + '\n');
+            console.log('[Upload] 插入 Markdown:', markdown);
           }
         }
         
@@ -552,9 +555,14 @@ export default {
       return hashHex;
     },
     
-    // 处理图片上传
-    async handleImageUpload(files) {
-      console.log('[Upload] 开始处理图片上传, 文件数量:', files.length);
+    // 判断文件是否为图片
+    isImageFile(file) {
+      return file.type && file.type.startsWith('image/');
+    },
+
+    // 处理文件上传（图片和非图片分离处理）
+    async handleUpload(files) {
+      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
       
       const errFiles = [];
       const succMap = {};
@@ -563,37 +571,47 @@ export default {
         try {
           console.log('[Upload] 处理文件:', file.name);
           
+          // 判断是否为图片
+          const isImage = this.isImageFile(file);
+          const maxImageSize = 10 * 1024 * 1024; // 10MB
+          const maxFileSize = 50 * 1024 * 1024;  // 50MB
+
+          // 检查文件大小限制
+          if (isImage && file.size > maxImageSize) {
+            console.warn('[Upload] 图片超过 10MB 限制:', file.name);
+            errFiles.push(file.name);
+            continue;
+          }
+          if (!isImage && file.size > maxFileSize) {
+            console.warn('[Upload] 文件超过 50MB 限制:', file.name);
+            errFiles.push(file.name);
+            continue;
+          }
+
           // 获取当前 md 文件所在目录
           if (!this.currentFilePath) {
             console.warn('[Upload] 未打开文件，无法确定保存位置');
-            // 弹窗提示用户先保存文件
             const noFileTip = this.t.uploadNoFile || {};
             ElMessageBox.alert(
-              noFileTip.message || '当前文档尚未保存到本地，无法确定图片存储位置。请先保存文件（Ctrl+S）后再上传图片。',
+              noFileTip.message || '当前文档尚未保存到本地，无法确定存储位置。请先保存文件（Ctrl+S）后再上传。',
               noFileTip.title || '请先保存文件',
-              {
-                confirmButtonText: noFileTip.confirmButtonText || '我知道了',
-                type: 'warning',
-              }
+              { confirmButtonText: noFileTip.confirmButtonText || '我知道了', type: 'warning' }
             );
-            return [
-              {
-                code: 1,
-                msg: 'File not saved',
-                data: { errFiles: files.map(f => f.name), succMap: {} }
-              }
-            ];
+            return [{ code: 1, msg: 'File not saved', data: { errFiles: files.map(f => f.name), succMap: {} } }];
           }
+
+          // 根据文件类型选择存储目录
+          const subDir = isImage ? 'assets/images' : 'assets/files';
           
           // 使用 path 模块处理路径，确保跨平台兼容
           const { dirname, join, normalize } = await import('@tauri-apps/api/path');
           const currentDir = await dirname(this.currentFilePath);
           console.log('[Upload] 当前文件目录:', currentDir);
           
-          // 创建 assets/images 目录路径（使用相对路径方式）
-          const assetsDirPath = 'assets/images';
-          console.log('[Upload] 相对目录路径:', assetsDirPath);
-          
+          // 创建存储目录（图片 → assets/images，文件 → assets/files）
+          const assetsDirPath = subDir;
+          console.log('[Upload] 存储目录:', assetsDirPath);
+
           // 检查目录是否存在（相对于 md 文件所在目录）
           const fullAssetsPath = await normalize(await join(currentDir, assetsDirPath));
           const assetsDirExists = await exists(fullAssetsPath);
@@ -624,7 +642,7 @@ export default {
                 }
                 
                 await mkdir(fullAssetsPath, { parents: true });
-                console.log('[Upload] images 目录创建成功');
+                console.log('[Upload] 目录创建成功:', subDir);
               } catch (secondError) {
                 console.error('[Upload] 逐级创建也失败:', secondError);
                 throw new Error(`创建目录失败: ${secondError.message || '未知错误'}`);
@@ -658,18 +676,17 @@ export default {
             console.log('[Upload] 文件写入成功');
           }
           
-          // 生成相对路径（保存到 Markdown 文件时使用）
-          const relativePath = `./assets/images/${hashFileName}`;
+          // 生成相对路径和 tmd URL
+          const relativePath = `./${subDir}/${hashFileName}`;
+          const fileUrl = `http://tmd.localhost/${relativePath}`;
           console.log('[Upload] 相对路径:', relativePath);
-          
-          // 使用 tmd 自定义协议生成 URL（支持相对路径解析）
-          const imageUrl = `http://tmd.localhost/${relativePath}`;
-          console.log('[Upload] 生成的 URL:', imageUrl);
-          
-          succMap[file.name] = imageUrl;
-          
-          // 添加映射关系到工具模块（asset URL → 相对路径）
-          imagePathMapper.addMapping(imageUrl, relativePath);
+          console.log('[Upload] 生成的 URL:', fileUrl);
+
+          // succMap 中存储 { url, isImage } 供调用方区分插入语法
+          succMap[file.name] = { url: fileUrl, isImage };
+
+          // 添加映射关系到工具模块
+          imagePathMapper.addMapping(fileUrl, relativePath);
           console.log('[Upload] 已添加映射关系');
         } catch (error) {
           console.error('[Upload] 文件上传失败:', file.name, error);

@@ -20,6 +20,7 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
+mime_guess = "2"
 
 [features]
 default = [ "custom-protocol" ]
