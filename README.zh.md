@@ -98,3 +98,5 @@ npm run tauri build
 * [tauri](https://github.com/tauri-apps/tauri)
 * [vditor](https://github.com/Vanessa219/vditor)
 * [element-plus](https://github.com/element-plus/element-plus)
+
+> 项目 0.3.0+ 由阿里 Lingma 和小米 Mimo-v2.5-pro 合力编程完成。
