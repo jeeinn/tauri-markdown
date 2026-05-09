@@ -6,7 +6,7 @@ authors = ["jeeinn"]
 license = "MIT"
 repository = "https://github.com/jeeinn/tauri-markdown"
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.78"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

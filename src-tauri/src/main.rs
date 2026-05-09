@@ -207,7 +207,6 @@ fn tmd_protocol_handler<R: tauri::Runtime>(
 // ── 启动 ─────────────────────────────────────────────
 
 /// 从命令行参数中提取被打开的文件路径（Windows / Linux "打开方式" 传入）
-/// macOS 需要通过 tauri-plugin-deep-link 或原生 Swift 回调处理，当前版本暂不支持
 fn extract_opened_file() -> Option<PathBuf> {
     log("extract_opened_file: scanning args...");
     let args: Vec<String> = std::env::args().collect();
@@ -250,7 +249,7 @@ fn main() {
     let opened_file = extract_opened_file();
     log(&format!("opened_file from args: {:?}", opened_file));
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -263,6 +262,26 @@ fn main() {
             log("setup completed");
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // 使用 App::run(callback) 接收事件
+    app.run(|app, event| {
+        // macOS/iOS/Android：通过 RunEvent::Opened 接收"打开方式"传入的文件
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+        if let tauri::RunEvent::Opened { urls } = event {
+            log(&format!("RunEvent::Opened received, urls: {:?}", urls));
+            for url in urls {
+                if let Ok(path) = url.to_file_path() {
+                    log(&format!("  opened file: {:?}", path));
+                    let state: State<OpenedFile> = app.state();
+                    *state.0.lock().unwrap() = Some(path);
+                    break;
+                }
+            }
+        }
+        // 抑制 Windows/Linux 上未使用变量的警告
+        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+        let _ = (app, event);
+    });
 }
