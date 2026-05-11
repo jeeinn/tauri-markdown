@@ -16,6 +16,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
+import { dirname, join } from '@tauri-apps/api/path'
 
 export default {
   name: "MyVditor.vue",
@@ -519,6 +520,276 @@ export default {
         ElNotification.error(this.t.exportFile.exportError)
         return false
       }
+    },
+    
+    async exportPdf() {
+      try {
+        const content = this.vditor.getValue()
+        
+        // 检查内容是否为空
+        if (!content.trim()) {
+          ElNotification.warning({
+            title: this.t.exportPdf.emptyContent.title,
+            message: this.t.exportPdf.emptyContent.message,
+            duration: 2000
+          })
+          return false
+        }
+        
+        // 显示转换中提示
+        ElNotification.info({
+          title: this.t.exportPdf.converting.title,
+          message: this.t.exportPdf.converting.message,
+          duration: 0, // 无限期显示直到关闭
+        })
+        
+        // 获取 Vditor 渲染后的 HTML 内容
+        const htmlContent = this.vditor.getHTML()
+        
+        // 将图片转换为 base64 以解决 CORS 问题
+        const processedHtml = await this.convertImagesToBase64(htmlContent)
+        
+        // 构建完整的 HTML 文档
+        const fullHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown PDF Export</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    h3 { font-size: 1.25em; }
+    pre { background: #f6f8fa; padding: 16px; overflow-x: auto; border-radius: 6px; }
+    code { background: #f6f8fa; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+    blockquote { border-left: 4px solid #ddd; padding-left: 16px; color: #666; margin: 16px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; }
+    th { background: #f6f8fa; }
+    img { max-width: 100%; }
+    hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+  </style>
+</head>
+<body>
+  ${processedHtml}
+</body>
+</html>`;
+        
+        // 使用 html2pdf.js 生成 PDF
+        const { default: html2pdf } = await import('html2pdf.js')
+        
+        // 创建一个临时的容器来渲染 HTML
+        const container = document.createElement('div')
+        container.innerHTML = processedHtml
+        document.body.appendChild(container)
+        
+        // 等待图片加载完成（base64 图片也需要一点时间）
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // 配置 html2pdf 选项
+        const opt = {
+          margin: 15,
+          filename: 'markdown-export.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: false }, // base64 图片不需要 CORS
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }
+        
+        // 生成 PDF 为 blob
+        const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob')
+        
+        // 清理临时元素
+        document.body.removeChild(container)
+        
+        // 使用 Tauri save 对话框选择保存位置
+        const { save } = await import('@tauri-apps/plugin-dialog')
+        const { writeFile } = await import('@tauri-apps/plugin-fs')
+        
+        // 默认文件名
+        const defaultName = 'markdown-export.pdf'
+        
+        // 打开保存对话框
+        const filePath = await save({
+          filters: [{
+            name: 'PDF',
+            extensions: ['pdf']
+          }],
+          defaultPath: defaultName
+        })
+        
+        if (filePath) {
+          // 将 blob 转为 ArrayBuffer 并写入文件
+          const arrayBuffer = await pdfBlob.arrayBuffer()
+          const uint8Array = new Uint8Array(arrayBuffer)
+          await writeFile(filePath, uint8Array)
+          
+          // 关闭提示并显示成功
+          ElNotification.closeAll()
+          ElNotification.success({
+            title: this.t.exportPdf.success.title,
+            message: 'PDF文件已保存',
+            duration: 3000
+          })
+        } else {
+          // 用户取消保存
+          ElNotification.closeAll()
+          ElNotification.info({
+            title: '已取消',
+            message: 'PDF导出已取消',
+            duration: 2000
+          })
+        }
+        
+        return true
+      } catch (error) {
+        console.error('[ERROR] PDF导出失败:', error)
+        ElNotification.closeAll()
+        ElNotification.error({
+          title: this.t.exportPdf.exportError.title,
+          message: error.message || this.t.exportPdf.exportError.message,
+          duration: 3000
+        })
+        return false
+      }
+    },
+    
+    // 将 HTML 中的图片转换为 base64，避免 CORS 问题
+    async convertImagesToBase64(html) {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+      const images = doc.querySelectorAll('img')
+      
+      if (images.length === 0) return html
+      
+      // 并行转换所有图片
+      const promises = Array.from(images).map(async (img) => {
+        const src = img.getAttribute('src')
+        if (!src || src.startsWith('data:')) return // 跳过已 base64 的图片
+        
+        try {
+          // 如果是 tmd.localhost 开头的图片，使用本地文件读取
+          if (src.includes('tmd.localhost')) {
+            const base64 = await this.readLocalImageToBase64(src)
+            img.setAttribute('src', base64)
+          } else {
+            // 远程图片：通过 Tauri HTTP 插件获取（绕开浏览器 CORS）
+            try {
+              const { fetch } = await import('@tauri-apps/plugin-http')
+              const response = await fetch(src)
+              const blob = await response.blob()
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onloadend = () => resolve(reader.result)
+                reader.onerror = reject
+                reader.readAsDataURL(blob)
+              })
+              img.setAttribute('src', base64)
+            } catch (fetchError) {
+              console.warn(`[WARN] 远程图片获取失败: ${src}`, fetchError)
+              // 保留原 URL，html2canvas 可能能处理
+            }
+          }
+        } catch (error) {
+          console.warn(`[WARN] 图片转换失败: ${src}`, error)
+          // 保留原图，可能失败但不会中断导出
+        }
+      })
+      
+      await Promise.all(promises)
+      return doc.body.innerHTML
+    },
+    
+    // 通过 Tauri API 读取本地图片并转换为 base64
+    async readLocalImageToBase64(tmdUrl) {
+      console.log('[readLocalImageToBase64] tmdUrl:', tmdUrl)
+      
+      // 通过 imagePathMapper 获取相对路径
+      const relativePath = imagePathMapper.getRelativePath(tmdUrl)
+      console.log('[readLocalImageToBase64] relativePath:', relativePath)
+      if (!relativePath) {
+        throw new Error(`未找到图片映射: ${tmdUrl}`)
+      }
+      
+      // 去掉相对路径开头的 ./，避免 join 处理错误
+      const cleanRelativePath = relativePath.replace(/^\.\//, '')
+      console.log('[readLocalImageToBase64] cleanRelativePath:', cleanRelativePath)
+      
+      // 获取上次保存的文件路径，确定基础目录
+      const lastPath = await getLastFilePath()
+      console.log('[readLocalImageToBase64] lastPath:', lastPath, 'type:', typeof lastPath)
+      
+      // 兼容处理：可能返回对象或字符串
+      let baseDir = '.'
+      if (typeof lastPath === 'string') {
+        // 将 Windows 路径转换为 POSIX 格式（反斜杠转正斜杠）
+        const posixLastPath = lastPath.split(String.fromCharCode(92)).join('/')
+        baseDir = await dirname(posixLastPath)
+        console.log('[readLocalImageToBase64] baseDir from dirname:', baseDir, 'type:', typeof baseDir)
+      } else if (lastPath && typeof lastPath === 'object' && lastPath.path) {
+        const posixPath = lastPath.path.split(String.fromCharCode(92)).join('/')
+        baseDir = await dirname(posixPath)
+      }
+      
+      // 拼接完整路径（统一使用 POSIX 格式）
+      console.log('[readLocalImageToBase64] joining:', baseDir, '+', cleanRelativePath)
+      const fullPath = await join(baseDir, cleanRelativePath)
+      console.log('[readLocalImageToBase64] fullPath:', fullPath)
+      
+      // 读取文件为二进制
+      const { readFile } = await import('@tauri-apps/plugin-fs')
+      console.log('[readLocalImageToBase64] reading file:', fullPath)
+      const binaryData = await readFile(fullPath)
+      console.log('[readLocalImageToBase64] read success, length:', binaryData.length)
+      
+      // 转换为 base64
+      const base64 = this.arrayBufferToBase64(binaryData)
+      const ext = this.getImageExtension(cleanRelativePath)
+      const mimeType = this.getImageMimeType(ext)
+      
+      return `data:${mimeType};base64,${base64}`
+    },
+    
+    // ArrayBuffer 转 base64
+    arrayBufferToBase64(buffer) {
+      if (buffer instanceof Uint8Array) {
+        let binary = ''
+        for (let i = 0; i < buffer.length; i++) {
+          binary += String.fromCharCode(buffer[i])
+        }
+        return btoa(binary)
+      }
+      return ''
+    },
+    
+    // 获取图片扩展名
+    getImageExtension(path) {
+      const match = path.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg|ico|avif)$/i)
+      return match ? match[1].toLowerCase() : 'png'
+    },
+    
+    // 根据扩展名获取 MIME 类型
+    getImageMimeType(ext) {
+      const mimeMap = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        bmp: 'image/bmp',
+        svg: 'image/svg+xml',
+        ico: 'image/x-icon',
+        avif: 'image/avif'
+      }
+      return mimeMap[ext] || 'image/png'
     },
     showAbout() {
       ElMessageBox.alert(

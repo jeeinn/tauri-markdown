@@ -9,6 +9,7 @@
     "fs:allow-write-text-file",
     "fs:allow-read",
     "fs:allow-write",
+    "fs:allow-read-file",
     "fs:allow-write-file",
     "fs:allow-exists",
     "fs:allow-mkdir",
@@ -22,6 +23,7 @@
     "core:path:allow-join",
     "core:path:allow-normalize",
     "core:window:allow-set-title",
-    "store:default"
+    "store:default",
+    "http:default"
   ]
 }

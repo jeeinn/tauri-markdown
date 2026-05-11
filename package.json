@@ -13,8 +13,10 @@
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-dialog": "~2.7.0",
     "@tauri-apps/plugin-fs": "~2.5.0",
+    "@tauri-apps/plugin-http": "^2.5.9",
     "@tauri-apps/plugin-store": "~2.4.0",
     "element-plus": "^2.13.7",
+    "html2pdf.js": "^0.14.0",
     "vditor": "^3.11.2",
     "vue": "^3.5.33"
   },

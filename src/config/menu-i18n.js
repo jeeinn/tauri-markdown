@@ -95,6 +95,21 @@ export default {
         },
         exportError: '文件导出失败',
       },
+      // 导出PDF
+      exportPdf: {
+        emptyContent: {
+          title: '提示',
+          message: '编辑器内容为空，无法导出PDF',
+        },
+        converting: {
+          title: '提示',
+          message: '正在转换中，请稍候...',
+        },
+        success: {
+          title: 'PDF导出成功',
+        },
+        exportError: 'PDF导出失败',
+      },
       // 关于对话框
       about: {
         title: '关于程序',
@@ -200,6 +215,20 @@ export default {
         },
         exportError: 'Failed to export file',
       },
+      exportPdf: {
+        emptyContent: {
+          title: 'Notice',
+          message: 'Editor content is empty, cannot export PDF',
+        },
+        converting: {
+          title: 'Notice',
+          message: 'Converting, please wait...',
+        },
+        success: {
+          title: 'PDF Exported Successfully',
+        },
+        exportError: 'Failed to export PDF',
+      },
       about: {
         title: 'About',
       },
@@ -304,6 +333,20 @@ export default {
         },
         exportError: 'ファイルのエクスポートに失敗しました',
       },
+      exportPdf: {
+        emptyContent: {
+          title: 'お知らせ',
+          message: 'エディタのコンテンツが空のため、PDFエクスポートできません',
+        },
+        converting: {
+          title: 'お知らせ',
+          message: '変換中、少々お待ちください...',
+        },
+        success: {
+          title: 'PDFエクスポート成功',
+        },
+        exportError: 'PDFエクスポートに失敗しました',
+      },
       about: {
         title: 'について',
       },
@@ -407,6 +450,20 @@ export default {
           title: '파일을 내보냈습니다',
         },
         exportError: '파일 내보내기에 실패했습니다',
+      },
+      exportPdf: {
+        emptyContent: {
+          title: '알림',
+          message: '편집기 콘텐츠가 비어 있어 PDF 내보낼 수 없습니다',
+        },
+        converting: {
+          title: '알림',
+          message: '변환 중입니다, 잠시만 기다려주세요...',
+        },
+        success: {
+          title: 'PDF 내보내기 성공',
+        },
+        exportError: 'PDF 내보내기에 실패했습니다',
       },
       about: {
         title: '정보',
