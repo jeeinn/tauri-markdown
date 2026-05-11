@@ -24,6 +24,10 @@
     "core:path:allow-normalize",
     "core:window:allow-set-title",
     "store:default",
-    "http:default"
+    "http:default",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+    }
   ]
 }

@@ -523,6 +523,8 @@ export default {
     },
     
     async exportPdf() {
+      let progressNotification = null
+      
       try {
         const content = this.vditor.getValue()
         
@@ -536,18 +538,61 @@ export default {
           return false
         }
         
+        // 获取 Vditor 渲染后的 HTML 内容
+        const htmlContent = this.vditor.getHTML()
+        
+        // 预处理媒体资源（处理非图片资源，转换 tmd.localhost 路径）
+        console.log('[PDF Export] 预处理媒体资源...')
+        let processedHtml = this.preprocessMediaForPDF(htmlContent)
+        
+        // 统计需要处理的图片数量
+        const imgCount = (processedHtml.match(/<img[^>]+src=["']((?!data:)[^"']+)["']/gi) || []).length
+        
+        if (imgCount > 0) {
+          // 显示图片处理进度提示
+          progressNotification = ElNotification.info({
+            title: this.t.exportPdf.processingImages.title,
+            message: this.t.exportPdf.processingImages.message.replace('{count}', imgCount),
+            duration: 0, // 无限期显示直到关闭
+          })
+          
+          // 将图片转换为 base64 以解决 CORS 问题，带进度回调
+          console.log('[PDF Export] 开始处理图片...')
+          processedHtml = await this.convertImagesToBase64(
+            processedHtml,
+            (current, total) => {
+              // 更新进度提示
+              if (progressNotification) {
+                progressNotification.close()
+              }
+              
+              if (current < total) {
+                progressNotification = ElNotification.info({
+                  title: this.t.exportPdf.processingImages.title,
+                  message: this.t.exportPdf.imageProgress.message
+                    .replace('{current}', current)
+                    .replace('{total}', total),
+                  duration: 0,
+                })
+              }
+            }
+          )
+          
+          // 关闭进度提示
+          if (progressNotification) {
+            progressNotification.close()
+            progressNotification = null
+          }
+          
+          console.log('[PDF Export] 图片处理完成')
+        }
+        
         // 显示转换中提示
         ElNotification.info({
           title: this.t.exportPdf.converting.title,
           message: this.t.exportPdf.converting.message,
-          duration: 0, // 无限期显示直到关闭
+          duration: 0,
         })
-        
-        // 获取 Vditor 渲染后的 HTML 内容
-        const htmlContent = this.vditor.getHTML()
-        
-        // 将图片转换为 base64 以解决 CORS 问题
-        const processedHtml = await this.convertImagesToBase64(htmlContent)
         
         // 构建完整的 HTML 文档
         const fullHtml = `
@@ -584,7 +629,8 @@ export default {
 </body>
 </html>`;
         
-        // 使用 html2pdf.js 生成 PDF
+        // 懒加载 html2pdf.js
+        console.log('[PDF Export] 加载 html2pdf.js...')
         const { default: html2pdf } = await import('html2pdf.js')
         
         // 创建一个临时的容器来渲染 HTML
@@ -592,8 +638,31 @@ export default {
         container.innerHTML = processedHtml
         document.body.appendChild(container)
         
-        // 等待图片加载完成（base64 图片也需要一点时间）
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // 等待所有图片加载完成（base64 图片也需要等待）
+        console.log('[PDF Export] 等待图片加载...')
+        const images = container.querySelectorAll('img')
+        const imagePromises = Array.from(images).map(img => {
+          return new Promise((resolve) => {
+            if (img.complete) {
+              console.log(`[PDF Export] 图片已加载: ${img.src.substring(0, 50)}...`)
+              resolve()
+            } else {
+              img.onload = () => {
+                console.log(`[PDF Export] 图片加载完成: ${img.src.substring(0, 50)}...`)
+                resolve()
+              }
+              img.onerror = () => {
+                console.warn(`[PDF Export] 图片加载失败: ${img.src.substring(0, 50)}...`)
+                resolve() // 即使失败也继续
+              }
+            }
+          })
+        })
+        await Promise.all(imagePromises)
+        console.log(`[PDF Export] 所有 ${images.length} 张图片处理完成`)
+        
+        // 额外等待一小段时间确保渲染完成
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         // 配置 html2pdf 选项
         const opt = {
@@ -604,6 +673,7 @@ export default {
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         }
         
+        console.log('[PDF Export] 生成 PDF...')
         // 生成 PDF 为 blob
         const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob')
         
@@ -614,8 +684,15 @@ export default {
         const { save } = await import('@tauri-apps/plugin-dialog')
         const { writeFile } = await import('@tauri-apps/plugin-fs')
         
-        // 默认文件名
-        const defaultName = 'markdown-export.pdf'
+        // 生成带时间戳的默认文件名
+        const now = new Date()
+        const timestamp = now.getFullYear() +
+          String(now.getMonth() + 1).padStart(2, '0') +
+          String(now.getDate()).padStart(2, '0') +
+          String(now.getHours()).padStart(2, '0') +
+          String(now.getMinutes()).padStart(2, '0') +
+          String(now.getSeconds()).padStart(2, '0')
+        const defaultName = `markdown-export-${timestamp}.pdf`
         
         // 打开保存对话框
         const filePath = await save({
@@ -636,15 +713,15 @@ export default {
           ElNotification.closeAll()
           ElNotification.success({
             title: this.t.exportPdf.success.title,
-            message: 'PDF文件已保存',
+            message: this.t.exportPdf.fileSaved,
             duration: 3000
           })
         } else {
           // 用户取消保存
           ElNotification.closeAll()
           ElNotification.info({
-            title: '已取消',
-            message: 'PDF导出已取消',
+            title: this.t.exportPdf.cancelled.title,
+            message: this.t.exportPdf.cancelled.message,
             duration: 2000
           })
         }
@@ -662,50 +739,230 @@ export default {
       }
     },
     
-    // 将 HTML 中的图片转换为 base64，避免 CORS 问题
-    async convertImagesToBase64(html) {
+    // 预处理 HTML 内容：处理非图片资源，转换本地路径
+    preprocessMediaForPDF(html) {
+      console.log('[PDF Preprocess] 开始预处理 HTML 内容')
       const parser = new DOMParser()
       const doc = parser.parseFromString(html, 'text/html')
-      const images = doc.querySelectorAll('img')
       
-      if (images.length === 0) return html
+      // 处理所有包含本地路径的链接（tmd.localhost 或 localhost:1420 或相对路径）
+      const allElements = doc.querySelectorAll('[src], [href]')
+      console.log(`[PDF Preprocess] 找到 ${allElements.length} 个带有 src 或 href 属性的元素`)
       
-      // 并行转换所有图片
-      const promises = Array.from(images).map(async (img) => {
-        const src = img.getAttribute('src')
-        if (!src || src.startsWith('data:')) return // 跳过已 base64 的图片
+      let convertedCount = 0
+      allElements.forEach((element, index) => {
+        // 跳过 img 标签，图片将在 convertImagesToBase64 中处理
+        if (element.tagName === 'IMG') {
+          console.log(`[PDF Preprocess] [${index}] 跳过 IMG 标签:`, element.getAttribute('src'))
+          return
+        }
         
-        try {
-          // 如果是 tmd.localhost 开头的图片，使用本地文件读取
-          if (src.includes('tmd.localhost')) {
-            const base64 = await this.readLocalImageToBase64(src)
-            img.setAttribute('src', base64)
-          } else {
-            // 远程图片：通过 Tauri HTTP 插件获取（绕开浏览器 CORS）
-            try {
-              const { fetch } = await import('@tauri-apps/plugin-http')
-              const response = await fetch(src)
-              const blob = await response.blob()
-              const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onloadend = () => resolve(reader.result)
-                reader.onerror = reject
-                reader.readAsDataURL(blob)
-              })
-              img.setAttribute('src', base64)
-            } catch (fetchError) {
-              console.warn(`[WARN] 远程图片获取失败: ${src}`, fetchError)
-              // 保留原 URL，html2canvas 可能能处理
-            }
+        const src = element.getAttribute('src') || element.getAttribute('href')
+        if (!src) {
+          console.log(`[PDF Preprocess] [${index}] 跳过空 src/href`)
+          return
+        }
+        
+        console.log(`[PDF Preprocess] [${index}] 检查元素:`, element.tagName, src)
+        
+        // 检测是否为本地资源路径
+        // 1. 包含 tmd.localhost 或 localhost:1420 的绝对路径
+        // 2. 以 ./ 或 ../ 开头的相对路径（Vditor 已转换的路径）
+        const isLocalResource = 
+          src.includes('tmd.localhost') || 
+          src.includes('localhost:1420') ||
+          src.startsWith('./assets/') ||
+          src.startsWith('../assets/')
+        
+        if (!isLocalResource) {
+          console.log(`[PDF Preprocess] [${index}] 跳过非本地资源:`, src)
+          return
+        }
+        
+        // 将本地路径转换为纯文本显示（避免 html2canvas 将相对路径解析为绝对路径）
+        console.log(`[PDF Preprocess] [${index}] 检测到本地资源，开始转换:`, src)
+        
+        if (element.tagName === 'A') {
+          // 对于 <a> 标签，保留文本内容，移除 href 属性，添加样式表示这是文件链接
+          const text = element.textContent || element.getAttribute('href') || src
+          console.log(`[PDF Preprocess] [${index}] 链接文本:`, text)
+          
+          // 创建新的 span 替换 <a> 标签
+          const span = doc.createElement('span')
+          span.textContent = text
+          span.style.color = '#0366d6'
+          span.style.textDecoration = 'underline'
+          span.style.cursor = 'default'
+          
+          element.parentNode.replaceChild(span, element)
+          console.log(`[PDF Preprocess] [${index}] 已将链接转换为纯文本`)
+          convertedCount++
+        } else {
+          // 其他元素（如 video, audio 等），移除 src/href
+          if (element.hasAttribute('src')) {
+            element.removeAttribute('src')
+            console.log(`[PDF Preprocess] [${index}] 已移除 src`)
           }
-        } catch (error) {
-          console.warn(`[WARN] 图片转换失败: ${src}`, error)
-          // 保留原图，可能失败但不会中断导出
+          if (element.hasAttribute('href')) {
+            element.removeAttribute('href')
+            console.log(`[PDF Preprocess] [${index}] 已移除 href`)
+          }
+          convertedCount++
         }
       })
       
-      await Promise.all(promises)
-      return doc.body.innerHTML
+      console.log(`[PDF Preprocess] 预处理完成，共转换 ${convertedCount} 个链接`)
+      
+      // 输出最终的 HTML 用于调试
+      const finalHtml = doc.body.innerHTML
+      console.log('[PDF Preprocess] 最终 HTML 片段（前500字符）:', finalHtml.substring(0, 500))
+      
+      return finalHtml
+    },
+    
+    // 将 HTML 中的图片转换为 base64，避免 CORS 问题
+    async convertImagesToBase64(html, onProgress = null) {
+      console.log('[PDF ImageConvert] 开始处理图片')
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+      const images = Array.from(doc.querySelectorAll('img'))
+      console.log(`[PDF ImageConvert] 找到 ${images.length} 张图片`)
+      
+      if (images.length === 0) return html
+      
+      // 过滤出需要处理的图片（跳过已 base64 的图片和相对路径图片）
+      const imagesToProcess = images.filter(img => {
+        const src = img.getAttribute('src')
+        // 跳过：data URI、相对路径、空值
+        if (!src || src.startsWith('data:') || src.startsWith('./') || src.startsWith('../') || !src.includes('/')) {
+          console.log('[PDF ImageConvert] 跳过图片:', src)
+          return false
+        }
+        console.log('[PDF ImageConvert] 将处理图片:', src)
+        return true
+      })
+      
+      console.log(`[PDF ImageConvert] 需要处理 ${imagesToProcess.length} 张图片`)
+      if (imagesToProcess.length === 0) return html
+      
+      const total = imagesToProcess.length
+      let current = 0
+      let successCount = 0
+      let failCount = 0
+      
+      // 显示初始进度提示
+      if (onProgress) {
+        onProgress(0, total)
+      }
+      
+      // 分批处理图片，每批 5 张，避免内存溢出
+      const batchSize = 5
+      for (let i = 0; i < imagesToProcess.length; i += batchSize) {
+        const batch = imagesToProcess.slice(i, i + batchSize)
+        console.log(`[PDF ImageConvert] 处理批次 ${Math.floor(i / batchSize) + 1}，共 ${batch.length} 张图片`)
+        
+        // 并行处理当前批次
+        await Promise.all(batch.map(async (img) => {
+          const src = img.getAttribute('src')
+          if (!src) return
+          
+          try {
+            console.log(`[PDF ImageConvert] 处理图片 [${current + 1}/${total}]:`, src)
+            
+            // 如果是 tmd.localhost 或 localhost:1420 开头的图片，使用本地文件读取
+            if (src.includes('tmd.localhost') || src.includes('localhost:1420')) {
+              console.log('[PDF ImageConvert] 本地图片，使用 readLocalImageToBase64')
+              const base64 = await this.readLocalImageToBase64(src)
+              img.setAttribute('src', base64)
+              successCount++
+              console.log('[PDF ImageConvert] 本地图片转换成功')
+            } else if (src.startsWith('http://') || src.startsWith('https://')) {
+              // 远程图片：通过 Tauri HTTP 插件获取（绕开浏览器 CORS）
+              console.log('[PDF ImageConvert] 远程图片，使用 HTTP 插件获取')
+              try {
+                const { fetch } = await import('@tauri-apps/plugin-http')
+                console.log('[PDF ImageConvert] 发起 HTTP 请求:', src)
+                const response = await fetch(src)
+                console.log('[PDF ImageConvert] HTTP 响应状态:', response.status)
+                console.log('[PDF ImageConvert] Content-Type:', response.headers.get('content-type'))
+                
+                // 获取 ArrayBuffer 以便手动检测图片类型
+                const arrayBuffer = await response.arrayBuffer()
+                console.log('[PDF ImageConvert] ArrayBuffer 大小:', arrayBuffer.byteLength, 'bytes')
+                
+                // 通过 magic bytes 检测图片类型
+                const bytes = new Uint8Array(arrayBuffer)
+                let mimeType = 'image/png' // 默认 PNG
+                
+                // PNG: 89 50 4E 47
+                if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+                  mimeType = 'image/png'
+                  console.log('[PDF ImageConvert] 检测到 PNG 格式')
+                }
+                // JPEG: FF D8 FF
+                else if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+                  mimeType = 'image/jpeg'
+                  console.log('[PDF ImageConvert] 检测到 JPEG 格式')
+                }
+                // GIF: 47 49 46 38
+                else if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+                  mimeType = 'image/gif'
+                  console.log('[PDF ImageConvert] 检测到 GIF 格式')
+                }
+                // WebP: 52 49 46 46 ... 57 45 42 50
+                else if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+                  mimeType = 'image/webp'
+                  console.log('[PDF ImageConvert] 检测到 WebP 格式')
+                }
+                else {
+                  console.warn('[PDF ImageConvert] 未识别的图片格式，使用默认 PNG')
+                }
+                
+                // 创建正确 MIME 类型的 Blob
+                const blob = new Blob([arrayBuffer], { type: mimeType })
+                console.log('[PDF ImageConvert] 创建 Blob，类型:', blob.type)
+                
+                // 转换为 base64
+                const base64 = await new Promise((resolve, reject) => {
+                  const reader = new FileReader()
+                  reader.onloadend = () => resolve(reader.result)
+                  reader.onerror = reject
+                  reader.readAsDataURL(blob)
+                })
+                
+                console.log('[PDF ImageConvert] Base64 前缀:', base64.substring(0, 40))
+                img.setAttribute('src', base64)
+                successCount++
+                console.log('[PDF ImageConvert] 远程图片转换成功')
+              } catch (fetchError) {
+                failCount++
+                console.error('[PDF ImageConvert] 远程图片获取失败:', src, fetchError)
+                // 保留原 URL，html2canvas 可能能处理
+              }
+            } else {
+              // 其他情况（如相对路径）跳过，保持原样
+              console.log('[PDF ImageConvert] 跳过非 http/https 路径:', src)
+            }
+          } catch (error) {
+            failCount++
+            console.error('[PDF ImageConvert] 图片转换失败:', src, error)
+            // 保留原图，可能失败但不会中断导出
+          } finally {
+            current++
+            // 更新进度
+            if (onProgress) {
+              onProgress(current, total)
+            }
+          }
+        }))
+      }
+      
+      console.log(`[PDF ImageConvert] 图片处理完成：成功 ${successCount} 张，失败 ${failCount} 张`)
+      
+      const finalHtml = doc.body.innerHTML
+      console.log('[PDF ImageConvert] 最终 HTML 片段（前500字符）:', finalHtml.substring(0, 500))
+      
+      return finalHtml
     },
     
     // 通过 Tauri API 读取本地图片并转换为 base64
