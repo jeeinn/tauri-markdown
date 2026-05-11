@@ -16,6 +16,8 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
+import { dirname, join } from '@tauri-apps/api/path'
+import { exportPdf as exportPdfUtil } from '../utils/pdf-export.js'
 
 export default {
   name: "MyVditor.vue",
@@ -519,6 +521,14 @@ export default {
         ElNotification.error(this.t.exportFile.exportError)
         return false
       }
+    },
+    
+    async exportPdf() {
+      // 获取当前语言的 PDF 导出配置
+      const pdfConfig = this.t.exportPdf
+      
+      // 调用工具模块执行 PDF 导出
+      return await exportPdfUtil(this.vditor, pdfConfig)
     },
     showAbout() {
       ElMessageBox.alert(

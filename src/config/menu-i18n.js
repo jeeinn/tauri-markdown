@@ -95,6 +95,33 @@ export default {
         },
         exportError: '文件导出失败',
       },
+      // 导出PDF
+      exportPdf: {
+        emptyContent: {
+          title: '提示',
+          message: '编辑器内容为空，无法导出PDF',
+        },
+        converting: {
+          title: '提示',
+          message: '正在转换中，请稍候...',
+        },
+        processingImages: {
+          title: '处理图片',
+          message: '正在处理 {count} 张图片，请稍候...',
+        },
+        imageProgress: {
+          message: '正在处理图片 ({current}/{total})...',
+        },
+        success: {
+          title: 'PDF导出成功',
+        },
+        exportError: 'PDF导出失败',
+        cancelled: {
+          title: '已取消',
+          message: 'PDF导出已取消',
+        },
+        fileSaved: 'PDF文件已保存',
+      },
       // 关于对话框
       about: {
         title: '关于程序',
@@ -200,6 +227,32 @@ export default {
         },
         exportError: 'Failed to export file',
       },
+      exportPdf: {
+        emptyContent: {
+          title: 'Notice',
+          message: 'Editor content is empty, cannot export PDF',
+        },
+        converting: {
+          title: 'Notice',
+          message: 'Converting, please wait...',
+        },
+        processingImages: {
+          title: 'Processing Images',
+          message: 'Processing {count} images, please wait...',
+        },
+        imageProgress: {
+          message: 'Processing images ({current}/{total})...',
+        },
+        success: {
+          title: 'PDF Exported Successfully',
+        },
+        exportError: 'Failed to export PDF',
+        cancelled: {
+          title: 'Cancelled',
+          message: 'PDF export cancelled',
+        },
+        fileSaved: 'PDF file saved',
+      },
       about: {
         title: 'About',
       },
@@ -304,6 +357,32 @@ export default {
         },
         exportError: 'ファイルのエクスポートに失敗しました',
       },
+      exportPdf: {
+        emptyContent: {
+          title: 'お知らせ',
+          message: 'エディタのコンテンツが空のため、PDFエクスポートできません',
+        },
+        converting: {
+          title: 'お知らせ',
+          message: '変換中、少々お待ちください...',
+        },
+        processingImages: {
+          title: '画像を処理中',
+          message: '{count}枚の画像を処理中です。お待ちください...',
+        },
+        imageProgress: {
+          message: '画像を処理中 ({current}/{total})...',
+        },
+        success: {
+          title: 'PDFエクスポート成功',
+        },
+        exportError: 'PDFエクスポートに失敗しました',
+        cancelled: {
+          title: 'キャンセル済み',
+          message: 'PDFエクスポートがキャンセルされました',
+        },
+        fileSaved: 'PDFファイルを保存しました',
+      },
       about: {
         title: 'について',
       },
@@ -407,6 +486,32 @@ export default {
           title: '파일을 내보냈습니다',
         },
         exportError: '파일 내보내기에 실패했습니다',
+      },
+      exportPdf: {
+        emptyContent: {
+          title: '알림',
+          message: '편집기 콘텐츠가 비어 있어 PDF 내보낼 수 없습니다',
+        },
+        converting: {
+          title: '알림',
+          message: '변환 중입니다, 잠시만 기다려주세요...',
+        },
+        processingImages: {
+          title: '이미지 처리 중',
+          message: '{count}개의 이미지를 처리 중입니다. 잠시만 기다려주세요...',
+        },
+        imageProgress: {
+          message: '이미지 처리 중 ({current}/{total})...',
+        },
+        success: {
+          title: 'PDF 내보내기 성공',
+        },
+        exportError: 'PDF 내보내기에 실패했습니다',
+        cancelled: {
+          title: '취소됨',
+          message: 'PDF 내보내기가 취소되었습니다',
+        },
+        fileSaved: 'PDF 파일이 저장되었습니다',
       },
       about: {
         title: '정보',
