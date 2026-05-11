@@ -120,8 +120,8 @@ export async function exportPdf(vditor, i18nConfig) {
     console.error('[ERROR] PDF导出失败:', error)
     ElNotification.closeAll()
     ElNotification.error({
-      title: i18nConfig.exportError.title,
-      message: error.message || i18nConfig.exportError.message,
+      title: i18nConfig.exportError?.title || 'PDF导出失败',
+      message: error.message || i18nConfig.exportError?.message || error.toString(),
       duration: 3000
     })
     return false
@@ -223,8 +223,13 @@ async function convertImagesToBase64(html, onProgress = null) {
   // 过滤出需要处理的图片
   const imagesToProcess = images.filter(img => {
     const src = img.getAttribute('src')
-    if (!src || src.startsWith('data:') || src.startsWith('./') || src.startsWith('../') || !src.includes('/')) {
-      console.log('[PDF ImageConvert] 跳过图片:', src)
+    if (!src || src.startsWith('data:')) {
+      console.log('[PDF ImageConvert] 跳过空或 base64 图片:', src)
+      return false
+    }
+    // 只跳过不包含任何路径分隔符的纯文件名（可能是 base64 或无效路径）
+    if (!src.includes('/')) {
+      console.log('[PDF ImageConvert] 跳过无路径的图片:', src)
       return false
     }
     console.log('[PDF ImageConvert] 将处理图片:', src)
@@ -262,6 +267,13 @@ async function convertImagesToBase64(html, onProgress = null) {
           img.setAttribute('src', base64)
           successCount++
           console.log('[PDF ImageConvert] 本地图片转换成功')
+        } else if (src.startsWith('./') || src.startsWith('../')) {
+          // 处理相对路径图片
+          console.log('[PDF ImageConvert] 处理相对路径图片:', src)
+          const base64 = await readRelativePathImageToBase64(src)
+          img.setAttribute('src', base64)
+          successCount++
+          console.log('[PDF ImageConvert] 相对路径图片转换成功')
         } else if (src.startsWith('http://') || src.startsWith('https://')) {
           console.log('[PDF ImageConvert] 远程图片，使用 HTTP 插件获取')
           try {
@@ -350,6 +362,40 @@ async function readLocalImageToBase64(tmdUrl) {
   const ext = getImageExtension(cleanRelativePath)
   const mimeType = getImageMimeType(ext)
   
+  return `data:${mimeType};base64,${base64}`
+}
+
+/**
+ * 读取相对路径图片并转换为 base64
+ * @param {string} relativePath - 相对路径（./ 或 ../ 开头）
+ * @returns {Promise<string>} base64 字符串
+ */
+async function readRelativePathImageToBase64(relativePath) {
+  console.log('[PDF readRelativePathImageToBase64] relativePath:', relativePath)
+
+  const lastPath = await getLastFilePath()
+  if (!lastPath) {
+    throw new Error('未打开文件，无法解析相对路径')
+  }
+
+  let baseDir = '.'
+  if (typeof lastPath === 'string') {
+    const posixLastPath = lastPath.split(String.fromCharCode(92)).join('/')
+    baseDir = await dirname(posixLastPath)
+  } else if (lastPath && typeof lastPath === 'object' && lastPath.path) {
+    const posixPath = lastPath.path.split(String.fromCharCode(92)).join('/')
+    baseDir = await dirname(posixPath)
+  }
+
+  // 拼接完整路径
+  const fullPath = await join(baseDir, relativePath)
+  console.log('[PDF readRelativePathImageToBase64] fullPath:', fullPath)
+
+  const binaryData = await readFile(fullPath)
+  const base64 = arrayBufferToBase64(binaryData)
+  const ext = getImageExtension(relativePath)
+  const mimeType = getImageMimeType(ext)
+
   return `data:${mimeType};base64,${base64}`
 }
 

@@ -12,6 +12,7 @@ export default {
       open: '打开',
       save: '保存',
       export: '导出',
+      exportPdf: '导出PDF',
       exportHtml: '导出HTML',
       help: '帮助',
       viewLog: '查看日志',
@@ -94,7 +95,10 @@ export default {
         success: {
           title: '文件导出成功',
         },
-        exportError: '文件导出失败',
+        exportError: {
+          title: '导出失败',
+          message: '文件导出失败',
+        },
       },
       // 导出HTML
       exportHtml: {
@@ -116,7 +120,10 @@ export default {
         success: {
           title: 'HTML导出成功',
         },
-        exportError: 'HTML导出失败',
+        exportError: {
+          title: 'HTML导出失败',
+          message: 'HTML导出失败',
+        },
         cancelled: {
           title: '已取消',
           message: 'HTML导出已取消',
@@ -143,7 +150,10 @@ export default {
         success: {
           title: 'PDF导出成功',
         },
-        exportError: 'PDF导出失败',
+        exportError: {
+          title: 'PDF导出失败',
+          message: 'PDF导出失败',
+        },
         cancelled: {
           title: '已取消',
           message: 'PDF导出已取消',
@@ -178,6 +188,7 @@ export default {
       open: 'Open',
       save: 'Save',
       export: 'Export',
+      exportPdf: 'Export PDF',
       exportHtml: 'Export HTML',
       help: 'Help',
       viewLog: 'View Log',
@@ -254,7 +265,10 @@ export default {
         success: {
           title: 'File Exported Successfully',
         },
-        exportError: 'Failed to export file',
+        exportError: {
+          title: 'Export Failed',
+          message: 'Failed to export file',
+        },
       },
       exportPdf: {
         emptyContent: {
@@ -275,7 +289,10 @@ export default {
         success: {
           title: 'PDF Exported Successfully',
         },
-        exportError: 'Failed to export PDF',
+        exportError: {
+          title: 'PDF Export Failed',
+          message: 'Failed to export PDF',
+        },
         cancelled: {
           title: 'Cancelled',
           message: 'PDF export cancelled',
@@ -305,7 +322,10 @@ export default {
         success: {
           title: 'HTML Exported Successfully',
         },
-        exportError: 'Failed to export HTML',
+        exportError: {
+          title: 'HTML Export Failed',
+          message: 'Failed to export HTML',
+        },
         cancelled: {
           title: 'Cancelled',
           message: 'HTML export cancelled',
@@ -336,6 +356,7 @@ export default {
       open: '開く',
       save: '保存',
       export: 'エクスポート',
+      exportPdf: 'PDFでエクスポート',
       exportHtml: 'HTMLでエクスポート',
       help: 'ヘルプ',
       viewLog: 'ログを表示',
@@ -412,7 +433,10 @@ export default {
         success: {
           title: 'ファイルをエクスポートしました',
         },
-        exportError: 'ファイルのエクスポートに失敗しました',
+        exportError: {
+          title: 'エクスポート失敗',
+          message: 'ファイルのエクスポートに失敗しました',
+        },
       },
       exportPdf: {
         emptyContent: {
@@ -433,7 +457,10 @@ export default {
         success: {
           title: 'PDFエクスポート成功',
         },
-        exportError: 'PDFエクスポートに失敗しました',
+        exportError: {
+          title: 'PDFエクスポート失敗',
+          message: 'PDFエクスポートに失敗しました',
+        },
         cancelled: {
           title: 'キャンセル済み',
           message: 'PDFエクスポートがキャンセルされました',
@@ -463,7 +490,10 @@ export default {
         success: {
           title: 'HTMLエクスポート成功',
         },
-        exportError: 'HTMLエクスポートに失敗しました',
+        exportError: {
+          title: 'HTMLエクスポート失敗',
+          message: 'HTMLエクスポートに失敗しました',
+        },
         cancelled: {
           title: 'キャンセル済み',
           message: 'HTMLエクスポートがキャンセルされました',
@@ -494,6 +524,7 @@ export default {
       open: '열기',
       save: '저장',
       export: '내보내기',
+      exportPdf: 'PDF로 내보내기',
       exportHtml: 'HTML로 내보내기',
       help: '도움말',
       viewLog: '로그 보기',
@@ -570,7 +601,10 @@ export default {
         success: {
           title: '파일을 내보냈습니다',
         },
-        exportError: '파일 내보내기에 실패했습니다',
+        exportError: {
+          title: '내보내기 실패',
+          message: '파일 내보내기에 실패했습니다',
+        },
       },
       exportPdf: {
         emptyContent: {
@@ -591,7 +625,10 @@ export default {
         success: {
           title: 'PDF 내보내기 성공',
         },
-        exportError: 'PDF 내보내기에 실패했습니다',
+        exportError: {
+          title: 'PDF 내보내기 실패',
+          message: 'PDF 내보내기에 실패했습니다',
+        },
         cancelled: {
           title: '취소됨',
           message: 'PDF 내보내기가 취소되었습니다',
@@ -621,7 +658,10 @@ export default {
         success: {
           title: 'HTML 내보내기 성공',
         },
-        exportError: 'HTML 내보내기에 실패했습니다',
+        exportError: {
+          title: 'HTML 내보내기 실패',
+          message: 'HTML 내보내기에 실패했습니다',
+        },
         cancelled: {
           title: '취소됨',
           message: 'HTML 내보내기가 취소되었습니다',

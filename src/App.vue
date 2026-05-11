@@ -28,7 +28,7 @@
                 <span class="shortcut">{{ menuShortcuts.export }}</span>
               </el-dropdown-item>
               <el-dropdown-item divided command="export-pdf">
-                <span>{{ menuI18n.exportPdf?.title || '导出PDF' }}</span>
+                <span>{{ menuI18n.exportPdf }}</span>
               </el-dropdown-item>
               <el-dropdown-item command="export-html">
                 <span>{{ menuI18n.exportHtml }}</span>
