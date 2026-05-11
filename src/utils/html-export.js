@@ -4,11 +4,17 @@
  */
 
 import { save } from '@tauri-apps/plugin-dialog'
-import { writeFile, readFile } from '@tauri-apps/plugin-fs'
-import { getLastFilePath } from './store.js'
-import imagePathMapper from './image-path-mapper.js'
-import { dirname, join } from '@tauri-apps/api/path'
+import { writeFile } from '@tauri-apps/plugin-fs'
 import { ElNotification } from 'element-plus'
+import {
+  detectImageType,
+  blobToBase64,
+  arrayBufferToBase64,
+  getImageExtension,
+  getImageMimeType,
+  readLocalImageToBase64,
+  readRelativePathImageToBase64
+} from './export-common.js'
 
 /**
  * 导出 Markdown 为独立 HTML 文件
@@ -241,74 +247,6 @@ async function convertImagesToBase64(html, onProgress = null) {
 }
 
 /**
- * 通过 Tauri API 读取本地图片并转换为 base64
- * @param {string} tmdUrl - tmd URL
- * @returns {Promise<string>} base64 字符串
- */
-async function readLocalImageToBase64(tmdUrl) {
-  console.log('[HTML readLocalImageToBase64] tmdUrl:', tmdUrl)
-
-  const relativePath = imagePathMapper.getRelativePath(tmdUrl)
-  if (!relativePath) {
-    throw new Error(`未找到图片映射: ${tmdUrl}`)
-  }
-
-  const cleanRelativePath = relativePath.replace(/^\.\//, '')
-  const lastPath = await getLastFilePath()
-
-  let baseDir = '.'
-  if (typeof lastPath === 'string') {
-    const posixLastPath = lastPath.split(String.fromCharCode(92)).join('/')
-    baseDir = await dirname(posixLastPath)
-  } else if (lastPath && typeof lastPath === 'object' && lastPath.path) {
-    const posixPath = lastPath.path.split(String.fromCharCode(92)).join('/')
-    baseDir = await dirname(posixPath)
-  }
-
-  const fullPath = await join(baseDir, cleanRelativePath)
-  const binaryData = await readFile(fullPath)
-  const base64 = arrayBufferToBase64(binaryData)
-  const ext = getImageExtension(cleanRelativePath)
-  const mimeType = getImageMimeType(ext)
-
-  return `data:${mimeType};base64,${base64}`
-}
-
-/**
- * 读取相对路径图片并转换为 base64
- * @param {string} relativePath - 相对路径（./ 或 ../ 开头）
- * @returns {Promise<string>} base64 字符串
- */
-async function readRelativePathImageToBase64(relativePath) {
-  console.log('[HTML readRelativePathImageToBase64] relativePath:', relativePath)
-
-  const lastPath = await getLastFilePath()
-  if (!lastPath) {
-    throw new Error('未打开文件，无法解析相对路径')
-  }
-
-  let baseDir = '.'
-  if (typeof lastPath === 'string') {
-    const posixLastPath = lastPath.split(String.fromCharCode(92)).join('/')
-    baseDir = await dirname(posixLastPath)
-  } else if (lastPath && typeof lastPath === 'object' && lastPath.path) {
-    const posixPath = lastPath.path.split(String.fromCharCode(92)).join('/')
-    baseDir = await dirname(posixPath)
-  }
-
-  // 拼接完整路径
-  const fullPath = await join(baseDir, relativePath)
-  console.log('[HTML readRelativePathImageToBase64] fullPath:', fullPath)
-
-  const binaryData = await readFile(fullPath)
-  const base64 = arrayBufferToBase64(binaryData)
-  const ext = getImageExtension(relativePath)
-  const mimeType = getImageMimeType(ext)
-
-  return `data:${mimeType};base64,${base64}`
-}
-
-/**
  * 构建完整的 HTML 文档
  * @param {string} bodyContent - body 内容
  * @returns {string} 完整 HTML
@@ -497,48 +435,3 @@ async function saveHtmlFile(htmlContent, i18nConfig) {
     })
   }
 }
-
-// ── 工具函数 ──────────────────────────────────────────
-
-function detectImageType(bytes) {
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return 'image/png'
-  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return 'image/jpeg'
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return 'image/gif'
-  if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return 'image/webp'
-  return 'image/png'
-}
-
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
-function arrayBufferToBase64(buffer) {
-  if (buffer instanceof Uint8Array) {
-    let binary = ''
-    for (let i = 0; i < buffer.length; i++) {
-      binary += String.fromCharCode(buffer[i])
-    }
-    return btoa(binary)
-  }
-  return ''
-}
-
-function getImageExtension(path) {
-  const match = path.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg|ico|avif)$/i)
-  return match ? match[1].toLowerCase() : 'png'
-}
-
-function getImageMimeType(ext) {
-  const mimeMap = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp',
-    svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif'
-  }
-  return mimeMap[ext] || 'image/png'
-}
-
