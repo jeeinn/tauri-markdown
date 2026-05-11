@@ -12,6 +12,8 @@ export default {
       open: '打开',
       save: '保存',
       export: '导出',
+      exportPdf: '导出PDF',
+      exportHtml: '导出HTML',
       help: '帮助',
       viewLog: '查看日志',
       about: '关于',
@@ -93,7 +95,40 @@ export default {
         success: {
           title: '文件导出成功',
         },
-        exportError: '文件导出失败',
+        exportError: {
+          title: '导出失败',
+          message: '文件导出失败',
+        },
+      },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: '提示',
+          message: '编辑器内容为空，无法导出HTML',
+        },
+        converting: {
+          title: '提示',
+          message: '正在生成 HTML 文件，请稍候...',
+        },
+        processingImages: {
+          title: '处理图片',
+          message: '正在处理 {count} 张图片，请稍候...',
+        },
+        imageProgress: {
+          message: '正在处理图片 ({current}/{total})...',
+        },
+        success: {
+          title: 'HTML导出成功',
+        },
+        exportError: {
+          title: 'HTML导出失败',
+          message: 'HTML导出失败',
+        },
+        cancelled: {
+          title: '已取消',
+          message: 'HTML导出已取消',
+        },
+        fileSaved: 'HTML文件已保存',
       },
       // 导出PDF
       exportPdf: {
@@ -115,7 +150,10 @@ export default {
         success: {
           title: 'PDF导出成功',
         },
-        exportError: 'PDF导出失败',
+        exportError: {
+          title: 'PDF导出失败',
+          message: 'PDF导出失败',
+        },
         cancelled: {
           title: '已取消',
           message: 'PDF导出已取消',
@@ -150,6 +188,8 @@ export default {
       open: 'Open',
       save: 'Save',
       export: 'Export',
+      exportPdf: 'Export PDF',
+      exportHtml: 'Export HTML',
       help: 'Help',
       viewLog: 'View Log',
       about: 'About',
@@ -225,7 +265,10 @@ export default {
         success: {
           title: 'File Exported Successfully',
         },
-        exportError: 'Failed to export file',
+        exportError: {
+          title: 'Export Failed',
+          message: 'Failed to export file',
+        },
       },
       exportPdf: {
         emptyContent: {
@@ -246,7 +289,10 @@ export default {
         success: {
           title: 'PDF Exported Successfully',
         },
-        exportError: 'Failed to export PDF',
+        exportError: {
+          title: 'PDF Export Failed',
+          message: 'Failed to export PDF',
+        },
         cancelled: {
           title: 'Cancelled',
           message: 'PDF export cancelled',
@@ -255,6 +301,36 @@ export default {
       },
       about: {
         title: 'About',
+      },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: 'Notice',
+          message: 'Editor content is empty, cannot export HTML',
+        },
+        converting: {
+          title: 'Notice',
+          message: 'Generating HTML file, please wait...',
+        },
+        processingImages: {
+          title: 'Processing Images',
+          message: 'Processing {count} images, please wait...',
+        },
+        imageProgress: {
+          message: 'Processing images ({current}/{total})...',
+        },
+        success: {
+          title: 'HTML Exported Successfully',
+        },
+        exportError: {
+          title: 'HTML Export Failed',
+          message: 'Failed to export HTML',
+        },
+        cancelled: {
+          title: 'Cancelled',
+          message: 'HTML export cancelled',
+        },
+        fileSaved: 'HTML file saved',
       },
       uploadSuccess: {
         title: 'Upload Successful',
@@ -280,6 +356,8 @@ export default {
       open: '開く',
       save: '保存',
       export: 'エクスポート',
+      exportPdf: 'PDFでエクスポート',
+      exportHtml: 'HTMLでエクスポート',
       help: 'ヘルプ',
       viewLog: 'ログを表示',
       about: 'について',
@@ -355,7 +433,10 @@ export default {
         success: {
           title: 'ファイルをエクスポートしました',
         },
-        exportError: 'ファイルのエクスポートに失敗しました',
+        exportError: {
+          title: 'エクスポート失敗',
+          message: 'ファイルのエクスポートに失敗しました',
+        },
       },
       exportPdf: {
         emptyContent: {
@@ -376,7 +457,10 @@ export default {
         success: {
           title: 'PDFエクスポート成功',
         },
-        exportError: 'PDFエクスポートに失敗しました',
+        exportError: {
+          title: 'PDFエクスポート失敗',
+          message: 'PDFエクスポートに失敗しました',
+        },
         cancelled: {
           title: 'キャンセル済み',
           message: 'PDFエクスポートがキャンセルされました',
@@ -385,6 +469,36 @@ export default {
       },
       about: {
         title: 'について',
+      },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: 'お知らせ',
+          message: 'エディタのコンテンツが空のため、HTMLエクスポートできません',
+        },
+        converting: {
+          title: 'お知らせ',
+          message: 'HTMLファイルを生成中、少々お待ちください...',
+        },
+        processingImages: {
+          title: '画像を処理中',
+          message: '{count}枚の画像を処理中です。お待ちください...',
+        },
+        imageProgress: {
+          message: '画像を処理中 ({current}/{total})...',
+        },
+        success: {
+          title: 'HTMLエクスポート成功',
+        },
+        exportError: {
+          title: 'HTMLエクスポート失敗',
+          message: 'HTMLエクスポートに失敗しました',
+        },
+        cancelled: {
+          title: 'キャンセル済み',
+          message: 'HTMLエクスポートがキャンセルされました',
+        },
+        fileSaved: 'HTMLファイルを保存しました',
       },
       uploadSuccess: {
         title: 'アップロード成功',
@@ -410,6 +524,8 @@ export default {
       open: '열기',
       save: '저장',
       export: '내보내기',
+      exportPdf: 'PDF로 내보내기',
+      exportHtml: 'HTML로 내보내기',
       help: '도움말',
       viewLog: '로그 보기',
       about: '정보',
@@ -485,7 +601,10 @@ export default {
         success: {
           title: '파일을 내보냈습니다',
         },
-        exportError: '파일 내보내기에 실패했습니다',
+        exportError: {
+          title: '내보내기 실패',
+          message: '파일 내보내기에 실패했습니다',
+        },
       },
       exportPdf: {
         emptyContent: {
@@ -506,7 +625,10 @@ export default {
         success: {
           title: 'PDF 내보내기 성공',
         },
-        exportError: 'PDF 내보내기에 실패했습니다',
+        exportError: {
+          title: 'PDF 내보내기 실패',
+          message: 'PDF 내보내기에 실패했습니다',
+        },
         cancelled: {
           title: '취소됨',
           message: 'PDF 내보내기가 취소되었습니다',
@@ -515,6 +637,36 @@ export default {
       },
       about: {
         title: '정보',
+      },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: '알림',
+          message: '편집기 콘텐츠가 비어 있어 HTML 내보낼 수 없습니다',
+        },
+        converting: {
+          title: '알림',
+          message: 'HTML 파일 생성 중입니다, 잠시만 기다려주세요...',
+        },
+        processingImages: {
+          title: '이미지 처리 중',
+          message: '{count}개의 이미지를 처리 중입니다. 잠시만 기다려주세요...',
+        },
+        imageProgress: {
+          message: '이미지 처리 중 ({current}/{total})...',
+        },
+        success: {
+          title: 'HTML 내보내기 성공',
+        },
+        exportError: {
+          title: 'HTML 내보내기 실패',
+          message: 'HTML 내보내기에 실패했습니다',
+        },
+        cancelled: {
+          title: '취소됨',
+          message: 'HTML 내보내기가 취소되었습니다',
+        },
+        fileSaved: 'HTML 파일이 저장되었습니다',
       },
       uploadSuccess: {
         title: '업로드 성공',

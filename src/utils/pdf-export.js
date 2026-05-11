@@ -4,11 +4,17 @@
  */
 
 import { save } from '@tauri-apps/plugin-dialog'
-import { writeFile, readFile } from '@tauri-apps/plugin-fs'
-import { getLastFilePath } from './store.js'
-import imagePathMapper from './image-path-mapper.js'
-import { dirname, join } from '@tauri-apps/api/path'
+import { writeFile } from '@tauri-apps/plugin-fs'
 import { ElNotification } from 'element-plus'
+import {
+  detectImageType,
+  blobToBase64,
+  arrayBufferToBase64,
+  getImageExtension,
+  getImageMimeType,
+  readLocalImageToBase64,
+  readRelativePathImageToBase64
+} from './export-common.js'
 
 /**
  * 导出 Markdown 为 PDF
@@ -120,8 +126,8 @@ export async function exportPdf(vditor, i18nConfig) {
     console.error('[ERROR] PDF导出失败:', error)
     ElNotification.closeAll()
     ElNotification.error({
-      title: i18nConfig.exportError.title,
-      message: error.message || i18nConfig.exportError.message,
+      title: i18nConfig.exportError?.title || 'PDF导出失败',
+      message: error.message || i18nConfig.exportError?.message || error.toString(),
       duration: 3000
     })
     return false
@@ -223,8 +229,13 @@ async function convertImagesToBase64(html, onProgress = null) {
   // 过滤出需要处理的图片
   const imagesToProcess = images.filter(img => {
     const src = img.getAttribute('src')
-    if (!src || src.startsWith('data:') || src.startsWith('./') || src.startsWith('../') || !src.includes('/')) {
-      console.log('[PDF ImageConvert] 跳过图片:', src)
+    if (!src || src.startsWith('data:')) {
+      console.log('[PDF ImageConvert] 跳过空或 base64 图片:', src)
+      return false
+    }
+    // 只跳过不包含任何路径分隔符的纯文件名（可能是 base64 或无效路径）
+    if (!src.includes('/')) {
+      console.log('[PDF ImageConvert] 跳过无路径的图片:', src)
       return false
     }
     console.log('[PDF ImageConvert] 将处理图片:', src)
@@ -262,6 +273,13 @@ async function convertImagesToBase64(html, onProgress = null) {
           img.setAttribute('src', base64)
           successCount++
           console.log('[PDF ImageConvert] 本地图片转换成功')
+        } else if (src.startsWith('./') || src.startsWith('../')) {
+          // 处理相对路径图片
+          console.log('[PDF ImageConvert] 处理相对路径图片:', src)
+          const base64 = await readRelativePathImageToBase64(src)
+          img.setAttribute('src', base64)
+          successCount++
+          console.log('[PDF ImageConvert] 相对路径图片转换成功')
         } else if (src.startsWith('http://') || src.startsWith('https://')) {
           console.log('[PDF ImageConvert] 远程图片，使用 HTTP 插件获取')
           try {
@@ -307,50 +325,6 @@ async function convertImagesToBase64(html, onProgress = null) {
   console.log(`[PDF ImageConvert] 图片处理完成：成功 ${successCount} 张，失败 ${failCount} 张`)
   
   return doc.body.innerHTML
-}
-
-/**
- * 通过 Tauri API 读取本地图片并转换为 base64
- * @param {string} tmdUrl - tmd URL
- * @returns {Promise<string>} base64 字符串
- */
-async function readLocalImageToBase64(tmdUrl) {
-  console.log('[readLocalImageToBase64] tmdUrl:', tmdUrl)
-  
-  const relativePath = imagePathMapper.getRelativePath(tmdUrl)
-  console.log('[readLocalImageToBase64] relativePath:', relativePath)
-  if (!relativePath) {
-    throw new Error(`未找到图片映射: ${tmdUrl}`)
-  }
-  
-  const cleanRelativePath = relativePath.replace(/^\.\//, '')
-  console.log('[readLocalImageToBase64] cleanRelativePath:', cleanRelativePath)
-  
-  const lastPath = await getLastFilePath()
-  console.log('[readLocalImageToBase64] lastPath:', lastPath, 'type:', typeof lastPath)
-  
-  let baseDir = '.'
-  if (typeof lastPath === 'string') {
-    const posixLastPath = lastPath.split(String.fromCharCode(92)).join('/')
-    baseDir = await dirname(posixLastPath)
-    console.log('[readLocalImageToBase64] baseDir from dirname:', baseDir, 'type:', typeof baseDir)
-  } else if (lastPath && typeof lastPath === 'object' && lastPath.path) {
-    const posixPath = lastPath.path.split(String.fromCharCode(92)).join('/')
-    baseDir = await dirname(posixPath)
-  }
-  
-  console.log('[readLocalImageToBase64] joining:', baseDir, '+', cleanRelativePath)
-  const fullPath = await join(baseDir, cleanRelativePath)
-  console.log('[readLocalImageToBase64] fullPath:', fullPath)
-  
-  const binaryData = await readFile(fullPath)
-  console.log('[readLocalImageToBase64] read success, length:', binaryData.length)
-  
-  const base64 = arrayBufferToBase64(binaryData)
-  const ext = getImageExtension(cleanRelativePath)
-  const mimeType = getImageMimeType(ext)
-  
-  return `data:${mimeType};base64,${base64}`
 }
 
 /**
@@ -539,91 +513,4 @@ async function savePdfFile(pdfBlob, i18nConfig) {
       duration: 2000
     })
   }
-}
-
-/**
- * 通过 Magic Bytes 检测图片类型
- * @param {Uint8Array} bytes - 图片字节数据
- * @returns {string} MIME 类型
- */
-function detectImageType(bytes) {
-  // PNG: 89 50 4E 47
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
-    return 'image/png'
-  }
-  // JPEG: FF D8 FF
-  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
-    return 'image/jpeg'
-  }
-  // GIF: 47 49 46 38
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
-    return 'image/gif'
-  }
-  // WebP: 52 49 46 46 ... 57 45 42 50
-  if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
-    return 'image/webp'
-  }
-  
-  console.warn('[PDF ImageConvert] 未识别的图片格式，使用默认 PNG')
-  return 'image/png'
-}
-
-/**
- * Blob 转 base64
- * @param {Blob} blob - Blob 对象
- * @returns {Promise<string>} base64 字符串
- */
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
-/**
- * ArrayBuffer 转 base64
- * @param {Uint8Array} buffer - ArrayBuffer
- * @returns {string} base64 字符串
- */
-function arrayBufferToBase64(buffer) {
-  if (buffer instanceof Uint8Array) {
-    let binary = ''
-    for (let i = 0; i < buffer.length; i++) {
-      binary += String.fromCharCode(buffer[i])
-    }
-    return btoa(binary)
-  }
-  return ''
-}
-
-/**
- * 获取图片扩展名
- * @param {string} path - 文件路径
- * @returns {string} 扩展名
- */
-function getImageExtension(path) {
-  const match = path.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg|ico|avif)$/i)
-  return match ? match[1].toLowerCase() : 'png'
-}
-
-/**
- * 根据扩展名获取 MIME 类型
- * @param {string} ext - 扩展名
- * @returns {string} MIME 类型
- */
-function getImageMimeType(ext) {
-  const mimeMap = {
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    gif: 'image/gif',
-    webp: 'image/webp',
-    bmp: 'image/bmp',
-    svg: 'image/svg+xml',
-    ico: 'image/x-icon',
-    avif: 'image/avif'
-  }
-  return mimeMap[ext] || 'image/png'
 }
