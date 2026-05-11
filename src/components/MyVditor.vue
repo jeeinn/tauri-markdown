@@ -607,9 +607,10 @@ export default {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6;
       color: #333;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 20px;
+      max-width: 680px;  /* 与 container 宽度保持一致 */
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;  /* 防止内容横向溢出 */
     }
     h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
     h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
@@ -620,7 +621,7 @@ export default {
     table { border-collapse: collapse; width: 100%; margin: 16px 0; }
     th, td { border: 1px solid #ddd; padding: 8px 12px; }
     th { background: #f6f8fa; }
-    img { max-width: 100%; }
+    img { max-width: 100%; max-height: none; height: auto; page-break-inside: avoid; break-inside: avoid; display: block; }
     hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
   </style>
 </head>
@@ -633,14 +634,58 @@ export default {
         console.log('[PDF Export] 加载 html2pdf.js...')
         const { default: html2pdf } = await import('html2pdf.js')
         
-        // 创建一个临时的容器来渲染 HTML
-        const container = document.createElement('div')
-        container.innerHTML = processedHtml
-        document.body.appendChild(container)
+        // 创建一个临时的 iframe 来渲染 HTML（包含完整样式）
+        // 使用 iframe 可以确保样式正确应用，且不会影响主文档
+        const iframe = document.createElement('iframe')
+        iframe.style.position = 'absolute'
+        iframe.style.left = '-9999px'
+        iframe.style.top = '0'
+        iframe.style.width = '680px'  // A4 内容区宽度
+        iframe.style.border = 'none'
+        iframe.style.visibility = 'hidden'
+        document.body.appendChild(iframe)
+        
+        // 写入完整 HTML（包含样式）
+        const doc = iframe.contentDocument || iframe.contentWindow.document
+        doc.open()
+        doc.write(fullHtml)
+        doc.close()
+        
+        console.log('[PDF Export] 使用 iframe 渲染完整 HTML（含样式）')
+        
+        // 等待 iframe 内容加载完成
+        await new Promise((resolve) => {
+          iframe.onload = resolve
+          // 如果已经加载完成
+          if (iframe.contentDocument.readyState === 'complete') {
+            resolve()
+          }
+        })
+        
+        // 获取 iframe 中的 body 作为渲染容器
+        const container = iframe.contentDocument.body
+        container.style.width = '680px'  // 确保宽度正确
+        
+        console.log('[PDF Export] 容器宽度:', container.offsetWidth, 'px')
+        console.log('[PDF Export] 图片数量:', container.querySelectorAll('img').length)
         
         // 等待所有图片加载完成（base64 图片也需要等待）
         console.log('[PDF Export] 等待图片加载...')
         const images = container.querySelectorAll('img')
+        
+        // 处理宽图片：手动缩小到容器宽度
+        console.log('[PDF Export] 开始处理图片缩放...')
+        images.forEach((img, index) => {
+          // 检查图片是否超出容器宽度
+          if (img.naturalWidth > 680) {
+            const ratio = 680 / img.naturalWidth
+            const scaledHeight = Math.round(img.naturalHeight * ratio)
+            img.style.width = '680px'
+            img.style.height = scaledHeight + 'px'
+            console.log(`[PDF Export] 缩放图片 [${index}]: ${img.naturalWidth}x${img.naturalHeight} -> 680x${scaledHeight}`)
+          }
+        })
+        
         const imagePromises = Array.from(images).map(img => {
           return new Promise((resolve) => {
             if (img.complete) {
@@ -670,15 +715,21 @@ export default {
           filename: 'markdown-export.pdf',
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, useCORS: false }, // base64 图片不需要 CORS
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: {
+            mode: ['css', 'avoid-all'],  // 使用 CSS 分页规则 + 避免所有元素被截断
+            avoid: 'img'  // 避免图片被分页截断
+          }
         }
         
         console.log('[PDF Export] 生成 PDF...')
         // 生成 PDF 为 blob
         const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob')
         
-        // 清理临时元素
-        document.body.removeChild(container)
+        // 清理临时 iframe
+        document.body.removeChild(iframe)
+        
+        console.log('[PDF Export] 临时元素已清理')
         
         // 使用 Tauri save 对话框选择保存位置
         const { save } = await import('@tauri-apps/plugin-dialog')
