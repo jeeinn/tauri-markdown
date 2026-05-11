@@ -12,6 +12,7 @@ export default {
       open: '打开',
       save: '保存',
       export: '导出',
+      exportHtml: '导出HTML',
       help: '帮助',
       viewLog: '查看日志',
       about: '关于',
@@ -95,6 +96,33 @@ export default {
         },
         exportError: '文件导出失败',
       },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: '提示',
+          message: '编辑器内容为空，无法导出HTML',
+        },
+        converting: {
+          title: '提示',
+          message: '正在生成 HTML 文件，请稍候...',
+        },
+        processingImages: {
+          title: '处理图片',
+          message: '正在处理 {count} 张图片，请稍候...',
+        },
+        imageProgress: {
+          message: '正在处理图片 ({current}/{total})...',
+        },
+        success: {
+          title: 'HTML导出成功',
+        },
+        exportError: 'HTML导出失败',
+        cancelled: {
+          title: '已取消',
+          message: 'HTML导出已取消',
+        },
+        fileSaved: 'HTML文件已保存',
+      },
       // 导出PDF
       exportPdf: {
         emptyContent: {
@@ -150,6 +178,7 @@ export default {
       open: 'Open',
       save: 'Save',
       export: 'Export',
+      exportHtml: 'Export HTML',
       help: 'Help',
       viewLog: 'View Log',
       about: 'About',
@@ -256,6 +285,33 @@ export default {
       about: {
         title: 'About',
       },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: 'Notice',
+          message: 'Editor content is empty, cannot export HTML',
+        },
+        converting: {
+          title: 'Notice',
+          message: 'Generating HTML file, please wait...',
+        },
+        processingImages: {
+          title: 'Processing Images',
+          message: 'Processing {count} images, please wait...',
+        },
+        imageProgress: {
+          message: 'Processing images ({current}/{total})...',
+        },
+        success: {
+          title: 'HTML Exported Successfully',
+        },
+        exportError: 'Failed to export HTML',
+        cancelled: {
+          title: 'Cancelled',
+          message: 'HTML export cancelled',
+        },
+        fileSaved: 'HTML file saved',
+      },
       uploadSuccess: {
         title: 'Upload Successful',
         message: '{count} file(s) uploaded successfully',
@@ -280,6 +336,7 @@ export default {
       open: '開く',
       save: '保存',
       export: 'エクスポート',
+      exportHtml: 'HTMLでエクスポート',
       help: 'ヘルプ',
       viewLog: 'ログを表示',
       about: 'について',
@@ -386,6 +443,33 @@ export default {
       about: {
         title: 'について',
       },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: 'お知らせ',
+          message: 'エディタのコンテンツが空のため、HTMLエクスポートできません',
+        },
+        converting: {
+          title: 'お知らせ',
+          message: 'HTMLファイルを生成中、少々お待ちください...',
+        },
+        processingImages: {
+          title: '画像を処理中',
+          message: '{count}枚の画像を処理中です。お待ちください...',
+        },
+        imageProgress: {
+          message: '画像を処理中 ({current}/{total})...',
+        },
+        success: {
+          title: 'HTMLエクスポート成功',
+        },
+        exportError: 'HTMLエクスポートに失敗しました',
+        cancelled: {
+          title: 'キャンセル済み',
+          message: 'HTMLエクスポートがキャンセルされました',
+        },
+        fileSaved: 'HTMLファイルを保存しました',
+      },
       uploadSuccess: {
         title: 'アップロード成功',
         message: '{count} ファイルを正常にアップロードしました',
@@ -410,6 +494,7 @@ export default {
       open: '열기',
       save: '저장',
       export: '내보내기',
+      exportHtml: 'HTML로 내보내기',
       help: '도움말',
       viewLog: '로그 보기',
       about: '정보',
@@ -515,6 +600,33 @@ export default {
       },
       about: {
         title: '정보',
+      },
+      // 导出HTML
+      exportHtml: {
+        emptyContent: {
+          title: '알림',
+          message: '편집기 콘텐츠가 비어 있어 HTML 내보낼 수 없습니다',
+        },
+        converting: {
+          title: '알림',
+          message: 'HTML 파일 생성 중입니다, 잠시만 기다려주세요...',
+        },
+        processingImages: {
+          title: '이미지 처리 중',
+          message: '{count}개의 이미지를 처리 중입니다. 잠시만 기다려주세요...',
+        },
+        imageProgress: {
+          message: '이미지 처리 중 ({current}/{total})...',
+        },
+        success: {
+          title: 'HTML 내보내기 성공',
+        },
+        exportError: 'HTML 내보내기에 실패했습니다',
+        cancelled: {
+          title: '취소됨',
+          message: 'HTML 내보내기가 취소되었습니다',
+        },
+        fileSaved: 'HTML 파일이 저장되었습니다',
       },
       uploadSuccess: {
         title: '업로드 성공',

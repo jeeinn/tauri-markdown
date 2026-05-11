@@ -30,6 +30,9 @@
               <el-dropdown-item divided command="export-pdf">
                 <span>{{ menuI18n.exportPdf?.title || '导出PDF' }}</span>
               </el-dropdown-item>
+              <el-dropdown-item command="export-html">
+                <span>{{ menuI18n.exportHtml }}</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -191,6 +194,9 @@ export default {
           break;
         case 'export-pdf':
           this.$refs.vditor?.exportPdf();
+          break;
+        case 'export-html':
+          this.$refs.vditor?.exportHtml();
           break;
       }
     },
