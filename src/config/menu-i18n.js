@@ -37,6 +37,11 @@ export default {
       light: '浅色',
       dark: '深色',
     },
+    dragDrop: {
+      hint: '释放以打开 Markdown 文件',
+      title: '不支持的格式',
+      unsupported: '暂不支持拖拽其他格式的文件',
+    },
     notifications: {
       // 新建文件
       newFile: {
@@ -213,6 +218,11 @@ export default {
       light: 'Light',
       dark: 'Dark',
     },
+    dragDrop: {
+      hint: 'Drop to open Markdown file',
+      title: 'Unsupported Format',
+      unsupported: 'Only Markdown (.md) files are supported',
+    },
     notifications: {
       newFile: {
         unsavedChanges: {
@@ -381,6 +391,11 @@ export default {
       light: 'ライト',
       dark: 'ダーク',
     },
+    dragDrop: {
+      hint: 'ドロップしてMarkdownファイルを開く',
+      title: 'サポート外の形式',
+      unsupported: 'Markdownファイル以外はドラッグ&ドロップに対応していません',
+    },
     notifications: {
       newFile: {
         unsavedChanges: {
@@ -548,6 +563,11 @@ export default {
       auto: '시스템 따르기',
       light: '라이트',
       dark: '다크',
+    },
+    dragDrop: {
+      hint: '드롭하여 Markdown 파일 열기',
+      title: '지원되지 않는 형식',
+      unsupported: 'Markdown 파일만 드래그 앤 드롭이 가능합니다',
     },
     notifications: {
       newFile: {

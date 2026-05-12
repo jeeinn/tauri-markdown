@@ -1,5 +1,18 @@
 <template>
-  <div id="vditorEle" class="vditor"></div>
+  <div class="vditor-container">
+    <div id="vditorEle" class="vditor"></div>
+    <!-- 拖拽文件高亮遮罩层 -->
+    <div v-if="showDropOverlay" class="drop-overlay">
+      <div class="drop-overlay-content">
+        <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="drop-text">{{ dropHintText }}</p>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script async>
@@ -14,6 +27,7 @@ import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join } from '@tauri-apps/api/path'
@@ -35,6 +49,8 @@ export default {
       isContentModified: false, // 内容是否被修改
       originalContent: '', // 原始文件内容，用于对比
       isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
+      showDropOverlay: false, // 是否显示拖拽文件高亮遮罩
+      _unlistenDragDrop: null, // 拖拽事件取消监听函数
     };
   },
   computed: {
@@ -45,6 +61,11 @@ export default {
     // 获取当前语言的窗口标题配置
     wt() {
       return menuI18nConfig[this.lang]?.windowTitle || menuI18nConfig.zh_CN.windowTitle;
+    },
+    // 拖拽提示文本
+    dropHintText() {
+      const t = menuI18nConfig[this.lang]?.dragDrop || menuI18nConfig.zh_CN.dragDrop;
+      return t?.hint || '释放以打开 Markdown 文件';
     }
   },
   mounted() {
@@ -58,6 +79,15 @@ export default {
       }
     })
 
+    // 初始化拖拽文件打开
+    this.setupDragDrop();
+  },
+  beforeUnmount() {
+    // 清理拖拽事件监听
+    if (this._unlistenDragDrop) {
+      this._unlistenDragDrop();
+      this._unlistenDragDrop = null;
+    }
   },
   methods: {
     // 切换语言
@@ -67,6 +97,57 @@ export default {
       this.lang = lang;
       // 重新初始化 Vditor 以应用新的语言配置
       this.initVditor();
+    },
+
+    // 初始化拖拽文件打开
+    async setupDragDrop() {
+      try {
+        const webview = await getCurrentWebview();
+        this._unlistenDragDrop = await webview.onDragDropEvent((event) => {
+          const { type, paths } = event.payload;
+
+          if (type === 'over') {
+            // 拖入窗口 - 显示高亮遮罩
+            this.showDropOverlay = true;
+            return;
+          }
+
+          if (type === 'leave' || type === 'cancel') {
+            // 离开窗口或取消 - 隐藏遮罩
+            this.showDropOverlay = false;
+            return;
+          }
+
+          if (type === 'drop') {
+            // 文件已拖放 - 隐藏遮罩
+            this.showDropOverlay = false;
+
+            if (!paths || paths.length === 0) return;
+
+            // 查找第一个 Markdown 文件
+            const mdFile = paths.find(p =>
+              p.endsWith('.md') || p.endsWith('.markdown') || p.endsWith('.txt')
+            );
+
+            if (mdFile) {
+              console.log('[DragDrop] 拖拽打开文件:', mdFile);
+              this.loadFileByPath(mdFile);
+            } else {
+              // 提示用户只支持 Markdown 文件
+              const dragDrop = menuI18nConfig[this.lang]?.dragDrop || menuI18nConfig.zh_CN.dragDrop;
+              ElNotification({
+                title: dragDrop.title,
+                message: dragDrop.unsupported,
+                type: 'warning',
+                duration: 3000,
+              });
+            }
+          }
+        });
+        console.log('[DragDrop] 拖拽文件打开功能已初始化');
+      } catch (error) {
+        console.error('[DragDrop] 初始化拖拽监听失败:', error);
+      }
     },
 
     // 设置编辑器主题

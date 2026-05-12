@@ -28,6 +28,7 @@
     {
       "identifier": "http:allow-fetch",
       "allow": [{ "url": "https://*" }, { "url": "http://*" }]
-    }
+    },
+    "core:event:default"
   ]
 }
