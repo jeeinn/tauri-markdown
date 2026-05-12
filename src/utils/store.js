@@ -76,3 +76,71 @@ export async function getTheme() {
     return 'auto'
   }
 }
+
+const SCROLL_POSITIONS_KEY = 'last_scroll_positions'
+const SCROLL_POSITION_EXPIRY_DAYS = 30 // 滚动位置过期天数
+
+export async function saveScrollPosition(filePath, percentage) {
+  try {
+    const store = await getStore()
+    const positions = await store.get(SCROLL_POSITIONS_KEY) || {}
+    
+    // 存储带时间戳的数据结构
+    positions[filePath] = {
+      percentage,
+      lastAccessed: Date.now()
+    }
+    
+    // 清理过期数据（超过 30 天未访问）
+    const expiryTime = Date.now() - SCROLL_POSITION_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    Object.keys(positions).forEach(key => {
+      const record = positions[key]
+      // 兼容旧格式（直接存数字）和新格式（对象）
+      const lastAccessed = typeof record === 'object' ? record.lastAccessed : 0
+      if (lastAccessed < expiryTime) {
+        delete positions[key]
+      }
+    })
+    
+    await store.set(SCROLL_POSITIONS_KEY, positions)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存滚动位置失败:', error)
+  }
+}
+
+export async function getScrollPosition(filePath) {
+  try {
+    const store = await getStore()
+    const positions = await store.get(SCROLL_POSITIONS_KEY) || {}
+    const record = positions[filePath]
+    
+    if (!record) return null
+    
+    // 兼容旧格式（直接存数字）和新格式（对象）
+    if (typeof record === 'object') {
+      // 更新最后访问时间
+      record.lastAccessed = Date.now()
+      await store.set(SCROLL_POSITIONS_KEY, positions)
+      await store.save()
+      return record.percentage
+    }
+    
+    return record
+  } catch (error) {
+    console.error('[Store] 获取滚动位置失败:', error)
+    return null
+  }
+}
+
+export async function clearScrollPosition(filePath) {
+  try {
+    const store = await getStore()
+    const positions = await store.get(SCROLL_POSITIONS_KEY) || {}
+    delete positions[filePath]
+    await store.set(SCROLL_POSITIONS_KEY, positions)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 清除滚动位置失败:', error)
+  }
+}

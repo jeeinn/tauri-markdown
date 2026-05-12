@@ -28,7 +28,7 @@ import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
+import { getLastFilePath, saveLastFilePath, saveScrollPosition, getScrollPosition, clearScrollPosition } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join } from '@tauri-apps/api/path'
 import { exportPdf as exportPdfUtil } from '../utils/pdf-export.js'
@@ -51,6 +51,21 @@ export default {
       isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
       showDropOverlay: false, // 是否显示拖拽文件高亮遮罩
       _unlistenDragDrop: null, // 拖拽事件取消监听函数
+      // 滚动位置记忆
+      scrollPositionsCache: {}, // 内存缓存 { [filePath]: percentage }
+      _scrollEl: null, // 当前绑定的滚动元素
+      _scrollThrottleTimer: null, // 滚动节流定时器
+      _storeSaveTimer: null, // Store 写入防抖定时器
+      _modeCheckInterval: null, // 模式切换轮询定时器
+      _lastMode: null, // 上次编辑模式
+      _isHandlingModeChange: false, // 防止重复处理模式切换
+      // 滚动位置记忆配置常量
+      SCROLL_THROTTLE_MS: 200,        // 滚动事件节流时间（毫秒）
+      STORE_DEBOUNCE_MS: 500,         // Store 写入防抖时间（毫秒）
+      RENDER_POLL_MAX_TIMES: 50,      // 渲染稳定检测最大轮询次数
+      RENDER_POLL_INTERVAL_MS: 50,    // 轮询间隔（毫秒）
+      RENDER_STABLE_CHECK_COUNT: 3,   // 连续稳定检测次数
+      MODE_CHECK_INTERVAL_MS: 300,    // 模式切换检测间隔（毫秒）
     };
   },
   computed: {
@@ -76,12 +91,34 @@ export default {
         e.preventDefault()
         e.returnValue = ''
       }
+      // 关闭前保存滚动位置
+      this.flushScrollPosition()
     })
 
     // 初始化拖拽文件打开
     this.setupDragDrop();
   },
   beforeUnmount() {
+    // 保存当前滚动位置
+    this.flushScrollPosition()
+    // 清理滚动事件监听
+    if (this._scrollEl) {
+      this._scrollEl.removeEventListener('scroll', this._onScroll)
+      this._scrollEl = null
+    }
+    if (this._scrollThrottleTimer) {
+      clearTimeout(this._scrollThrottleTimer)
+      this._scrollThrottleTimer = null
+    }
+    if (this._storeSaveTimer) {
+      clearTimeout(this._storeSaveTimer)
+      this._storeSaveTimer = null
+    }
+    // 清理模式切换监听器
+    if (this._modeCheckInterval) {
+      clearInterval(this._modeCheckInterval)
+      this._modeCheckInterval = null
+    }
     // 清理拖拽事件监听
     if (this._unlistenDragDrop) {
       this._unlistenDragDrop();
@@ -165,16 +202,18 @@ export default {
         this.vditor.destroy();
       }
       
-      // 创建配置
-      const vditorConfCopy = JSON.parse(JSON.stringify({
+      // 创建配置（注意：不使用 JSON 深拷贝，避免丢失函数类型配置）
+      const vditorConfCopy = {
         options: {
           ...vditorConf.options,
           lang: this.lang,
           placeholder: this.welcome,
           cdn: this.cdn,
           toolbar: vditorConf.toolbar, // 明确传递 toolbar 配置
+          // 添加空函数防止 Vditor 内部调用报错
+          customWysiwygToolbar: () => {},
         },
-      }));
+      };
       
       // 设置自定义上传 handler
       vditorConfCopy.options.upload.handler = async (files) => {
@@ -200,6 +239,16 @@ export default {
       
       vditorConfCopy.options.after = () => {
         this.observeContentChange();
+        this.setupScrollListener();
+        
+        // 初始化最后模式记录
+        if (this.vditor && this.vditor.vditor) {
+          this._lastMode = this.vditor.vditor.currentMode
+        }
+        
+        // 设置模式切换监听器
+        this.setupEditModeListener();
+        
         this.autoLoadLastFile();
         // 初始化窗口标题
         this.updateWindowTitle();
@@ -274,12 +323,25 @@ export default {
     
     // 清除当前文件状态
     async clearCurrentFile() {
+      const oldFilePath = this.currentFilePath
+      
       this.currentFilePath = null
       this.originalContent = ''
       this.isContentModified = false
+      
       // 清除 store 中的记录
-      const { clearLastFilePath } = await import('../utils/store.js')
+      const { clearLastFilePath, clearScrollPosition } = await import('../utils/store.js')
       await clearLastFilePath()
+      
+      // 清除该文件的滚动位置记录
+      if (oldFilePath) {
+        await clearScrollPosition(oldFilePath)
+        // 同时清除内存缓存
+        if (this.scrollPositionsCache[oldFilePath]) {
+          delete this.scrollPositionsCache[oldFilePath]
+        }
+      }
+      
       // 更新窗口标题
       await this.updateWindowTitle()
     },
@@ -398,6 +460,9 @@ export default {
       const convertedContent = imagePathMapper.convertToAssetUrl(data);
       console.log('[Load] 已转换相对路径为 tmd URL');
 
+      // 切换文件前保存当前文件的滚动位置
+      this.saveCurrentScrollPosition()
+
       this.vditor.setValue(convertedContent)
 
       this.currentFilePath = filePath
@@ -406,6 +471,14 @@ export default {
 
       await saveLastFilePath(filePath)
       await this.updateWindowTitle()
+
+      // 加载新文件后恢复滚动位置
+      this.restoreScrollPosition(filePath)
+      
+      // 更新最后模式记录（新文件）
+      if (this.vditor && this.vditor.vditor) {
+        this._lastMode = this.vditor.vditor.currentMode
+      }
 
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
       return true
@@ -432,6 +505,9 @@ export default {
       
       // 清空编辑器内容
       this.vditor.setValue('')
+      
+      // 切换文件前保存当前文件的滚动位置
+      this.saveCurrentScrollPosition()
       
       // 清除文件状态
       await this.clearCurrentFile()
@@ -824,6 +900,164 @@ export default {
           }
         }
       ];
+    },
+
+    // ========== 滚动位置记忆 ==========
+
+    // 获取当前模式下的滚动容器
+    getScrollElement() {
+      if (!this.vditor || !this.vditor.vditor) return null
+      const vditor = this.vditor.vditor
+      const mode = vditor.currentMode
+      if (mode === 'ir' && vditor.ir) return vditor.ir.element
+      if (mode === 'sv' && vditor.sv) return vditor.sv.element
+      if (mode === 'wysiwyg' && vditor.wysiwyg) return vditor.wysiwyg.element
+      return null
+    },
+
+    // 设置滚动监听（节流）
+    setupScrollListener() {
+      const el = this.getScrollElement()
+      if (!el) return
+
+      // 移除旧监听
+      if (this._scrollEl) {
+        this._scrollEl.removeEventListener('scroll', this._onScroll)
+      }
+
+      this._scrollEl = el
+      this._onScroll = () => {
+        if (this._scrollThrottleTimer) return
+        this._scrollThrottleTimer = setTimeout(() => {
+          this._scrollThrottleTimer = null
+          this.saveCurrentScrollPosition()
+        }, this.SCROLL_THROTTLE_MS)
+      }
+      el.addEventListener('scroll', this._onScroll)
+    },
+
+    // 监听编辑模式切换（通过轮询检测 currentMode 变化）
+    setupEditModeListener() {
+      if (!this.vditor || !this.vditor.vditor) {
+        console.warn('[Scroll] Vditor 未初始化，无法设置模式监听器')
+        return
+      }
+
+      // 使用轮询方式检测模式变化
+      this._modeCheckInterval = setInterval(() => {
+        if (!this.vditor || !this.vditor.vditor) return
+        
+        const currentMode = this.vditor.vditor.currentMode
+        if (currentMode !== this._lastMode && !this._isHandlingModeChange) {
+          this.handleModeChange()
+        }
+      }, this.MODE_CHECK_INTERVAL_MS)
+    },
+
+    // 处理模式切换
+    async handleModeChange() {
+      // 防止重复处理
+      if (this._isHandlingModeChange) return
+      this._isHandlingModeChange = true
+      
+      try {
+        if (!this.currentFilePath) return
+        
+        const oldMode = this._lastMode
+        const newMode = this.vditor?.vditor?.currentMode
+        
+        // 如果模式没有变化，忽略
+        if (oldMode === newMode) {
+          this._isHandlingModeChange = false
+          return
+        }
+        
+        console.log('[Scroll] 检测到模式切换:', oldMode, '->', newMode)
+        
+        // 保存当前模式的滚动位置（在 DOM 销毁前）
+        this.saveCurrentScrollPosition()
+        
+        // 等待新模式 DOM 渲染完成
+        await new Promise(resolve => setTimeout(resolve, 150))
+        
+        // 重新绑定滚动监听器到新模式的元素
+        this.setupScrollListener()
+        
+        // 恢复滚动位置
+        await this.restoreScrollPosition(this.currentFilePath)
+        
+        // 更新最后模式记录
+        this._lastMode = newMode
+        console.log('[Scroll] 模式切换完成')
+      } finally {
+        // 确保标志位被重置
+        this._isHandlingModeChange = false
+      }
+    },
+
+    // 保存当前滚动位置到内存缓存（节流回调）
+    saveCurrentScrollPosition() {
+      const el = this.getScrollElement()
+      if (!el || !this.currentFilePath) return
+      const sh = el.scrollHeight
+      const ch = el.clientHeight
+      if (sh <= ch) return // 内容未溢出，无需保存
+      const pct = el.scrollTop / (sh - ch)
+      if (!isFinite(pct)) return
+      this.scrollPositionsCache[this.currentFilePath] = pct
+
+      // 防抖写入 Store（500ms 内无新滚动才写）
+      if (this._storeSaveTimer) clearTimeout(this._storeSaveTimer)
+      this._storeSaveTimer = setTimeout(() => {
+        this._storeSaveTimer = null
+        this.flushScrollPosition()
+      }, this.STORE_DEBOUNCE_MS)
+    },
+
+    // 立即将当前文件的滚动位置写入 Store
+    async flushScrollPosition() {
+      if (!this.currentFilePath) return
+      const pct = this.scrollPositionsCache[this.currentFilePath]
+      if (pct == null) return
+      await saveScrollPosition(this.currentFilePath, pct)
+    },
+
+    // 加载文件后恢复滚动位置
+    async restoreScrollPosition(filePath) {
+      const el = this.getScrollElement()
+      if (!el) return
+
+      const pct = await getScrollPosition(filePath)
+      if (pct == null || pct <= 0) return
+
+      // 轮询等待 Vditor 渲染稳定（scrollHeight 连续 3 次不变）
+      // 为什么需要轮询？
+      // Vditor 在 setValue 后需要时间渲染 Markdown 为 HTML
+      // scrollHeight 会在渲染过程中动态变化
+      // 我们需要等待渲染稳定后再计算滚动位置
+      let prevHeight = 0
+      let stableCount = 0
+      for (let i = 0; i < this.RENDER_POLL_MAX_TIMES; i++) {
+        await new Promise(r => setTimeout(r, this.RENDER_POLL_INTERVAL_MS))
+        const sh = el.scrollHeight
+        if (sh === prevHeight && sh > 0) {
+          stableCount++
+          if (stableCount >= this.RENDER_STABLE_CHECK_COUNT) {
+            const scrollTop = Math.round(pct * (sh - el.clientHeight))
+            el.scrollTop = Math.min(scrollTop, sh - el.clientHeight)
+            console.log('[Scroll] 滚动位置已恢复:', filePath, '百分比:', pct.toFixed(4))
+            return
+          }
+        } else {
+          stableCount = 0
+          prevHeight = sh
+        }
+      }
+      
+      // 超时后备：直接尝试一次
+      console.warn('[Scroll] 渲染稳定检测超时，使用后备方案恢复滚动位置')
+      const scrollTop = Math.round(pct * (el.scrollHeight - el.clientHeight))
+      el.scrollTop = Math.min(scrollTop, el.scrollHeight - el.clientHeight)
     },
   },
 }
