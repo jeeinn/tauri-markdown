@@ -18,6 +18,8 @@ export default {
       viewLog: '查看日志',
       about: '关于',
       theme: '主题',
+      view: '视图',
+      scrollRemember: '记住浏览位置',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -199,6 +201,8 @@ export default {
       viewLog: 'View Log',
       about: 'About',
       theme: 'Theme',
+      view: 'View',
+      scrollRemember: 'Remember Scroll Position',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -372,6 +376,8 @@ export default {
       viewLog: 'ログを表示',
       about: 'について',
       theme: 'テーマ',
+      view: '表示',
+      scrollRemember: 'スクロール位置を記憶',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -545,6 +551,8 @@ export default {
       viewLog: '로그 보기',
       about: '정보',
       theme: '테마',
+      view: '보기',
+      scrollRemember: '스크롤 위치 기억',
     },
     windowTitle: {
       appName: 'Tauri Markdown',

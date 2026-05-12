@@ -59,6 +59,7 @@ export default {
       _modeCheckInterval: null, // 模式切换轮询定时器
       _lastMode: null, // 上次编辑模式
       _isHandlingModeChange: false, // 防止重复处理模式切换
+      scrollRememberEnabled: true, // 滚动记忆开关状态（从父组件接收）
       // 滚动位置记忆配置常量
       SCROLL_THROTTLE_MS: 200,        // 滚动事件节流时间（毫秒）
       STORE_DEBOUNCE_MS: 500,         // Store 写入防抖时间（毫秒）
@@ -91,16 +92,20 @@ export default {
         e.preventDefault()
         e.returnValue = ''
       }
-      // 关闭前保存滚动位置
-      this.flushScrollPosition()
+      // 关闭前保存滚动位置（如果功能启用）
+      if (this.scrollRememberEnabled) {
+        this.flushScrollPosition()
+      }
     })
 
     // 初始化拖拽文件打开
     this.setupDragDrop();
   },
   beforeUnmount() {
-    // 保存当前滚动位置
-    this.flushScrollPosition()
+    // 保存当前滚动位置（如果功能启用）
+    if (this.scrollRememberEnabled) {
+      this.flushScrollPosition()
+    }
     // 清理滚动事件监听
     if (this._scrollEl) {
       this._scrollEl.removeEventListener('scroll', this._onScroll)
@@ -904,6 +909,26 @@ export default {
 
     // ========== 滚动位置记忆 ==========
 
+    // 设置滚动记忆开关状态
+    setScrollRememberEnabled(enabled) {
+      this.scrollRememberEnabled = enabled
+      
+      if (!enabled) {
+        // 禁用时清除当前文件的缓存
+        if (this.currentFilePath) {
+          delete this.scrollPositionsCache[this.currentFilePath]
+        }
+        // 停止滚动监听
+        if (this._scrollEl) {
+          this._scrollEl.removeEventListener('scroll', this._onScroll)
+          this._scrollEl = null
+        }
+      } else {
+        // 重新启用时绑定监听
+        this.setupScrollListener()
+      }
+    },
+
     // 获取当前模式下的滚动容器
     getScrollElement() {
       if (!this.vditor || !this.vditor.vditor) return null
@@ -917,6 +942,8 @@ export default {
 
     // 设置滚动监听（节流）
     setupScrollListener() {
+      if (!this.scrollRememberEnabled) return
+      
       const el = this.getScrollElement()
       if (!el) return
 
@@ -956,6 +983,8 @@ export default {
 
     // 处理模式切换
     async handleModeChange() {
+      if (!this.scrollRememberEnabled) return
+      
       // 防止重复处理
       if (this._isHandlingModeChange) return
       this._isHandlingModeChange = true
@@ -997,6 +1026,8 @@ export default {
 
     // 保存当前滚动位置到内存缓存（节流回调）
     saveCurrentScrollPosition() {
+      if (!this.scrollRememberEnabled) return
+      
       const el = this.getScrollElement()
       if (!el || !this.currentFilePath) return
       const sh = el.scrollHeight
@@ -1016,6 +1047,8 @@ export default {
 
     // 立即将当前文件的滚动位置写入 Store
     async flushScrollPosition() {
+      if (!this.scrollRememberEnabled) return
+      
       if (!this.currentFilePath) return
       const pct = this.scrollPositionsCache[this.currentFilePath]
       if (pct == null) return
@@ -1024,6 +1057,8 @@ export default {
 
     // 加载文件后恢复滚动位置
     async restoreScrollPosition(filePath) {
+      if (!this.scrollRememberEnabled) return
+      
       const el = this.getScrollElement()
       if (!el) return
 

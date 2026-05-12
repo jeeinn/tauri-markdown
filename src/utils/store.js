@@ -79,6 +79,7 @@ export async function getTheme() {
 
 const SCROLL_POSITIONS_KEY = 'last_scroll_positions'
 const SCROLL_POSITION_EXPIRY_DAYS = 30 // 滚动位置过期天数
+const SCROLL_REMEMBER_ENABLED_KEY = 'scroll_remember_enabled' // 滚动记忆开关
 
 export async function saveScrollPosition(filePath, percentage) {
   try {
@@ -142,5 +143,27 @@ export async function clearScrollPosition(filePath) {
     await store.save()
   } catch (error) {
     console.error('[Store] 清除滚动位置失败:', error)
+  }
+}
+
+// 滚动记忆开关相关函数
+export async function saveScrollRememberEnabled(enabled) {
+  try {
+    const store = await getStore()
+    await store.set(SCROLL_REMEMBER_ENABLED_KEY, enabled)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存滚动记忆开关失败:', error)
+  }
+}
+
+export async function getScrollRememberEnabled() {
+  try {
+    const store = await getStore()
+    const enabled = await store.get(SCROLL_REMEMBER_ENABLED_KEY)
+    return enabled !== false // 默认启用
+  } catch (error) {
+    console.error('[Store] 获取滚动记忆开关失败:', error)
+    return true // 默认启用
   }
 }
