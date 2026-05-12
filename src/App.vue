@@ -23,18 +23,16 @@
                 <span>{{ menuI18n.save }}</span>
                 <span class="shortcut">{{ menuShortcuts.save }}</span>
               </el-dropdown-item>
-              <NestedMenuItem :label="menuI18n.export">
-                <el-dropdown-item @click="handleFileMenu('export-md')">
-                  <span>{{ menuI18n.exportMd }}</span>
-                  <span class="shortcut">{{ menuShortcuts.export }}</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleFileMenu('export-pdf')">
-                  <span>{{ menuI18n.exportPdf }}</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleFileMenu('export-html')">
-                  <span>{{ menuI18n.exportHtml }}</span>
-                </el-dropdown-item>
-              </NestedMenuItem>
+              <el-dropdown-item divided command="export-md">
+                <span>{{ menuI18n.exportMd }}</span>
+                <span class="shortcut">{{ menuShortcuts.export }}</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="export-pdf">
+                <span>{{ menuI18n.exportPdf }}</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="export-html">
+                <span>{{ menuI18n.exportHtml }}</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -47,40 +45,39 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <!-- 语言子菜单 -->
-              <NestedMenuItem :label="menuLanguage.label">
-                <el-dropdown-item @click="handleAppearanceMenu('lang-zh_CN')">
-                  {{ menuLanguage.chinese }}
-                  <span v-if="currentLang === 'zh_CN'" class="theme-check">✓</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleAppearanceMenu('lang-en_US')">
-                  {{ menuLanguage.english }}
-                  <span v-if="currentLang === 'en_US'" class="theme-check">✓</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleAppearanceMenu('lang-ja_JP')">
-                  {{ menuLanguage.japanese }}
-                  <span v-if="currentLang === 'ja_JP'" class="theme-check">✓</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleAppearanceMenu('lang-ko_KR')">
-                  {{ menuLanguage.korean }}
-                  <span v-if="currentLang === 'ko_KR'" class="theme-check">✓</span>
-                </el-dropdown-item>
-              </NestedMenuItem>
-              <!-- 主题子菜单 -->
-              <NestedMenuItem :label="menuTheme.label">
-                <el-dropdown-item @click="handleAppearanceMenu('theme-auto')">
-                  {{ menuTheme.auto }}
-                  <span v-if="currentTheme === 'auto'" class="theme-check">✓</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleAppearanceMenu('theme-light')">
-                  {{ menuTheme.light }}
-                  <span v-if="currentTheme === 'light'" class="theme-check">✓</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="handleAppearanceMenu('theme-dark')">
-                  {{ menuTheme.dark }}
-                  <span v-if="currentTheme === 'dark'" class="theme-check">✓</span>
-                </el-dropdown-item>
-              </NestedMenuItem>
+              <!-- 语言分组 -->
+              <div class="menu-group-title">{{ menuLanguage.label }}</div>
+              <el-dropdown-item command="lang-zh_CN">
+                <span>{{ menuLanguage.chinese }}</span>
+                <span v-if="currentLang === 'zh_CN'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="lang-en_US">
+                <span>{{ menuLanguage.english }}</span>
+                <span v-if="currentLang === 'en_US'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="lang-ja_JP">
+                <span>{{ menuLanguage.japanese }}</span>
+                <span v-if="currentLang === 'ja_JP'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="lang-ko_KR">
+                <span>{{ menuLanguage.korean }}</span>
+                <span v-if="currentLang === 'ko_KR'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              
+              <!-- 主题分组 -->
+              <div class="menu-group-title" style="margin-top: 6px;">{{ menuTheme.label }}</div>
+              <el-dropdown-item divided command="theme-auto">
+                <span>{{ menuTheme.auto }}</span>
+                <span v-if="currentTheme === 'auto'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="theme-light">
+                <span>{{ menuTheme.light }}</span>
+                <span v-if="currentTheme === 'light'" class="theme-check">✓</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="theme-dark">
+                <span>{{ menuTheme.dark }}</span>
+                <span v-if="currentTheme === 'dark'" class="theme-check">✓</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -124,18 +121,15 @@
 
 <script>
 import MyVditor from './components/MyVditor.vue'
-import NestedMenuItem from './components/NestedMenuItem.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
-import { ArrowDown, ArrowRight } from '@element-plus/icons-vue'
+import { ArrowDown } from '@element-plus/icons-vue'
 import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled } from './utils/store.js'
 
 export default {
   name: 'App',
   components: {
     MyVditor,
-    NestedMenuItem,
     ArrowDown,
-    ArrowRight,
   },
   data() {
     return {
@@ -392,6 +386,22 @@ export default {
   margin-left: 20px;
   color: #409eff;
   font-weight: bold;
+}
+
+/* 菜单分组标题 */
+.menu-group-title {
+  padding: 8px 20px 4px;
+  font-size: 12px;
+  color: #909399;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 夜间模式适配 */
+:global(.dark) .menu-group-title {
+  color: #a8abb2;
 }
 </style>
 
