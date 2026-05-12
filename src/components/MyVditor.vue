@@ -21,7 +21,7 @@ import 'vditor/dist/index.css'
 import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
-import menuI18nConfig from '../config/menu-i18n.js'
+import { getI18nText, getI18nConfig } from '../utils/i18n-helper.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
@@ -56,16 +56,15 @@ export default {
   computed: {
     // 获取当前语言的通知配置
     t() {
-      return menuI18nConfig[this.lang]?.notifications || menuI18nConfig.zh_CN.notifications;
+      return getI18nConfig(this.lang).notifications;
     },
     // 获取当前语言的窗口标题配置
     wt() {
-      return menuI18nConfig[this.lang]?.windowTitle || menuI18nConfig.zh_CN.windowTitle;
+      return getI18nConfig(this.lang).windowTitle;
     },
     // 拖拽提示文本
     dropHintText() {
-      const t = menuI18nConfig[this.lang]?.dragDrop || menuI18nConfig.zh_CN.dragDrop;
-      return t?.hint || '释放以打开 Markdown 文件';
+      return getI18nText(this.lang, 'dragDrop.hint');
     }
   },
   mounted() {
@@ -134,10 +133,9 @@ export default {
               this.loadFileByPath(mdFile);
             } else {
               // 提示用户只支持 Markdown 文件
-              const dragDrop = menuI18nConfig[this.lang]?.dragDrop || menuI18nConfig.zh_CN.dragDrop;
               ElNotification({
-                title: dragDrop.title,
-                message: dragDrop.unsupported,
+                title: getI18nText(this.lang, 'dragDrop.title'),
+                message: getI18nText(this.lang, 'dragDrop.unsupported'),
                 type: 'warning',
                 duration: 3000,
               });

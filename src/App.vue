@@ -95,7 +95,7 @@
 
 <script>
 import MyVditor from './components/MyVditor.vue'
-import menuI18nConfig from './config/menu-i18n.js'
+import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { getTheme, saveTheme } from './utils/store.js'
 
@@ -114,15 +114,15 @@ export default {
   computed: {
     // 当前语言的菜单翻译
     menuI18n() {
-      return menuI18nConfig[this.currentLang]?.menu || menuI18nConfig.zh_CN.menu;
+      return getI18nConfig(this.currentLang).menu;
     },
     // 当前语言的快捷键文本
     menuShortcuts() {
-      return menuI18nConfig[this.currentLang]?.shortcuts || menuI18nConfig.zh_CN.shortcuts;
+      return getI18nConfig(this.currentLang).shortcuts;
     },
     // 当前语言的主题菜单文本
     menuTheme() {
-      return menuI18nConfig[this.currentLang]?.theme || menuI18nConfig.zh_CN.theme;
+      return getI18nConfig(this.currentLang).theme;
     }
   },
   mounted() {
