@@ -28,3 +28,6 @@ nul
 #Agents
 .claude
 .lingma
+
+# Vitest
+coverage

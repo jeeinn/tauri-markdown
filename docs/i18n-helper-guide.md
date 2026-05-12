@@ -168,11 +168,41 @@ export default {
 
 ## 测试
 
-运行测试文件验证功能：
+本项目使用 **Vitest** 作为测试框架，提供完整的单元测试能力。
+
+### 运行测试
 
 ```bash
-node src/utils/i18n-helper.test.js
+# 运行所有测试（监视模式，文件变化时自动重新运行）
+npm run test
+
+# 运行所有测试（单次运行，适合 CI）
+npm run test:run
+
+# 运行测试并打开 UI 界面
+npm run test:ui
+
+# 运行特定测试文件
+npx vitest src/utils/i18n-helper.test.js
+
+# 生成覆盖率报告
+npx vitest run --coverage
 ```
+
+### 测试文件位置
+
+- 测试文件: `src/utils/i18n-helper.test.js`
+- 配置文件: `vitest.config.js`
+
+### 测试覆盖
+
+当前测试包含 23 个测试用例，覆盖：
+- ✅ `getI18nText` - 10 个测试（基本功能、嵌套路径、回退机制、边界情况）
+- ✅ `getI18nTexts` - 2 个测试（批量获取、空数组处理）
+- ✅ `getI18nConfig` - 5 个测试（完整配置、深合并、回退机制）
+- ✅ `hasLanguage` - 2 个测试（存在/不存在检测）
+- ✅ `getSupportedLanguages` - 2 个测试（语言列表、类型检查）
+- ✅ 深合并功能 - 2 个测试（嵌套对象合并、字段继承）
 
 ## 相关文件
 
