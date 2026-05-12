@@ -19,7 +19,7 @@ export default {
       about: '关于',
       theme: '主题',
       view: '视图',
-      scrollRemember: '记住浏览位置',
+      scrollRemember: '记住浏览进度',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -202,7 +202,7 @@ export default {
       about: 'About',
       theme: 'Theme',
       view: 'View',
-      scrollRemember: 'Remember Scroll Position',
+      scrollRemember: 'Remember Reading Progress',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -377,7 +377,7 @@ export default {
       about: 'について',
       theme: 'テーマ',
       view: '表示',
-      scrollRemember: 'スクロール位置を記憶',
+      scrollRemember: '閲覧進捗を記憶',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -552,7 +552,7 @@ export default {
       about: '정보',
       theme: '테마',
       view: '보기',
-      scrollRemember: '스크롤 위치 기억',
+      scrollRemember: '읽기 진행 상황 기억',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
