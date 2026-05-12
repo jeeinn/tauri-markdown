@@ -61,6 +61,22 @@
           </template>
         </el-dropdown>
 
+        <!-- 视图菜单 -->
+        <el-dropdown trigger="click" @command="handleViewMenu">
+          <span class="menu-item">
+            {{ menuView.view }}
+            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="scroll-remember">
+                {{ menuView.scrollRemember }}
+                <span v-if="scrollRememberEnabled" class="theme-check">✓</span>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
         <!-- 帮助菜单 -->
         <el-dropdown trigger="click" @command="handleHelpMenu">
           <span class="menu-item">
@@ -97,7 +113,7 @@
 import MyVditor from './components/MyVditor.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { getTheme, saveTheme } from './utils/store.js'
+import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled } from './utils/store.js'
 
 export default {
   name: 'App',
@@ -109,6 +125,7 @@ export default {
     return {
       currentLang: 'zh_CN',
       currentTheme: 'auto',
+      scrollRememberEnabled: true, // 滚动记忆开关状态
     }
   },
   computed: {
@@ -123,6 +140,10 @@ export default {
     // 当前语言的主题菜单文本
     menuTheme() {
       return getI18nConfig(this.currentLang).theme;
+    },
+    // 当前语言的视图菜单文本
+    menuView() {
+      return getI18nConfig(this.currentLang).menu;
     }
   },
   mounted() {
@@ -130,6 +151,8 @@ export default {
     window.addEventListener('keydown', this.handleKeyboardShortcut);
     // 初始化主题
     this.initTheme();
+    // 初始化视图设置
+    this.initViewSettings();
   },
   
   beforeUnmount() {
@@ -261,6 +284,23 @@ export default {
     // 获取系统主题
     getSystemTheme() {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    },
+
+    // 初始化视图设置
+    async initViewSettings() {
+      this.scrollRememberEnabled = await getScrollRememberEnabled()
+      // 通知子组件同步状态
+      this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
+    },
+
+    // 处理视图菜单命令
+    async handleViewMenu(command) {
+      if (command === 'scroll-remember') {
+        this.scrollRememberEnabled = !this.scrollRememberEnabled
+        await saveScrollRememberEnabled(this.scrollRememberEnabled)
+        // 通知子组件更新状态
+        this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
+      }
     }
   }
 }

@@ -33,6 +33,7 @@ import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join } from '@tauri-apps/api/path'
 import { exportPdf as exportPdfUtil } from '../utils/pdf-export.js'
 import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
+import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 
 export default {
   name: "MyVditor.vue",
@@ -51,6 +52,8 @@ export default {
       isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
       showDropOverlay: false, // 是否显示拖拽文件高亮遮罩
       _unlistenDragDrop: null, // 拖拽事件取消监听函数
+      // 滚动位置记忆管理器
+      scrollMemory: null,
     };
   },
   computed: {
@@ -76,12 +79,17 @@ export default {
         e.preventDefault()
         e.returnValue = ''
       }
+      // 关闭前保存滚动位置
+      this.scrollMemory?.flushScrollPosition()
     })
 
     // 初始化拖拽文件打开
     this.setupDragDrop();
   },
   beforeUnmount() {
+    // 清理滚动记忆管理器
+    this.scrollMemory?.destroy()
+    
     // 清理拖拽事件监听
     if (this._unlistenDragDrop) {
       this._unlistenDragDrop();
@@ -165,16 +173,18 @@ export default {
         this.vditor.destroy();
       }
       
-      // 创建配置
-      const vditorConfCopy = JSON.parse(JSON.stringify({
+      // 创建配置（注意：不使用 JSON 深拷贝，避免丢失函数类型配置）
+      const vditorConfCopy = {
         options: {
           ...vditorConf.options,
           lang: this.lang,
           placeholder: this.welcome,
           cdn: this.cdn,
           toolbar: vditorConf.toolbar, // 明确传递 toolbar 配置
+          // 添加空函数防止 Vditor 内部调用报错
+          customWysiwygToolbar: () => {},
         },
-      }));
+      };
       
       // 设置自定义上传 handler
       vditorConfCopy.options.upload.handler = async (files) => {
@@ -200,6 +210,20 @@ export default {
       
       vditorConfCopy.options.after = () => {
         this.observeContentChange();
+        
+        // 初始化滚动记忆管理器
+        if (!this.scrollMemory) {
+          this.scrollMemory = createScrollMemoryManager(
+            () => this.vditor,
+            {
+              getCurrentFilePath: () => this.currentFilePath,
+            }
+          )
+        }
+        
+        this.scrollMemory.setupScrollListener();
+        this.scrollMemory.setupEditModeListener();
+        
         this.autoLoadLastFile();
         // 初始化窗口标题
         this.updateWindowTitle();
@@ -274,12 +298,21 @@ export default {
     
     // 清除当前文件状态
     async clearCurrentFile() {
+      const oldFilePath = this.currentFilePath
+      
       this.currentFilePath = null
       this.originalContent = ''
       this.isContentModified = false
+      
       // 清除 store 中的记录
-      const { clearLastFilePath } = await import('../utils/store.js')
+      const { clearLastFilePath, clearScrollPosition } = await import('../utils/store.js')
       await clearLastFilePath()
+      
+      // 清除该文件的滚动位置记录
+      if (oldFilePath) {
+        await clearScrollPosition(oldFilePath)
+      }
+      
       // 更新窗口标题
       await this.updateWindowTitle()
     },
@@ -398,6 +431,9 @@ export default {
       const convertedContent = imagePathMapper.convertToAssetUrl(data);
       console.log('[Load] 已转换相对路径为 tmd URL');
 
+      // 切换文件前保存当前文件的滚动位置
+      this.scrollMemory?.saveCurrentScrollPosition()
+
       this.vditor.setValue(convertedContent)
 
       this.currentFilePath = filePath
@@ -407,6 +443,9 @@ export default {
       await saveLastFilePath(filePath)
       await this.updateWindowTitle()
 
+      // 加载新文件后恢复滚动位置
+      this.scrollMemory?.restoreScrollPosition(filePath)
+      
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
       return true
     },
@@ -432,6 +471,9 @@ export default {
       
       // 清空编辑器内容
       this.vditor.setValue('')
+      
+      // 切换文件前保存当前文件的滚动位置
+      this.scrollMemory?.saveCurrentScrollPosition()
       
       // 清除文件状态
       await this.clearCurrentFile()
@@ -824,6 +866,18 @@ export default {
           }
         }
       ];
+    },
+
+    // ========== 滚动位置记忆 ==========
+
+    /**
+     * 设置滚动记忆开关状态（由父组件调用）
+     * @param {boolean} enabled - 是否启用
+     */
+    setScrollRememberEnabled(enabled) {
+      if (this.scrollMemory) {
+        this.scrollMemory.setEnabled(enabled)
+      }
     },
   },
 }
