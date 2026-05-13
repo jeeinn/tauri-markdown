@@ -23,11 +23,11 @@
                 <span>{{ menuI18n.save }}</span>
                 <span class="shortcut">{{ menuShortcuts.save }}</span>
               </el-dropdown-item>
-              <el-dropdown-item command="export">
-                <span>{{ menuI18n.export }}</span>
+              <el-dropdown-item divided command="export-md">
+                <span>{{ menuI18n.exportMd }}</span>
                 <span class="shortcut">{{ menuShortcuts.export }}</span>
               </el-dropdown-item>
-              <el-dropdown-item divided command="export-pdf">
+              <el-dropdown-item command="export-pdf">
                 <span>{{ menuI18n.exportPdf }}</span>
               </el-dropdown-item>
               <el-dropdown-item command="export-html">
@@ -37,40 +37,41 @@
           </template>
         </el-dropdown>
 
-        <!-- 主题菜单 -->
-        <el-dropdown trigger="click" @command="handleThemeMenu">
+        <!-- 外观菜单 -->
+        <el-dropdown trigger="click" @command="handleAppearanceMenu">
           <span class="menu-item">
-            {{ menuTheme.label }}
+            {{ menuI18n.appearance }}
             <el-icon class="el-icon--right"><arrow-down /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="auto">
-                {{ menuTheme.auto }}
+              <div class="menu-group-title">{{ menuTheme.label }}</div>
+              <el-dropdown-item command="theme-auto">
+                <span>{{ menuTheme.auto }}</span>
                 <span v-if="currentTheme === 'auto'" class="theme-check">✓</span>
               </el-dropdown-item>
-              <el-dropdown-item command="light">
-                {{ menuTheme.light }}
+              <el-dropdown-item command="theme-light">
+                <span>{{ menuTheme.light }}</span>
                 <span v-if="currentTheme === 'light'" class="theme-check">✓</span>
               </el-dropdown-item>
-              <el-dropdown-item command="dark">
-                {{ menuTheme.dark }}
+              <el-dropdown-item command="theme-dark">
+                <span>{{ menuTheme.dark }}</span>
                 <span v-if="currentTheme === 'dark'" class="theme-check">✓</span>
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
 
-        <!-- 视图菜单 -->
-        <el-dropdown trigger="click" @command="handleViewMenu">
+        <!-- 设置菜单 -->
+        <el-dropdown trigger="click" @command="handleSettingsMenu">
           <span class="menu-item">
-            {{ menuView.view }}
+            {{ menuI18n.settings }}
             <el-icon class="el-icon--right"><arrow-down /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="scroll-remember">
-                {{ menuView.scrollRemember }}
+                {{ menuI18n.scrollRemember }}
                 <span v-if="scrollRememberEnabled" class="theme-check">✓</span>
               </el-dropdown-item>
             </el-dropdown-menu>
@@ -94,7 +95,7 @@
 
       <!-- 语言切换器 -->
       <div class="menubar-right">
-        <span class="language-label">{{ menuI18n.language }}:</span>
+        <span class="language-label">{{ menuLanguage.label }}:</span>
         <el-select v-model="currentLang" @change="switchLanguage" size="small" style="width: 120px;">
           <el-option label="中文" value="zh_CN" />
           <el-option label="English" value="en_US" />
@@ -141,10 +142,10 @@ export default {
     menuTheme() {
       return getI18nConfig(this.currentLang).theme;
     },
-    // 当前语言的视图菜单文本
-    menuView() {
-      return getI18nConfig(this.currentLang).menu;
-    }
+    // 当前语言的语言菜单文本
+    menuLanguage() {
+      return getI18nConfig(this.currentLang).language;
+    },
   },
   mounted() {
     // 添加全局键盘快捷键监听
@@ -212,7 +213,7 @@ export default {
         case 'save':
           this.$refs.vditor?.saveMdFile();
           break;
-        case 'export':
+        case 'export-md':
           this.$refs.vditor?.exportFile();
           break;
         case 'export-pdf':
@@ -221,6 +222,25 @@ export default {
         case 'export-html':
           this.$refs.vditor?.exportHtml();
           break;
+      }
+    },
+    
+    // 处理外观菜单命令
+    handleAppearanceMenu(command) {
+      if (typeof command !== 'string') return;
+      if (command.startsWith('theme-')) {
+        const theme = command.replace('theme-', '');
+        this.handleThemeMenu(theme);
+      }
+    },
+    
+    // 处理设置菜单命令
+    async handleSettingsMenu(command) {
+      if (command === 'scroll-remember') {
+        this.scrollRememberEnabled = !this.scrollRememberEnabled
+        await saveScrollRememberEnabled(this.scrollRememberEnabled)
+        // 通知子组件更新状态
+        this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
       }
     },
     
@@ -259,11 +279,11 @@ export default {
       this._systemThemeMedia.addEventListener('change', this._systemThemeHandler);
     },
 
-    // 处理主题菜单命令
-    handleThemeMenu(command) {
-      this.currentTheme = command;
-      this.applyTheme(command);
-      saveTheme(command);
+    // 处理主题菜单命令（内部使用）
+    handleThemeMenu(theme) {
+      this.currentTheme = theme;
+      this.applyTheme(theme);
+      saveTheme(theme);
     },
 
     // 应用主题
@@ -292,16 +312,6 @@ export default {
       // 通知子组件同步状态
       this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
     },
-
-    // 处理视图菜单命令
-    async handleViewMenu(command) {
-      if (command === 'scroll-remember') {
-        this.scrollRememberEnabled = !this.scrollRememberEnabled
-        await saveScrollRememberEnabled(this.scrollRememberEnabled)
-        // 通知子组件更新状态
-        this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
-      }
-    }
   }
 }
 </script>
@@ -329,6 +339,12 @@ export default {
   gap: 5px;
 }
 
+.menubar-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .menu-item {
   display: flex;
   align-items: center;
@@ -345,26 +361,87 @@ export default {
   color: #409eff;
 }
 
+/* 菜单项内容左对齐 + 统一高度 */
 .shortcut {
   margin-left: 30px;
   font-size: 12px;
   color: #909399;
 }
 
-.menubar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.language-label {
-  font-size: 13px;
-  color: #606266;
-}
-
 .theme-check {
   margin-left: 20px;
   color: #409eff;
   font-weight: bold;
+}
+
+/* 菜单分组标题 */
+.menu-group-title {
+  padding: 8px 20px 4px;
+  font-size: 12px;
+  color: #909399;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 语言标签 */
+.language-label {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+/* 夜间模式适配 */
+</style>
+
+<style>
+/* 全局样式：统一所有下拉菜单宽度 */
+.el-dropdown-menu {
+  min-width: 200px !important;
+}
+
+/* 嵌套子菜单也保持相同宽度 */
+.el-dropdown-menu .el-dropdown-menu {
+  min-width: 200px !important;
+}
+
+/* 全局样式：强制所有下拉菜单项左对齐 + 统一高度 */
+.el-dropdown-menu .el-dropdown-menu__item {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: left !important;
+  padding: 0 20px !important;
+  line-height: 36px !important;
+}
+
+.el-dropdown-menu .el-dropdown-menu__item > span,
+.el-dropdown-menu .el-dropdown-menu__item > div {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+/* 专治嵌套子菜单——通过 popper-class 精准定位 */
+.nested-dropdown-popper .el-dropdown-menu__item {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: left !important;
+  padding: 0 20px !important;
+  line-height: 36px !important;
+}
+
+.nested-dropdown-popper .el-dropdown-menu__item > span,
+.nested-dropdown-popper .el-dropdown-menu__item > div {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: left !important;
 }
 </style>
