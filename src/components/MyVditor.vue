@@ -203,8 +203,10 @@ export default {
             this.vditor.insertValue(markdown + '\n');
             console.log('[Upload] 插入 Markdown:', markdown);
           }
+          // insertValue 不会触发 input 事件，需要手动检查内容修改状态
+          this.checkContentModified();
         }
-        
+
         return result;
       };
       
