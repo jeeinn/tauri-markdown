@@ -15,6 +15,23 @@ Maybe we can call it `TMD` ? 🤔
 ### Dark Theme
 ![Dark Theme](imgs/tmd_theme_dark.png)
 
+## What's New in v0.4.0
+
+### New Features
+- **PDF Export**: Export markdown to PDF with formatting preserved
+- **HTML Export**: Export markdown to HTML for web sharing
+- **Drag & Drop File Open**: Drag .md/.markdown/.txt files directly into the app to open
+- **Scroll Position Memory**: Remember and restore scroll position when reopening documents (toggleable)
+
+### Bug Fixes
+- **Network Image 403**: Fixed third-party image loading issues by adding no-referrer policy
+- **Export Functionality**: Fixed i18n configuration and relative path image handling in exports
+
+### Improvements
+- **Menu System**: Restructured menu with nested submenus and group titles for better organization
+- **Testing**: Migrated to Vitest framework for better test coverage
+- **Code Organization**: Modularized scroll memory and export utilities
+
 ## What's New in v0.3.2
 
 ### New Features

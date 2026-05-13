@@ -19,38 +19,21 @@ jobs:
           draft: true
           prerelease: true
           body: |
-            ## 下载说明 / Download Guide
-
-            根据您的操作系统和芯片架构选择对应的安装包：
-
-            ### macOS
-
-            | 芯片架构 | 安装包 |
-            |----------|--------|
-            | Apple Silicon (M1/M2/M3/M4) | `TauriMarkdown_aarch64.app.tar.gz` |
-            | Intel | `TauriMarkdown_x64.app.tar.gz` |
-            | 通用 (Universal) | `TauriMarkdown.app.tar.gz` |
-
-            > 下载 `.app.tar.gz` 后解压，将 `.app` 拖入「应用程序」文件夹即可。
-
-            ### Linux (Ubuntu / Debian)
-
-            | 格式 | 安装包 |
-            |------|--------|
-            | deb | `tauri-markdown_amd64.deb` |
-            | AppImage | `tauri-markdown_amd64.AppImage` |
-
-            > deb: `sudo dpkg -i <file>.deb`
-            > AppImage: `chmod +x <file>.AppImage && ./<file>.AppImage`
-
-            ### Windows
-
-            | 格式 | 安装包 |
-            |------|--------|
-            | NSIS 安装程序 | `TauriMarkdown_x64-setup.exe` |
-            | MSI 安装包 | `TauriMarkdown_version_x64_en-US.msi` |
-
-            > 推荐下载 NSIS 安装程序，双击运行即可安装。
+            ## 📦 安装包下载 / Download Packages
+          
+            | 平台 | 架构/格式 | 文件名 |
+            |------|----------|--------|
+            | **macOS** | Apple Silicon | `TauriMarkdown_{version}_aarch64.dmg` ⭐推荐 |
+            | **macOS** | Intel | `TauriMarkdown_{version}_x64.dmg` |
+            | **Windows** | NSIS 安装程序 | `TauriMarkdown_{version}_x64-setup.exe` 推荐 |
+            | **Windows** | MSI 安装包 | `TauriMarkdown_{version}_x64_en-US.msi` |
+            | **Linux** | deb (Debian/Ubuntu) | `TauriMarkdown_{version}_amd64.deb` |
+            | **Linux** | AppImage | `TauriMarkdown_{version}_amd64.AppImage` |
+            | **Linux** | RPM (Fedora/RHEL) | `TauriMarkdown-{version}-1.x86_64.rpm` |
+          
+            > 💡 macOS: 解压后将 `.app` 拖入「应用程序」文件夹
+            > 💡 Linux deb: `sudo dpkg -i <file>.deb`
+            > 💡 Linux AppImage: `chmod +x <file>.AppImage && ./<file>.AppImage`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
