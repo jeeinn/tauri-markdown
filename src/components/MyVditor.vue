@@ -34,6 +34,7 @@ import { dirname, join } from '@tauri-apps/api/path'
 import { exportPdf as exportPdfUtil } from '../utils/pdf-export.js'
 import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
+import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 
 export default {
   name: "MyVditor.vue",
@@ -52,6 +53,7 @@ export default {
       isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
       showDropOverlay: false, // 是否显示拖拽文件高亮遮罩
       _unlistenDragDrop: null, // 拖拽事件取消监听函数
+      _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
       // 滚动位置记忆管理器
       scrollMemory: null,
     };
@@ -73,15 +75,13 @@ export default {
   mounted() {
     this.initVditor();
 
-    // 添加窗口关闭前的保护（仅适用于浏览器环境）
-    window.addEventListener('beforeunload', (e) => {
-      if (this.isContentModified) {
-        e.preventDefault()
-        e.returnValue = ''
-      }
-      // 关闭前保存滚动位置
+    // beforeunload 仅用于保存滚动位置（Tauri 窗口关闭由 onCloseRequested 处理）
+    window.addEventListener('beforeunload', () => {
       this.scrollMemory?.flushScrollPosition()
     })
+
+    // 初始化 Tauri 窗口关闭拦截
+    this.setupWindowCloseHandler();
 
     // 初始化拖拽文件打开
     this.setupDragDrop();
@@ -89,7 +89,13 @@ export default {
   beforeUnmount() {
     // 清理滚动记忆管理器
     this.scrollMemory?.destroy()
-    
+
+    // 清理窗口关闭事件监听
+    if (this._unlistenCloseRequest) {
+      this._unlistenCloseRequest();
+      this._unlistenCloseRequest = null;
+    }
+
     // 清理拖拽事件监听
     if (this._unlistenDragDrop) {
       this._unlistenDragDrop();
@@ -156,6 +162,50 @@ export default {
       }
     },
 
+    // 初始化窗口关闭拦截
+    async setupWindowCloseHandler() {
+      try {
+        const appWindow = getCurrentWindow();
+        this._unlistenCloseRequest = await appWindow.onCloseRequested(async (event) => {
+          // 检查是否有未保存的修改
+          if (this.isContentModified) {
+            // 阻止默认关闭行为
+            event.preventDefault();
+
+            try {
+              // 显示保存提示对话框
+              await ElMessageBox.confirm(
+                this.t.closeWindow.unsavedChanges.message,
+                this.t.closeWindow.unsavedChanges.title,
+                {
+                  confirmButtonText: this.t.closeWindow.unsavedChanges.confirmButtonText,
+                  cancelButtonText: this.t.closeWindow.unsavedChanges.cancelButtonText,
+                  type: 'warning',
+                  distinguishCancelAndClose: true
+                }
+              );
+
+              // 用户点击"保存并关闭"，执行保存
+              const saved = await this.saveMdFile();
+              if (saved) {
+                // 保存成功，关闭窗口
+                await appWindow.destroy();
+              }
+              // 如果保存失败，窗口保持打开
+            } catch {
+              // 用户点击"取消"，窗口保持打开（不做任何操作）
+            }
+          } else {
+            // 没有未保存的修改，关闭前保存滚动位置
+            this.scrollMemory?.flushScrollPosition();
+          }
+        });
+        console.log('[WindowClose] 窗口关闭拦截已初始化');
+      } catch (error) {
+        console.error('[WindowClose] 初始化窗口关闭拦截失败:', error);
+      }
+    },
+
     // 设置编辑器主题
     setVditorTheme(isDark) {
       if (!this.vditor) return;
@@ -203,8 +253,10 @@ export default {
             this.vditor.insertValue(markdown + '\n');
             console.log('[Upload] 插入 Markdown:', markdown);
           }
+          // insertValue 不会触发 input 事件，需要手动检查内容修改状态
+          this.checkContentModified();
         }
-        
+
         return result;
       };
       
@@ -452,23 +504,9 @@ export default {
     // 新建空白文档
     async newFile() {
       // 如果当前有未保存的修改，提示用户
-      if (this.isContentModified) {
-        try {
-          await ElMessageBox.confirm(
-            this.t.newFile.unsavedChanges.message,
-            this.t.newFile.unsavedChanges.title,
-            {
-              confirmButtonText: this.t.newFile.unsavedChanges.confirmButtonText,
-              cancelButtonText: this.t.newFile.unsavedChanges.cancelButtonText,
-              type: 'warning'
-            }
-          )
-        } catch {
-          // 用户取消操作
-          return false
-        }
-      }
-      
+      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.newFile.unsavedChanges)
+      if (!canContinue) return false
+
       // 清空编辑器内容
       this.vditor.setValue('')
       
@@ -482,6 +520,10 @@ export default {
       return true
     },
     async openMdFile() {
+      // 如果当前有未保存的修改，提示用户
+      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.openFile.unsavedChanges)
+      if (!canContinue) return false
+
       const filePath = await open({
         filters: [{
           name: 'OpenFile',
@@ -602,9 +644,13 @@ export default {
       }
     },
     async exportFile() {
+      // 如果当前有未保存的修改，提示用户
+      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
+      if (!canContinue) return false
+
       try {
         const content = this.vditor.getValue()
-        
+
         // 检查内容是否为空
         if (!content.trim()) {
           ElNotification.warning({
@@ -614,7 +660,7 @@ export default {
           })
           return false
         }
-        
+
         // 打开保存对话框
         const filePath = await save({
           filters: [{
@@ -622,15 +668,15 @@ export default {
             extensions: ['md']
           }]
         })
-        
+
         if (!filePath) {
           ElNotification.error(this.t.exportFile.pathError)
           return false
         }
-        
+
         console.log('[DEBUG] 开始导出文件到:', filePath)
         await writeTextFile(filePath, content)
-        
+
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
           title: this.t.exportFile.success.title,
@@ -646,17 +692,25 @@ export default {
     },
     
     async exportPdf() {
+      // 如果当前有未保存的修改，提示用户
+      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
+      if (!canContinue) return false
+
       // 获取当前语言的 PDF 导出配置
       const pdfConfig = this.t.exportPdf
-      
+
       // 调用工具模块执行 PDF 导出
       return await exportPdfUtil(this.vditor, pdfConfig)
     },
-    
+
     async exportHtml() {
+      // 如果当前有未保存的修改，提示用户
+      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
+      if (!canContinue) return false
+
       // 获取当前语言的 HTML 导出配置
       const htmlConfig = this.t.exportHtml
-      
+
       // 调用工具模块执行 HTML 导出
       return await exportHtmlUtil(this.vditor, htmlConfig)
     },
