@@ -176,12 +176,12 @@ export default {
     {
       // hotkey: '',
       name: 'edit-mode',
-      tipPosition: 's',
+      tipPosition: 'e',
     },
     "|",
     {
       name: 'more',
-      tipPosition: 's',
+      tipPosition: 'e',
       toolbar: [
         'both',
         'code-theme', 
