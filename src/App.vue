@@ -45,28 +45,8 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <!-- 语言分组 -->
-              <div class="menu-group-title">{{ menuLanguage.label }}</div>
-              <el-dropdown-item command="lang-zh_CN">
-                <span>{{ menuLanguage.chinese }}</span>
-                <span v-if="currentLang === 'zh_CN'" class="theme-check">✓</span>
-              </el-dropdown-item>
-              <el-dropdown-item command="lang-en_US">
-                <span>{{ menuLanguage.english }}</span>
-                <span v-if="currentLang === 'en_US'" class="theme-check">✓</span>
-              </el-dropdown-item>
-              <el-dropdown-item command="lang-ja_JP">
-                <span>{{ menuLanguage.japanese }}</span>
-                <span v-if="currentLang === 'ja_JP'" class="theme-check">✓</span>
-              </el-dropdown-item>
-              <el-dropdown-item command="lang-ko_KR">
-                <span>{{ menuLanguage.korean }}</span>
-                <span v-if="currentLang === 'ko_KR'" class="theme-check">✓</span>
-              </el-dropdown-item>
-              
-              <!-- 主题分组 -->
-              <div class="menu-group-title" style="margin-top: 6px;">{{ menuTheme.label }}</div>
-              <el-dropdown-item divided command="theme-auto">
+              <div class="menu-group-title">{{ menuTheme.label }}</div>
+              <el-dropdown-item command="theme-auto">
                 <span>{{ menuTheme.auto }}</span>
                 <span v-if="currentTheme === 'auto'" class="theme-check">✓</span>
               </el-dropdown-item>
@@ -112,6 +92,17 @@
           </template>
         </el-dropdown>
       </div>
+
+      <!-- 语言切换器 -->
+      <div class="menubar-right">
+        <span class="language-label">{{ menuLanguage.label }}:</span>
+        <el-select v-model="currentLang" @change="switchLanguage" size="small" style="width: 120px;">
+          <el-option label="中文" value="zh_CN" />
+          <el-option label="English" value="en_US" />
+          <el-option label="日本語" value="ja_JP" />
+          <el-option label="한국어" value="ko_KR" />
+        </el-select>
+      </div>
     </div>
 
     <!-- Vditor 编辑器 -->
@@ -154,7 +145,7 @@ export default {
     // 当前语言的语言菜单文本
     menuLanguage() {
       return getI18nConfig(this.currentLang).language;
-    }
+    },
   },
   mounted() {
     // 添加全局键盘快捷键监听
@@ -236,19 +227,8 @@ export default {
     
     // 处理外观菜单命令
     handleAppearanceMenu(command) {
-      // 添加类型检查，防止 command 不是字符串
-      if (typeof command !== 'string') {
-        console.warn('[Appearance Menu] Invalid command type:', typeof command, command);
-        return;
-      }
-      
-      // 处理语言切换
-      if (command.startsWith('lang-')) {
-        const lang = command.replace('lang-', '');
-        this.switchLanguage(lang);
-      }
-      // 处理主题切换
-      else if (command.startsWith('theme-')) {
+      if (typeof command !== 'string') return;
+      if (command.startsWith('theme-')) {
         const theme = command.replace('theme-', '');
         this.handleThemeMenu(theme);
       }
@@ -359,6 +339,12 @@ export default {
   gap: 5px;
 }
 
+.menubar-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .menu-item {
   display: flex;
   align-items: center;
@@ -399,10 +385,15 @@ export default {
   pointer-events: none;
 }
 
-/* 夜间模式适配 */
-:global(.dark) .menu-group-title {
-  color: #a8abb2;
+/* 语言标签 */
+.language-label {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 4px;
+  white-space: nowrap;
 }
+
+/* 夜间模式适配 */
 </style>
 
 <style>
