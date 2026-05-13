@@ -61,6 +61,15 @@ export default {
           cancelButtonText: '取消',
         },
       },
+      // 关闭窗口
+      closeWindow: {
+        unsavedChanges: {
+          title: '提示',
+          message: '当前文档有未保存的修改，是否保存？',
+          confirmButtonText: '保存并关闭',
+          cancelButtonText: '取消',
+        },
+      },
       // 文件冲突对话框
       fileConflict: {
         title: '文件冲突',
@@ -80,6 +89,12 @@ export default {
       },
       // 打开文件
       openFile: {
+        unsavedChanges: {
+          title: '提示',
+          message: '当前文档有未保存的修改，是否继续打开？',
+          confirmButtonText: '继续',
+          cancelButtonText: '取消',
+        },
         pathError: '文件路径获取失败',
         notExist: '文件不存在',
         success: {
@@ -101,6 +116,12 @@ export default {
       },
       // 导出文件
       exportFile: {
+        unsavedChanges: {
+          title: '提示',
+          message: '当前文档有未保存的修改，是否继续导出？',
+          confirmButtonText: '继续',
+          cancelButtonText: '取消',
+        },
         emptyContent: {
           title: '提示',
           message: '编辑器内容为空，无法导出',
@@ -250,6 +271,14 @@ export default {
           cancelButtonText: 'Cancel',
         },
       },
+      closeWindow: {
+        unsavedChanges: {
+          title: 'Notice',
+          message: 'Current document has unsaved changes. Save before closing?',
+          confirmButtonText: 'Save & Close',
+          cancelButtonText: 'Cancel',
+        },
+      },
       fileConflict: {
         title: 'File Conflict',
         message: 'File "{fileName}" has been modified externally.\n\nDo you want to overwrite the external changes?',
@@ -266,6 +295,12 @@ export default {
         },
       },
       openFile: {
+        unsavedChanges: {
+          title: 'Notice',
+          message: 'Current document has unsaved changes. Continue to open?',
+          confirmButtonText: 'Continue',
+          cancelButtonText: 'Cancel',
+        },
         pathError: 'Failed to get file path',
         notExist: 'File does not exist',
         success: {
@@ -285,6 +320,12 @@ export default {
         saveError: 'Failed to save file',
       },
       exportFile: {
+        unsavedChanges: {
+          title: 'Notice',
+          message: 'Current document has unsaved changes. Continue to export?',
+          confirmButtonText: 'Continue',
+          cancelButtonText: 'Cancel',
+        },
         emptyContent: {
           title: 'Notice',
           message: 'Editor content is empty, cannot export',
@@ -432,6 +473,14 @@ export default {
           cancelButtonText: 'キャンセル',
         },
       },
+      closeWindow: {
+        unsavedChanges: {
+          title: 'お知らせ',
+          message: '現在のドキュメントには未保存の変更があります。保存しますか？',
+          confirmButtonText: '保存して閉じる',
+          cancelButtonText: 'キャンセル',
+        },
+      },
       fileConflict: {
         title: 'ファイルの競合',
         message: 'ファイル "{fileName}" は外部で変更されました。\n\n外部の変更を上書きしますか？',
@@ -448,6 +497,12 @@ export default {
         },
       },
       openFile: {
+        unsavedChanges: {
+          title: 'お知らせ',
+          message: '現在のドキュメントには未保存の変更があります。開きますか？',
+          confirmButtonText: '続行',
+          cancelButtonText: 'キャンセル',
+        },
         pathError: 'ファイルパスの取得に失敗しました',
         notExist: 'ファイルが存在しません',
         success: {
@@ -467,6 +522,12 @@ export default {
         saveError: 'ファイルの保存に失敗しました',
       },
       exportFile: {
+        unsavedChanges: {
+          title: 'お知らせ',
+          message: '現在のドキュメントには未保存の変更があります。エクスポートしますか？',
+          confirmButtonText: '続行',
+          cancelButtonText: 'キャンセル',
+        },
         emptyContent: {
           title: 'お知らせ',
           message: 'エディタのコンテンツが空のため、エクスポートできません',
@@ -614,6 +675,14 @@ export default {
           cancelButtonText: '취소',
         },
       },
+      closeWindow: {
+        unsavedChanges: {
+          title: '알림',
+          message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 저장하시겠습니까?',
+          confirmButtonText: '저장 후 닫기',
+          cancelButtonText: '취소',
+        },
+      },
       fileConflict: {
         title: '파일 충돌',
         message: '파일 "{fileName}"이(가) 외부에서 수정되었습니다.\n\n외부 변경 사항을 덮어쓰시겠습니까?',
@@ -630,6 +699,12 @@ export default {
         },
       },
       openFile: {
+        unsavedChanges: {
+          title: '알림',
+          message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 열기를 계속하시겠습니까?',
+          confirmButtonText: '계속',
+          cancelButtonText: '취소',
+        },
         pathError: '파일 경로를 가져오지 못했습니다',
         notExist: '파일이 존재하지 않습니다',
         success: {
@@ -649,6 +724,12 @@ export default {
         saveError: '파일 저장에 패했습니다',
       },
       exportFile: {
+        unsavedChanges: {
+          title: '알림',
+          message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 내보내기를 계속하시겠습니까?',
+          confirmButtonText: '계속',
+          cancelButtonText: '취소',
+        },
         emptyContent: {
           title: '알림',
           message: '편집기 콘텐츠가 비어 있어 내보낼 수 없습니다',
