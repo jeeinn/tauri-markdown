@@ -350,17 +350,21 @@ function buildFullHtml(bodyContent) {
       padding: 0;
       overflow-x: hidden;
     }
-    h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-    h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-    h3 { font-size: 1.25em; }
+    h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; page-break-before: always; break-before: page; page-break-after: avoid; break-after: avoid-page; }
+    h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; page-break-after: avoid; break-after: avoid-page; }
+    h3 { font-size: 1.25em; page-break-after: avoid; break-after: avoid-page; }
+    h4 { page-break-after: avoid; break-after: avoid-page; }
+    pre, code, table, blockquote, img { page-break-inside: avoid; break-inside: avoid; }
     pre { background: #f6f8fa; padding: 16px; overflow-x: auto; border-radius: 6px; }
     code { background: #f6f8fa; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
     blockquote { border-left: 4px solid #ddd; padding-left: 16px; color: #666; margin: 16px 0; }
     table { border-collapse: collapse; width: 100%; margin: 16px 0; }
     th, td { border: 1px solid #ddd; padding: 8px 12px; }
     th { background: #f6f8fa; }
-    img { max-width: 100%; max-height: none; height: auto; page-break-inside: avoid; break-inside: avoid; display: block; }
+    p, li { orphans: 3; widows: 3; }
+    img { max-width: 100%; max-height: none; height: auto; display: block; }
     hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+    .html2pdf__page-break { page-break-after: always; break-after: page; }
   </style>
 </head>
 <body>
@@ -457,15 +461,15 @@ async function waitForImagesAndScale(container) {
  */
 async function generatePdfBlob(html2pdf, container) {
   const opt = {
-    margin: 15,
+    margin: [15, 15, 20, 15],
     filename: 'markdown-export.pdf',
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: false },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: {
       mode: ['css', 'avoid-all'],
-      avoid: 'img'
-    }
+      avoid: ['img', 'pre', 'table', 'blockquote'],
+    },
   }
   
   return await html2pdf().set(opt).from(container).outputPdf('blob')
