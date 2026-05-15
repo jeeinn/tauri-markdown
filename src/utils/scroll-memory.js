@@ -36,6 +36,7 @@ export class ScrollMemoryManager {
     // 回调函数（由外部传入）
     this._onFilePathChange = options.onFilePathChange || (() => null)
     this._getCurrentFilePath = options.getCurrentFilePath || (() => null)
+    this._onAfterModeChange = options.onAfterModeChange || null  // 模式切换完成后的回调
   }
   
   /**
@@ -184,6 +185,11 @@ export class ScrollMemoryManager {
       
       // 恢复滚动位置
       await this.restoreScrollPosition(filePath)
+      
+      // 触发模式切换完成回调（用于重新应用主题等）
+      if (typeof this._onAfterModeChange === 'function') {
+        await this._onAfterModeChange(newMode, oldMode)
+      }
       
       // 更新最后模式记录
       this._lastMode = newMode

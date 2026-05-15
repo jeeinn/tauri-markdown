@@ -56,6 +56,8 @@ export default {
       _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
       // 滚动位置记忆管理器
       scrollMemory: null,
+      // 主题状态跟踪
+      isDarkTheme: false,
     };
   },
   computed: {
@@ -209,6 +211,10 @@ export default {
     // 设置编辑器主题
     setVditorTheme(isDark) {
       if (!this.vditor) return;
+      
+      // 跟踪主题状态
+      this.isDarkTheme = isDark;
+      
       const theme = isDark ? 'dark' : 'classic';
       const contentTheme = isDark ? 'dark' : 'light';
       const codeTheme = isDark ? 'github-dark' : 'github';
@@ -283,6 +289,12 @@ export default {
             () => this.vditor,
             {
               getCurrentFilePath: () => this.currentFilePath,
+              // 模式切换完成后的回调：重新应用主题
+              onAfterModeChange: async (newMode, oldMode) => {
+                console.log('[Theme] 模式切换完成，重新应用主题:', oldMode, '->', newMode);
+                // 重新应用主题
+                this.setVditorTheme(this.isDarkTheme);
+              }
             }
           )
         }
