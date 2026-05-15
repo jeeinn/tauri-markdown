@@ -215,6 +215,20 @@ export default {
       const contentThemePath = this.cdn + '/dist/css/content-theme';
       this.vditor.setTheme(theme, contentTheme, codeTheme, contentThemePath);
     },
+
+    // 切换 Zen 模式（由父组件调用）
+    toggleZenMode(isZen) {
+      if (!this.vditor) return;
+      
+      const vditorEl = document.getElementById('vditorEle');
+      if (!vditorEl) return;
+
+      if (isZen) {
+        vditorEl.classList.add('zen-mode-active');
+      } else {
+        vditorEl.classList.remove('zen-mode-active');
+      }
+    },
     
     // 初始化 Vditor 编辑器
     initVditor() {

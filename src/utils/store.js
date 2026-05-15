@@ -4,6 +4,7 @@ import { Store } from '@tauri-apps/plugin-store'
 const STORE_PATH = 'store.json'
 const LAST_FILE_KEY = 'last_opened_file'
 const THEME_KEY = 'app_theme'
+const ZEN_MODE_KEY = 'is_zen_mode'
 
 let storeInstance = null
 
@@ -165,5 +166,27 @@ export async function getScrollRememberEnabled() {
   } catch (error) {
     console.error('[Store] 获取滚动记忆开关失败:', error)
     return true // 默认启用
+  }
+}
+
+// Zen 模式相关函数
+export async function saveZenMode(enabled) {
+  try {
+    const store = await getStore()
+    await store.set(ZEN_MODE_KEY, enabled)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存 Zen 模式状态失败:', error)
+  }
+}
+
+export async function getZenMode() {
+  try {
+    const store = await getStore()
+    const enabled = await store.get(ZEN_MODE_KEY)
+    return enabled === true // 默认关闭
+  } catch (error) {
+    console.error('[Store] 获取 Zen 模式状态失败:', error)
+    return false
   }
 }

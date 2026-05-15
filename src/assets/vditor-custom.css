@@ -76,3 +76,32 @@
     transform: scale(1);
   }
 }
+
+/* Zen 模式下的 Vditor 样式微调 */
+.zen-mode-active .vditor-toolbar,
+.zen-mode-active .vditor-counter,
+.zen-mode-active .vditor-status {
+  display: none !important;
+}
+
+.zen-mode-active {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.zen-mode-active .vditor-content {
+  border-top: none !important;
+  margin: 0 !important;
+}
+
+.zen-mode-active .vditor-reset {
+  padding-top: 10px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+/* 确保 Zen 模式下 vditor-container 完全填充可用空间 */
+.zen-mode-active.vditor-container {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
