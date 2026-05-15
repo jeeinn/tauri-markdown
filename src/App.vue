@@ -58,6 +58,10 @@
                 <span>{{ menuTheme.dark }}</span>
                 <span v-if="currentTheme === 'dark'" class="theme-check">✓</span>
               </el-dropdown-item>
+              <el-dropdown-item divided command="zen-mode">
+                {{ menuI18n.zenMode }}
+                <span v-if="isZenMode" class="theme-check">✓</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -107,6 +111,13 @@
 
     <!-- Vditor 编辑器 -->
     <MyVditor ref="vditor" />
+
+    <!-- Zen 模式提示框 -->
+    <transition name="fade">
+      <div v-if="showZenTip" class="zen-tip">
+        {{ zenTipText }}
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -114,7 +125,7 @@
 import MyVditor from './components/MyVditor.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled } from './utils/store.js'
+import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode } from './utils/store.js'
 
 export default {
   name: 'App',
@@ -126,7 +137,10 @@ export default {
     return {
       currentLang: 'zh_CN',
       currentTheme: 'auto',
-      scrollRememberEnabled: true, // 滚动记忆开关状态
+      scrollRememberEnabled: true,
+      isZenMode: false,
+      showZenTip: false,
+      zenTipTimer: null,
     }
   },
   computed: {
@@ -145,6 +159,11 @@ export default {
     // 当前语言的语言菜单文本
     menuLanguage() {
       return getI18nConfig(this.currentLang).language;
+    },
+    // Zen 模式提示文本
+    zenTipText() {
+      const i18n = getI18nConfig(this.currentLang);
+      return this.isZenMode ? i18n.zenTipEnter : i18n.zenTipExit;
     },
   },
   mounted() {
@@ -168,6 +187,20 @@ export default {
   methods: {
     // 处理键盘快捷键
     handleKeyboardShortcut(event) {
+      // F11: 切换 Zen 模式
+      if (event.key === 'F11') {
+        event.preventDefault();
+        this.toggleZenMode();
+        return;
+      }
+
+      // ESC: 退出 Zen 模式
+      if (event.key === 'Escape' && this.isZenMode) {
+        event.preventDefault();
+        this.toggleZenMode(false);
+        return;
+      }
+
       // 判断是否为 Mac 系统
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
@@ -231,6 +264,8 @@ export default {
       if (command.startsWith('theme-')) {
         const theme = command.replace('theme-', '');
         this.handleThemeMenu(theme);
+      } else if (command === 'zen-mode') {
+        this.toggleZenMode();
       }
     },
     
@@ -309,8 +344,41 @@ export default {
     // 初始化视图设置
     async initViewSettings() {
       this.scrollRememberEnabled = await getScrollRememberEnabled()
+      this.isZenMode = await getZenMode()
       // 通知子组件同步状态
       this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
+      this.applyZenMode(this.isZenMode)
+    },
+
+    // 切换 Zen 模式
+    async toggleZenMode(forceState = null) {
+      const newState = forceState !== null ? forceState : !this.isZenMode
+      this.isZenMode = newState
+      await saveZenMode(newState)
+      this.applyZenMode(newState)
+      
+      // 显示提示
+      this.showZenTip = true
+      if (this.zenTipTimer) clearTimeout(this.zenTipTimer)
+      this.zenTipTimer = setTimeout(() => {
+        this.showZenTip = false
+      }, 2000)
+    },
+
+    // 应用 Zen 模式样式
+    applyZenMode(isZen) {
+      const appElement = document.getElementById('app')
+      if (isZen) {
+        appElement.classList.add('zen-mode')
+        document.body.classList.add('zen-mode')
+        // 通知 Vditor 组件进入 Zen 模式
+        this.$refs.vditor?.toggleZenMode(true)
+      } else {
+        appElement.classList.remove('zen-mode')
+        document.body.classList.remove('zen-mode')
+        // 通知 Vditor 组件退出 Zen 模式
+        this.$refs.vditor?.toggleZenMode(false)
+      }
     },
   }
 }
@@ -361,6 +429,15 @@ export default {
   color: #409eff;
 }
 
+/* Zen 模式下菜单栏完全隐藏 */
+.zen-mode .app-menubar {
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden;
+}
+
 /* 菜单项内容左对齐 + 统一高度 */
 .shortcut {
   margin-left: 30px;
@@ -391,6 +468,31 @@ export default {
   color: #909399;
   margin-right: 4px;
   white-space: nowrap;
+}
+
+/* Zen 模式提示框 */
+.zen-tip {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 /* 夜间模式适配 */

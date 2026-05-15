@@ -21,6 +21,7 @@ export default {
       viewLog: '查看日志',
       about: '关于',
       scrollRemember: '记住浏览位置',
+      zenMode: 'Zen 模式',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -51,6 +52,8 @@ export default {
       title: '不支持的格式',
       unsupported: '暂不支持拖拽其他格式的文件',
     },
+    zenTipEnter: '已进入 Zen 模式，按 ESC 退出',
+    zenTipExit: '已退出 Zen 模式',
     notifications: {
       // 新建文件
       newFile: {
@@ -232,6 +235,7 @@ export default {
       viewLog: 'View Log',
       about: 'About',
       scrollRemember: 'Remember Reading Position',
+      zenMode: 'Zen Mode',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -262,6 +266,8 @@ export default {
       title: 'Unsupported Format',
       unsupported: 'Only Markdown (.md) files are supported',
     },
+    zenTipEnter: 'Entered Zen Mode, press ESC to exit',
+    zenTipExit: 'Exited Zen Mode',
     notifications: {
       newFile: {
         unsavedChanges: {
@@ -434,6 +440,7 @@ export default {
       viewLog: 'ログを表示',
       about: 'について',
       scrollRemember: '閲覧位置を記憶',
+      zenMode: 'Zen モード',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -464,6 +471,8 @@ export default {
       title: 'サポート外の形式',
       unsupported: 'Markdownファイル以外はドラッグ&ドロップに対応していません',
     },
+    zenTipEnter: 'Zen モードに入りました。ESC キーを押して終了します',
+    zenTipExit: 'Zen モードを終了しました',
     notifications: {
       newFile: {
         unsavedChanges: {
@@ -636,6 +645,7 @@ export default {
       viewLog: '로그 보기',
       about: '정보',
       scrollRemember: '읽기 위치 기억',
+      zenMode: 'Zen 모드',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -666,6 +676,8 @@ export default {
       title: '지원되지 않는 형식',
       unsupported: 'Markdown 파일만 드래그 앤 드롭이 가능합니다',
     },
+    zenTipEnter: 'Zen 모드로 진입했습니다. ESC 키를 눌러 종료하세요',
+    zenTipExit: 'Zen 모드를 종료했습니다',
     notifications: {
       newFile: {
         unsavedChanges: {
