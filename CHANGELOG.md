@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-15
+
+### Added
+- **Zen Mode**: Implement immersive Zen mode for distraction-free writing experience
+- **Save Prompt on Close**: Add unsaved changes detection with confirmation dialog when closing window or opening new file
+- **PDF Page Break Optimization**: Enhanced PDF export to prevent content from being cut horizontally across pages
+
+### Fixed
+- **Content Change Detection**: Fixed issue where inserting images incorrectly showed "content not modified" message
+
 ## [0.4.0] - 2026-05-13
 
 ### Added
@@ -80,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.3.0...v0.3.1
