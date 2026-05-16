@@ -22,12 +22,12 @@ import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import { getI18nText, getI18nConfig } from '../utils/i18n-helper.js'
+import { toRefs } from 'vue'  // 用于解构 composable 返回的 ref
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join } from '@tauri-apps/api/path'
@@ -36,6 +36,10 @@ import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
+// 导入 composables
+import { useDragDrop } from '../composables/useDragDrop.js'
+// 导入工具函数
+import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
 
 // 日志级别控制（生产环境可关闭）
 const DEBUG = import.meta.env.DEV;
@@ -55,8 +59,6 @@ export default {
       isContentModified: false, // 内容是否被修改
       originalContent: '', // 原始文件内容,用于对比
       isSaving: false, // 是否正在保存(防止保存过程中触发修改检测)
-      showDropOverlay: false, // 是否显示拖拽文件高亮遮罩
-      _unlistenDragDrop: null, // 拖拽事件取消监听函数
       _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
       // 滚动位置记忆管理器
       scrollMemory: null,
@@ -64,6 +66,8 @@ export default {
       isDarkTheme: false,
       // 模式切换监听器取消订阅函数
       _unsubscribeModeSwitch: null,
+      // 拖拽文件管理器（在 mounted 中初始化）
+      dragDropManager: null,
     };
   },
   computed: {
@@ -79,6 +83,7 @@ export default {
     dropHintText() {
       return getI18nText(this.lang, 'dragDrop.hint');
     }
+    // showDropOverlay 已通过 toRefs 解构到组件实例，可直接在模板中使用
   },
   mounted() {
     this.initVditor();
@@ -91,8 +96,15 @@ export default {
     // 初始化 Tauri 窗口关闭拦截
     this.setupWindowCloseHandler();
 
-    // 初始化拖拽文件打开
-    this.setupDragDrop();
+    // 初始化拖拽文件管理器
+    this.dragDropManager = useDragDrop(
+      (filePath) => this.loadFileByPath(filePath),
+      () => this.lang  // 传入 getter 函数，确保语言切换时获取最新值
+    );
+    this.dragDropManager.setupDragDrop();
+    
+    // 将 composable 返回的 ref 解构到组件实例，方便在模板和 computed 中直接使用
+    Object.assign(this, toRefs(this.dragDropManager));
   },
   beforeUnmount() {
     // 清理滚动记忆管理器
@@ -114,13 +126,12 @@ export default {
       this._unlistenCloseRequest = null;
     }
 
-    // 清理拖拽事件监听
-    if (this._unlistenDragDrop) {
-      this._unlistenDragDrop();
-      this._unlistenDragDrop = null;
-    }
+    // 清理拖拽文件管理器
+    this.dragDropManager?.cleanup();
   },
   methods: {
+    // ========== 语言切换 ==========
+
     // 切换语言
     switchLanguage(lang) {
       if (this.lang === lang) return;
@@ -130,55 +141,7 @@ export default {
       this.initVditor();
     },
 
-    // 初始化拖拽文件打开
-    async setupDragDrop() {
-      try {
-        const webview = await getCurrentWebview();
-        this._unlistenDragDrop = await webview.onDragDropEvent((event) => {
-          const { type, paths } = event.payload;
-
-          if (type === 'over') {
-            // 拖入窗口 - 显示高亮遮罩
-            this.showDropOverlay = true;
-            return;
-          }
-
-          if (type === 'leave' || type === 'cancel') {
-            // 离开窗口或取消 - 隐藏遮罩
-            this.showDropOverlay = false;
-            return;
-          }
-
-          if (type === 'drop') {
-            // 文件已拖放 - 隐藏遮罩
-            this.showDropOverlay = false;
-
-            if (!paths || paths.length === 0) return;
-
-            // 查找第一个 Markdown 文件
-            const mdFile = paths.find(p =>
-              p.endsWith('.md') || p.endsWith('.markdown') || p.endsWith('.txt')
-            );
-
-            if (mdFile) {
-              console.log('[DragDrop] 拖拽打开文件:', mdFile);
-              this.loadFileByPath(mdFile);
-            } else {
-              // 提示用户只支持 Markdown 文件
-              ElNotification({
-                title: getI18nText(this.lang, 'dragDrop.title'),
-                message: getI18nText(this.lang, 'dragDrop.unsupported'),
-                type: 'warning',
-                duration: 3000,
-              });
-            }
-          }
-        });
-        console.log('[DragDrop] 拖拽文件打开功能已初始化');
-      } catch (error) {
-        console.error('[DragDrop] 初始化拖拽监听失败:', error);
-      }
-    },
+    // ========== 窗口管理 ==========
 
     // 初始化窗口关闭拦截
     async setupWindowCloseHandler() {
@@ -224,6 +187,8 @@ export default {
       }
     },
 
+    // ========== 主题管理 ==========
+
     // 设置编辑器主题
     setVditorTheme(isDark) {
       if (!this.vditor) return;
@@ -251,6 +216,8 @@ export default {
         vditorEl.classList.remove('zen-mode-active');
       }
     },
+
+    // ========== Vditor 编辑器初始化 ==========
 
     // 初始化 Vditor 编辑器
     initVditor() {
@@ -328,6 +295,8 @@ export default {
       this.vditor = new Vditor('vditorEle', vditorConfCopy.options);
     },
 
+    // ========== 内容监听 ==========
+
     // 监听编辑器内容变化(支持多种模式)
     observeContentChange() {
       if (this.vditor && this.vditor.vditor) {
@@ -345,6 +314,8 @@ export default {
         }
       }
     },
+
+    // ========== 文件管理 ==========
 
     // 检查内容是否被修改
     checkContentModified() {
@@ -774,25 +745,14 @@ export default {
             dangerouslyUseHTMLString: true
           });
     },
+    
     openWindow(url) {
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
     },
 
-    // 计算文件的 SHA256 Hash
-    async calculateFileHash(file) {
-      const arrayBuffer = await file.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return hashHex;
-    },
-
-    // 判断文件是否为图片
-    isImageFile(file) {
-      return file.type && file.type.startsWith('image/');
-    },
+    // ========== 文件上传 ==========
 
     // 处理文件上传(图片和非图片分离处理)
     async handleUpload(files) {
@@ -806,7 +766,7 @@ export default {
           console.log('[Upload] 处理文件:', file.name);
 
           // 判断是否为图片
-          const isImage = this.isImageFile(file);
+          const isImage = isImageFile(file);
           const maxImageSize = 10 * 1024 * 1024; // 10MB
           const maxFileSize = 50 * 1024 * 1024;  // 50MB
 
@@ -889,7 +849,7 @@ export default {
           const uint8Array = new Uint8Array(arrayBuffer);
 
           // 计算文件的 SHA256 Hash
-          const fileHash = await this.calculateFileHash(file);
+          const fileHash = await calculateFileHash(file);
           console.log('[Upload] 文件 Hash:', fileHash.substring(0, 16) + '...');
 
           // 使用 Hash 作为文件名(避免重复)
