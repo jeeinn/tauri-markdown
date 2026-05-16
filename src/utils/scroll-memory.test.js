@@ -247,7 +247,8 @@ describe('ScrollMemoryManager', () => {
 
       expect(saveScrollPosition).toHaveBeenCalled()
       expect(manager._scrollEl).toBeNull()
-      expect(manager._modeCheckInterval).toBeNull()
+      // _modeCheckInterval 已移除，改为使用 mode-switch-listener
+      expect(manager._unsubscribeModeSwitch).toBeNull()
       expect(Object.keys(manager.scrollPositionsCache).length).toBe(0)
     })
   })

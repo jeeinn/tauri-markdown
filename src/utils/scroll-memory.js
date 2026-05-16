@@ -7,6 +7,7 @@
  */
 
 import { saveScrollPosition, getScrollPosition } from './store.js'
+import modeSwitchListener from './mode-switch-listener.js'
 
 export class ScrollMemoryManager {
   constructor(vditorRef, options = {}) {
@@ -29,13 +30,13 @@ export class ScrollMemoryManager {
     this._scrollEl = null                           // 当前绑定的滚动元素
     this._scrollThrottleTimer = null                // 滚动节流定时器
     this._storeSaveTimer = null                     // Store 写入防抖定时器
-    this._modeCheckInterval = null                  // 模式切换轮询定时器
-    this._lastMode = null                           // 上次编辑模式
-    this._isHandlingModeChange = false              // 防止重复处理模式切换
     
     // 回调函数（由外部传入）
     this._onFilePathChange = options.onFilePathChange || (() => null)
     this._getCurrentFilePath = options.getCurrentFilePath || (() => null)
+    
+    // 模式切换监听器取消订阅函数
+    this._unsubscribeModeSwitch = null
   }
   
   /**
@@ -123,7 +124,7 @@ export class ScrollMemoryManager {
   }
   
   /**
-   * 设置模式切换监听器（通过轮询检测 currentMode 变化）
+   * 设置模式切换监听器（使用统一的 mode-switch-listener）
    */
   setupEditModeListener() {
     const vditor = this._getVditor()
@@ -132,66 +133,43 @@ export class ScrollMemoryManager {
       return
     }
     
-    // 初始化最后模式记录
-    this._lastMode = vditor.vditor.currentMode
+    // 设置 Vditor 引用
+    modeSwitchListener.setVditorRef(this._getVditor)
     
-    // 使用轮询方式检测模式变化
-    this._modeCheckInterval = setInterval(() => {
-      const vditor = this._getVditor()
-      if (!vditor || !vditor.vditor) return
-      
-      const currentMode = vditor.vditor.currentMode
-      if (currentMode !== this._lastMode && !this._isHandlingModeChange) {
-        this.handleModeChange()
-      }
-    }, this.config.modeCheckIntervalMs)
+    // 订阅模式切换事件
+    this._unsubscribeModeSwitch = modeSwitchListener.subscribe(async (newMode, oldMode, vditor) => {
+      await this.handleModeChange(newMode, oldMode, vditor)
+    })
+    
+    console.log('[ScrollMemory] 已订阅模式切换事件')
   }
   
   /**
    * 处理模式切换
+   * @param {string} newMode - 新模式
+   * @param {string} oldMode - 旧模式
+   * @param {Object} vditor - Vditor 实例
    */
-  async handleModeChange() {
+  async handleModeChange(newMode, oldMode, vditor) {
     if (!this.enabled) return
     
-    // 防止重复处理
-    if (this._isHandlingModeChange) return
-    this._isHandlingModeChange = true
+    const filePath = this._getCurrentFilePath()
+    if (!filePath) return
     
-    try {
-      const filePath = this._getCurrentFilePath()
-      if (!filePath) return
-      
-      const vditor = this._getVditor()
-      const oldMode = this._lastMode
-      const newMode = vditor?.vditor?.currentMode
-      
-      // 如果模式没有变化，忽略
-      if (oldMode === newMode) {
-        this._isHandlingModeChange = false
-        return
-      }
-      
-      console.log('[ScrollMemory] 检测到模式切换:', oldMode, '->', newMode)
-      
-      // 保存当前模式的滚动位置（在 DOM 销毁前）
-      this.saveCurrentScrollPosition()
-      
-      // 等待新模式 DOM 渲染完成
-      await new Promise(resolve => setTimeout(resolve, 150))
-      
-      // 重新绑定滚动监听器到新模式的元素
-      this.setupScrollListener()
-      
-      // 恢复滚动位置
-      await this.restoreScrollPosition(filePath)
-      
-      // 更新最后模式记录
-      this._lastMode = newMode
-      console.log('[ScrollMemory] 模式切换完成')
-    } finally {
-      // 确保标志位被重置
-      this._isHandlingModeChange = false
-    }
+    console.log('[ScrollMemory] 处理模式切换:', oldMode, '->', newMode)
+    
+    // 保存当前模式的滚动位置（在 DOM 销毁前）
+    this.saveCurrentScrollPosition()
+    
+    // 等待新模式 DOM 渲染完成（已由 mode-switch-listener 等待了 150ms）
+    
+    // 重新绑定滚动监听器到新模式的元素
+    this.setupScrollListener()
+    
+    // 恢复滚动位置
+    await this.restoreScrollPosition(filePath)
+    
+    console.log('[ScrollMemory] 模式切换完成')
   }
   
   /**
@@ -298,9 +276,10 @@ export class ScrollMemoryManager {
       this._storeSaveTimer = null
     }
     
-    if (this._modeCheckInterval) {
-      clearInterval(this._modeCheckInterval)
-      this._modeCheckInterval = null
+    // 取消模式切换监听器订阅
+    if (this._unsubscribeModeSwitch) {
+      this._unsubscribeModeSwitch()
+      this._unsubscribeModeSwitch = null
     }
     
     // 解绑滚动监听

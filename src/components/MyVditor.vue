@@ -22,19 +22,27 @@ import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import { getI18nText, getI18nConfig } from '../utils/i18n-helper.js'
+import { toRefs } from 'vue'  // 用于解构 composable 返回的 ref
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join } from '@tauri-apps/api/path'
 import { exportPdf as exportPdfUtil } from '../utils/pdf-export.js'
 import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
+import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
+// 导入 composables
+import { useDragDrop } from '../composables/useDragDrop.js'
+// 导入工具函数
+import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
+
+// 日志级别控制（生产环境可关闭）
+const DEBUG = import.meta.env.DEV;
 
 export default {
   name: "MyVditor.vue",
@@ -49,13 +57,17 @@ export default {
       // 文件状态追踪
       currentFilePath: null, // 当前打开的文件路径
       isContentModified: false, // 内容是否被修改
-      originalContent: '', // 原始文件内容，用于对比
-      isSaving: false, // 是否正在保存（防止保存过程中触发修改检测）
-      showDropOverlay: false, // 是否显示拖拽文件高亮遮罩
-      _unlistenDragDrop: null, // 拖拽事件取消监听函数
+      originalContent: '', // 原始文件内容,用于对比
+      isSaving: false, // 是否正在保存(防止保存过程中触发修改检测)
       _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
       // 滚动位置记忆管理器
       scrollMemory: null,
+      // 主题状态跟踪
+      isDarkTheme: false,
+      // 模式切换监听器取消订阅函数
+      _unsubscribeModeSwitch: null,
+      // 拖拽文件管理器（在 mounted 中初始化）
+      dragDropManager: null,
     };
   },
   computed: {
@@ -71,11 +83,12 @@ export default {
     dropHintText() {
       return getI18nText(this.lang, 'dragDrop.hint');
     }
+    // showDropOverlay 已通过 toRefs 解构到组件实例，可直接在模板中使用
   },
   mounted() {
     this.initVditor();
 
-    // beforeunload 仅用于保存滚动位置（Tauri 窗口关闭由 onCloseRequested 处理）
+    // beforeunload 仅用于保存滚动位置(Tauri 窗口关闭由 onCloseRequested 处理)
     window.addEventListener('beforeunload', () => {
       this.scrollMemory?.flushScrollPosition()
     })
@@ -83,26 +96,42 @@ export default {
     // 初始化 Tauri 窗口关闭拦截
     this.setupWindowCloseHandler();
 
-    // 初始化拖拽文件打开
-    this.setupDragDrop();
+    // 初始化拖拽文件管理器
+    this.dragDropManager = useDragDrop(
+      (filePath) => this.loadFileByPath(filePath),
+      () => this.lang  // 传入 getter 函数，确保语言切换时获取最新值
+    );
+    this.dragDropManager.setupDragDrop();
+    
+    // 将 composable 返回的 ref 解构到组件实例，方便在模板和 computed 中直接使用
+    Object.assign(this, toRefs(this.dragDropManager));
   },
   beforeUnmount() {
     // 清理滚动记忆管理器
     this.scrollMemory?.destroy()
-
+    
+    // 取消模式切换监听器订阅
+    if (this._unsubscribeModeSwitch) {
+      this._unsubscribeModeSwitch()
+      this._unsubscribeModeSwitch = null
+      
+      if (DEBUG) {
+        console.log('[Theme] 已取消主题模式切换订阅，当前订阅者数量:', modeSwitchListener.getSubscriberCount());
+      }
+    }
+    
     // 清理窗口关闭事件监听
     if (this._unlistenCloseRequest) {
       this._unlistenCloseRequest();
       this._unlistenCloseRequest = null;
     }
 
-    // 清理拖拽事件监听
-    if (this._unlistenDragDrop) {
-      this._unlistenDragDrop();
-      this._unlistenDragDrop = null;
-    }
+    // 清理拖拽文件管理器
+    this.dragDropManager?.cleanup();
   },
   methods: {
+    // ========== 语言切换 ==========
+
     // 切换语言
     switchLanguage(lang) {
       if (this.lang === lang) return;
@@ -112,55 +141,7 @@ export default {
       this.initVditor();
     },
 
-    // 初始化拖拽文件打开
-    async setupDragDrop() {
-      try {
-        const webview = await getCurrentWebview();
-        this._unlistenDragDrop = await webview.onDragDropEvent((event) => {
-          const { type, paths } = event.payload;
-
-          if (type === 'over') {
-            // 拖入窗口 - 显示高亮遮罩
-            this.showDropOverlay = true;
-            return;
-          }
-
-          if (type === 'leave' || type === 'cancel') {
-            // 离开窗口或取消 - 隐藏遮罩
-            this.showDropOverlay = false;
-            return;
-          }
-
-          if (type === 'drop') {
-            // 文件已拖放 - 隐藏遮罩
-            this.showDropOverlay = false;
-
-            if (!paths || paths.length === 0) return;
-
-            // 查找第一个 Markdown 文件
-            const mdFile = paths.find(p =>
-              p.endsWith('.md') || p.endsWith('.markdown') || p.endsWith('.txt')
-            );
-
-            if (mdFile) {
-              console.log('[DragDrop] 拖拽打开文件:', mdFile);
-              this.loadFileByPath(mdFile);
-            } else {
-              // 提示用户只支持 Markdown 文件
-              ElNotification({
-                title: getI18nText(this.lang, 'dragDrop.title'),
-                message: getI18nText(this.lang, 'dragDrop.unsupported'),
-                type: 'warning',
-                duration: 3000,
-              });
-            }
-          }
-        });
-        console.log('[DragDrop] 拖拽文件打开功能已初始化');
-      } catch (error) {
-        console.error('[DragDrop] 初始化拖拽监听失败:', error);
-      }
-    },
+    // ========== 窗口管理 ==========
 
     // 初始化窗口关闭拦截
     async setupWindowCloseHandler() {
@@ -185,18 +166,18 @@ export default {
                 }
               );
 
-              // 用户点击"保存并关闭"，执行保存
+              // 用户点击"保存并关闭",执行保存
               const saved = await this.saveMdFile();
               if (saved) {
-                // 保存成功，关闭窗口
+                // 保存成功,关闭窗口
                 await appWindow.destroy();
               }
-              // 如果保存失败，窗口保持打开
+              // 如果保存失败,窗口保持打开
             } catch {
-              // 用户点击"取消"，窗口保持打开（不做任何操作）
+              // 用户点击"取消",窗口保持打开(不做任何操作)
             }
           } else {
-            // 没有未保存的修改，关闭前保存滚动位置
+            // 没有未保存的修改,关闭前保存滚动位置
             this.scrollMemory?.flushScrollPosition();
           }
         });
@@ -206,9 +187,15 @@ export default {
       }
     },
 
+    // ========== 主题管理 ==========
+
     // 设置编辑器主题
     setVditorTheme(isDark) {
       if (!this.vditor) return;
+
+      // 跟踪主题状态
+      this.isDarkTheme = isDark;
+
       const theme = isDark ? 'dark' : 'classic';
       const contentTheme = isDark ? 'dark' : 'light';
       const codeTheme = isDark ? 'github-dark' : 'github';
@@ -216,10 +203,10 @@ export default {
       this.vditor.setTheme(theme, contentTheme, codeTheme, contentThemePath);
     },
 
-    // 切换 Zen 模式（由父组件调用）
+    // 切换 Zen 模式(由父组件调用)
     toggleZenMode(isZen) {
       if (!this.vditor) return;
-      
+
       const vditorEl = document.getElementById('vditorEle');
       if (!vditorEl) return;
 
@@ -229,15 +216,17 @@ export default {
         vditorEl.classList.remove('zen-mode-active');
       }
     },
-    
+
+    // ========== Vditor 编辑器初始化 ==========
+
     // 初始化 Vditor 编辑器
     initVditor() {
       // 销毁现有实例
       if (this.vditor) {
         this.vditor.destroy();
       }
-      
-      // 创建配置（注意：不使用 JSON 深拷贝，避免丢失函数类型配置）
+
+      // 创建配置(注意:不使用 JSON 深拷贝,避免丢失函数类型配置)
       const vditorConfCopy = {
         options: {
           ...vditorConf.options,
@@ -249,7 +238,7 @@ export default {
           customWysiwygToolbar: () => {},
         },
       };
-      
+
       // 设置自定义上传 handler
       vditorConfCopy.options.upload.handler = async (files) => {
         const result = await this.handleUpload(files);
@@ -267,13 +256,13 @@ export default {
             this.vditor.insertValue(markdown + '\n');
             console.log('[Upload] 插入 Markdown:', markdown);
           }
-          // insertValue 不会触发 input 事件，需要手动检查内容修改状态
+          // insertValue 不会触发 input 事件,需要手动检查内容修改状态
           this.checkContentModified();
         }
 
         return result;
       };
-      
+
       vditorConfCopy.options.after = () => {
         this.observeContentChange();
         
@@ -283,6 +272,7 @@ export default {
             () => this.vditor,
             {
               getCurrentFilePath: () => this.currentFilePath,
+              // 注意：不再使用 onAfterModeChange，改为直接使用 modeSwitchListener
             }
           )
         }
@@ -290,16 +280,24 @@ export default {
         this.scrollMemory.setupScrollListener();
         this.scrollMemory.setupEditModeListener();
         
+        // 设置主题模式切换监听器（只需订阅一次）
+        this.setupThemeModeSwitchListener();
+        
+        // 语言切换后重新应用主题（因为 Vditor 实例被重建）
+        this.setVditorTheme(this.isDarkTheme);
+        
         this.autoLoadLastFile();
         // 初始化窗口标题
         this.updateWindowTitle();
       };
-      
+
       // 创建新实例
       this.vditor = new Vditor('vditorEle', vditorConfCopy.options);
     },
-    
-    // 监听编辑器内容变化（支持多种模式）
+
+    // ========== 内容监听 ==========
+
+    // 监听编辑器内容变化(支持多种模式)
     observeContentChange() {
       if (this.vditor && this.vditor.vditor) {
         // IR 模式
@@ -316,73 +314,75 @@ export default {
         }
       }
     },
-    
+
+    // ========== 文件管理 ==========
+
     // 检查内容是否被修改
     checkContentModified() {
       if (!this.vditor) return
-      
-      // 如果正在保存，跳过检查
+
+      // 如果正在保存,跳过检查
       if (this.isSaving) {
-        console.log('[DEBUG] 正在保存中，跳过内容修改检测')
+        console.log('[DEBUG] 正在保存中,跳过内容修改检测')
         return
       }
-      
+
       const currentContent = this.vditor.getValue()
       const wasModified = this.isContentModified
       this.isContentModified = currentContent !== this.originalContent
-      
-      // 调试日志：只在状态变化时输出
+
+      // 调试日志:只在状态变化时输出
       if (wasModified !== this.isContentModified) {
         console.log('[DEBUG] 内容修改状态变化:', this.isContentModified ? '已修改' : '未修改')
-        // 更新窗口标题（添加/移除修改标记）
+        // 更新窗口标题(添加/移除修改标记)
         this.updateWindowTitle()
       }
     },
-    
+
     // 更新窗口标题
     async updateWindowTitle() {
       try {
         const window = getCurrentWindow();
         const { appName, untitled, modifiedMarker } = this.wt;
         let title = appName;
-        
+
         if (this.currentFilePath) {
           // 有打开的文件
           const fileName = this.currentFilePath.split('\\').pop() || this.currentFilePath.split('/').pop();
           title = this.isContentModified ? `${appName} - ${modifiedMarker} ${fileName}` : `${appName} - ${fileName}`;
         } else {
-          // 新建文件，未保存
+          // 新建文件,未保存
           title = this.isContentModified ? `${appName} - ${modifiedMarker} ${untitled}` : `${appName} - ${untitled}`;
         }
-        
+
         await window.setTitle(title);
         console.log('[Title] 窗口标题已更新:', title);
       } catch (error) {
         console.error('[Title] 更新窗口标题失败:', error);
       }
     },
-    
+
     // 清除当前文件状态
     async clearCurrentFile() {
       const oldFilePath = this.currentFilePath
-      
+
       this.currentFilePath = null
       this.originalContent = ''
       this.isContentModified = false
-      
+
       // 清除 store 中的记录
       const { clearLastFilePath, clearScrollPosition } = await import('../utils/store.js')
       await clearLastFilePath()
-      
+
       // 清除该文件的滚动位置记录
       if (oldFilePath) {
         await clearScrollPosition(oldFilePath)
       }
-      
+
       // 更新窗口标题
       await this.updateWindowTitle()
     },
-    
+
     // 显示文件冲突对话框
     async showFileConflictDialog(filePath) {
       const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
@@ -403,12 +403,12 @@ export default {
         return false
       }
     },
-    
+
     async autoLoadLastFile() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
 
-        // 优先处理通过"打开方式"传入的文件（由 Rust 端通过 command 获取）
+        // 优先处理通过"打开方式"传入的文件(由 Rust 端通过 command 获取)
         const openedFile = await invoke('take_opened_file');
         await invoke('log_message', { msg: `autoLoadLastFile: take_opened_file returned: ${openedFile}` });
         if (openedFile) {
@@ -439,7 +439,7 @@ export default {
         console.log('[DEBUG] 检查文件是否存在:', lastFilePath)
         const fileExists = await exists(lastFilePath)
         if (!fileExists) {
-          console.log('[DEBUG] 文件不存在，清除记录')
+          console.log('[DEBUG] 文件不存在,清除记录')
           await this.clearCurrentFile()
           ElNotification.warning({
             title: this.t.autoLoad.fileNotExist.title,
@@ -469,7 +469,7 @@ export default {
       }
     },
 
-    // 根据路径加载文件（供 autoLoadLastFile / openMdFile / 打开方式 共用）
+    // 根据路径加载文件(供 autoLoadLastFile / openMdFile / 打开方式 共用)
     async loadFileByPath(filePath) {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('log_message', { msg: `loadFileByPath: ${filePath}` });
@@ -511,30 +511,30 @@ export default {
 
       // 加载新文件后恢复滚动位置
       this.scrollMemory?.restoreScrollPosition(filePath)
-      
+
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
       return true
     },
     // 新建空白文档
     async newFile() {
-      // 如果当前有未保存的修改，提示用户
+      // 如果当前有未保存的修改,提示用户
       const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.newFile.unsavedChanges)
       if (!canContinue) return false
 
       // 清空编辑器内容
       this.vditor.setValue('')
-      
+
       // 切换文件前保存当前文件的滚动位置
       this.scrollMemory?.saveCurrentScrollPosition()
-      
+
       // 清除文件状态
       await this.clearCurrentFile()
-      
+
       console.log('[New] 已创建新空白文档')
       return true
     },
     async openMdFile() {
-      // 如果当前有未保存的修改，提示用户
+      // 如果当前有未保存的修改,提示用户
       const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.openFile.unsavedChanges)
       if (!canContinue) return false
 
@@ -567,9 +567,9 @@ export default {
     async saveMdFile() {
       let filePath = this.currentFilePath
 
-      // 如果没有当前文件路径，弹出保存对话框
+      // 如果没有当前文件路径,弹出保存对话框
       if (!filePath) {
-        console.log('[DEBUG] 没有当前文件路径，弹出保存对话框')
+        console.log('[DEBUG] 没有当前文件路径,弹出保存对话框')
         filePath = await save({
           filters: [{
             name: 'MarkDownFile',
@@ -586,18 +586,18 @@ export default {
       }
 
       try {
-        // 设置保存标志，防止保存过程中触发修改检测
+        // 设置保存标志,防止保存过程中触发修改检测
         this.isSaving = true
-        
+
         // 检查内容是否有修改
         let currentContent = this.vditor.getValue()
-                
-        // 使用工具模块将 tmd URL 转换为相对路径（保存前处理）
+
+        // 使用工具模块将 tmd URL 转换为相对路径(保存前处理)
         currentContent = imagePathMapper.convertToRelative(currentContent);
         console.log('[Save] 已转换 tmd URL 为相对路径');
-        
+
         if (!this.isContentModified && this.originalContent !== '') {
-          // 内容未修改，提示用户
+          // 内容未修改,提示用户
           this.isSaving = false
           ElNotification.info({
             title: this.t.saveFile.notModified.title,
@@ -606,14 +606,14 @@ export default {
           })
           return true
         }
-        
-        // 如果文件已存在，检查是否被外部修改
+
+        // 如果文件已存在,检查是否被外部修改
         const fileExists = await exists(filePath)
         if (fileExists && this.currentFilePath === filePath) {
           // 读取当前磁盘上的文件内容
           const diskContent = await readTextFile(filePath)
-          
-          // 如果磁盘内容与原始内容不同，说明文件被外部修改
+
+          // 如果磁盘内容与原始内容不同,说明文件被外部修改
           if (diskContent !== this.originalContent) {
             const confirmed = await this.showFileConflictDialog(filePath)
             if (!confirmed) {
@@ -626,22 +626,22 @@ export default {
         // 执行保存
         console.log('[DEBUG] 开始保存文件到:', filePath)
         await writeTextFile(filePath, currentContent)
-        
-        // 立即更新状态（在显示通知之前）
+
+        // 立即更新状态(在显示通知之前)
         this.currentFilePath = filePath
         this.originalContent = currentContent
         this.isContentModified = false
-        
+
         // 保存到 store
         await saveLastFilePath(filePath)
-        
+
         // 清除保存标志
         this.isSaving = false
-        console.log('[DEBUG] 文件保存成功，状态已更新')
-        
-        // 更新窗口标题（移除修改标记）
+        console.log('[DEBUG] 文件保存成功,状态已更新')
+
+        // 更新窗口标题(移除修改标记)
         await this.updateWindowTitle()
-        
+
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
         ElNotification.success({
           title: this.t.saveFile.success.title,
@@ -658,7 +658,7 @@ export default {
       }
     },
     async exportFile() {
-      // 如果当前有未保存的修改，提示用户
+      // 如果当前有未保存的修改,提示用户
       const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (!canContinue) return false
 
@@ -704,9 +704,9 @@ export default {
         return false
       }
     },
-    
+
     async exportPdf() {
-      // 如果当前有未保存的修改，提示用户
+      // 如果当前有未保存的修改,提示用户
       const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (!canContinue) return false
 
@@ -718,7 +718,7 @@ export default {
     },
 
     async exportHtml() {
-      // 如果当前有未保存的修改，提示用户
+      // 如果当前有未保存的修改,提示用户
       const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (!canContinue) return false
 
@@ -731,7 +731,7 @@ export default {
     showAbout() {
       ElMessageBox.alert(
           '&nbsp;&nbsp;&nbsp;&nbsp;' +
-          '这是基于开源项目开发的一个本地 Markdown 写作工具，可以跨平台使用（Windows、macOS、Linux） <br/>' +
+          '这是基于开源项目开发的一个本地 Markdown 写作工具,可以跨平台使用(Windows、macOS、Linux) <br/>' +
           '项目主页👉 <a target="_blank" href="https://github.com/jeeinn/tauri-markdown">github.com/jeeinn/tauri-markdown</a><br/>' +
           '鸣谢🙏 (右键可复制链接)<br/>' +
           '<a target="_blank" href="https://tauri.app">Tauri</a> 、' +
@@ -745,39 +745,28 @@ export default {
             dangerouslyUseHTMLString: true
           });
     },
+    
     openWindow(url) {
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
     },
-    
-    // 计算文件的 SHA256 Hash
-    async calculateFileHash(file) {
-      const arrayBuffer = await file.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return hashHex;
-    },
-    
-    // 判断文件是否为图片
-    isImageFile(file) {
-      return file.type && file.type.startsWith('image/');
-    },
 
-    // 处理文件上传（图片和非图片分离处理）
+    // ========== 文件上传 ==========
+
+    // 处理文件上传(图片和非图片分离处理)
     async handleUpload(files) {
       console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
-      
+
       const errFiles = [];
       const succMap = {};
-      
+
       for (const file of files) {
         try {
           console.log('[Upload] 处理文件:', file.name);
-          
+
           // 判断是否为图片
-          const isImage = this.isImageFile(file);
+          const isImage = isImageFile(file);
           const maxImageSize = 10 * 1024 * 1024; // 10MB
           const maxFileSize = 50 * 1024 * 1024;  // 50MB
 
@@ -795,10 +784,10 @@ export default {
 
           // 获取当前 md 文件所在目录
           if (!this.currentFilePath) {
-            console.warn('[Upload] 未打开文件，无法确定保存位置');
+            console.warn('[Upload] 未打开文件,无法确定保存位置');
             const noFileTip = this.t.uploadNoFile || {};
             ElMessageBox.alert(
-              noFileTip.message || '当前文档尚未保存到本地，无法确定存储位置。请先保存文件（Ctrl+S）后再上传。',
+              noFileTip.message || '当前文档尚未保存到本地,无法确定存储位置。请先保存文件(Ctrl+S)后再上传。',
               noFileTip.title || '请先保存文件',
               { confirmButtonText: noFileTip.confirmButtonText || '我知道了', type: 'warning' }
             );
@@ -807,45 +796,45 @@ export default {
 
           // 根据文件类型选择存储目录
           const subDir = isImage ? 'assets/images' : 'assets/files';
-          
-          // 使用 path 模块处理路径，确保跨平台兼容
+
+          // 使用 path 模块处理路径,确保跨平台兼容
           const { dirname, join, normalize } = await import('@tauri-apps/api/path');
           const currentDir = await dirname(this.currentFilePath);
           console.log('[Upload] 当前文件目录:', currentDir);
-          
-          // 创建存储目录（图片 → assets/images，文件 → assets/files）
+
+          // 创建存储目录(图片 → assets/images,文件 → assets/files)
           const assetsDirPath = subDir;
           console.log('[Upload] 存储目录:', assetsDirPath);
 
-          // 检查目录是否存在（相对于 md 文件所在目录）
+          // 检查目录是否存在(相对于 md 文件所在目录)
           const fullAssetsPath = await normalize(await join(currentDir, assetsDirPath));
           const assetsDirExists = await exists(fullAssetsPath);
           console.log('[Upload] 完整路径:', fullAssetsPath);
           console.log('[Upload] 目录是否存在:', assetsDirExists);
-          
-          // 如果目录不存在，创建它
+
+          // 如果目录不存在,创建它
           if (!assetsDirExists) {
             console.log('[Upload] 开始创建目录...');
             const { mkdir } = await import('@tauri-apps/plugin-fs');
-            
+
             try {
-              // 方法1: 尝试直接使用完整路径创建（使用 parents 参数）
+              // 方法1: 尝试直接使用完整路径创建(使用 parents 参数)
               await mkdir(fullAssetsPath, { parents: true });
               console.log('[Upload] 目录创建成功');
             } catch (mkdirError) {
               console.error('[Upload] mkdir 失败:', mkdirError);
-              
-              // 方法2: 如果失败，尝试逐级创建
+
+              // 方法2: 如果失败,尝试逐级创建
               try {
                 console.log('[Upload] 尝试逐级创建目录...');
                 const assetsPath = await normalize(await join(currentDir, 'assets'));
                 const assetsExists = await exists(assetsPath);
-                
+
                 if (!assetsExists) {
                   await mkdir(assetsPath, { parents: true });
                   console.log('[Upload] assets 目录创建成功');
                 }
-                
+
                 await mkdir(fullAssetsPath, { parents: true });
                 console.log('[Upload] 目录创建成功:', subDir);
               } catch (secondError) {
@@ -854,33 +843,33 @@ export default {
               }
             }
           }
-          
+
           // 读取文件内容并计算 Hash
           const arrayBuffer = await file.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
-          
+
           // 计算文件的 SHA256 Hash
-          const fileHash = await this.calculateFileHash(file);
+          const fileHash = await calculateFileHash(file);
           console.log('[Upload] 文件 Hash:', fileHash.substring(0, 16) + '...');
-          
-          // 使用 Hash 作为文件名（避免重复）
+
+          // 使用 Hash 作为文件名(避免重复)
           const ext = file.name.split('.').pop();
           const hashFileName = `${fileHash}.${ext}`;
           const destPath = await normalize(await join(fullAssetsPath, hashFileName));
-          
+
           console.log('[Upload] 目标路径:', destPath);
-          
-          // 检查文件是否已存在（去重）
+
+          // 检查文件是否已存在(去重)
           const fileExists = await exists(destPath);
           if (fileExists) {
-            console.log('[Upload] 文件已存在，跳过写入（去重）');
+            console.log('[Upload] 文件已存在,跳过写入(去重)');
           } else {
-            // 写入文件（使用 writeFile 进行二进制写入）
+            // 写入文件(使用 writeFile 进行二进制写入)
             const { writeFile } = await import('@tauri-apps/plugin-fs');
             await writeFile(destPath, uint8Array);
             console.log('[Upload] 文件写入成功');
           }
-          
+
           // 生成相对路径和 tmd URL
           const relativePath = `./${subDir}/${hashFileName}`;
           const fileUrl = `http://tmd.localhost/${subDir}/${hashFileName}`;
@@ -903,10 +892,10 @@ export default {
           errFiles.push(file.name);
         }
       }
-      
+
       console.log('[Upload] 上传完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
-      
-      // 如果有失败的文件，显示用户提示
+
+      // 如果有失败的文件,显示用户提示
       if (errFiles.length > 0) {
         ElNotification.error({
           title: this.t.uploadFailed?.title || '上传失败',
@@ -914,8 +903,8 @@ export default {
           duration: 5000
         });
       }
-      
-      // 如果有成功的文件，显示成功提示
+
+      // 如果有成功的文件,显示成功提示
       if (Object.keys(succMap).length > 0) {
         ElNotification.success({
           title: this.t.uploadSuccess?.title || '上传成功',
@@ -923,7 +912,7 @@ export default {
           duration: 3000
         });
       }
-      
+
       return [
         {
           code: 0,
@@ -939,12 +928,34 @@ export default {
     // ========== 滚动位置记忆 ==========
 
     /**
-     * 设置滚动记忆开关状态（由父组件调用）
+     * 设置滚动记忆开关状态(由父组件调用)
      * @param {boolean} enabled - 是否启用
      */
     setScrollRememberEnabled(enabled) {
       if (this.scrollMemory) {
         this.scrollMemory.setEnabled(enabled)
+      }
+    },
+
+    // ========== 主题管理 ==========
+
+    /**
+     * 设置模式切换事件监听器，用于重新应用主题
+     * 只在首次调用时订阅，避免重复订阅导致内存泄漏
+     */
+    setupThemeModeSwitchListener() {
+      if (!this._unsubscribeModeSwitch) {
+        this._unsubscribeModeSwitch = modeSwitchListener.subscribe(async (newMode, oldMode) => {
+          if (DEBUG) {
+            console.log('[Theme] 模式切换完成，重新应用主题:', oldMode, '->', newMode);
+          }
+          // 重新应用主题
+          this.setVditorTheme(this.isDarkTheme);
+        });
+        
+        if (DEBUG) {
+          console.log('[Theme] 已订阅模式切换事件，当前订阅者数量:', modeSwitchListener.getSubscriberCount());
+        }
       }
     },
   },
