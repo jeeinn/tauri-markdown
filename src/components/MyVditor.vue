@@ -306,12 +306,17 @@ export default {
         this.scrollMemory.setupScrollListener();
         this.scrollMemory.setupEditModeListener();
         
-        // 订阅模式切换事件，用于重新应用主题
-        this._unsubscribeModeSwitch = modeSwitchListener.subscribe(async (newMode, oldMode) => {
-          console.log('[Theme] 模式切换完成，重新应用主题:', oldMode, '->', newMode);
-          // 重新应用主题
-          this.setVditorTheme(this.isDarkTheme);
-        });
+        // 订阅模式切换事件，用于重新应用主题（只需订阅一次）
+        if (!this._unsubscribeModeSwitch) {
+          this._unsubscribeModeSwitch = modeSwitchListener.subscribe(async (newMode, oldMode) => {
+            console.log('[Theme] 模式切换完成，重新应用主题:', oldMode, '->', newMode);
+            // 重新应用主题
+            this.setVditorTheme(this.isDarkTheme);
+          });
+        }
+        
+        // 语言切换后重新应用主题（因为 Vditor 实例被重建）
+        this.setVditorTheme(this.isDarkTheme);
         
         this.autoLoadLastFile();
         // 初始化窗口标题
