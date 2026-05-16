@@ -78,6 +78,9 @@
                 {{ menuI18n.scrollRemember }}
                 <span v-if="scrollRememberEnabled" class="theme-check">✓</span>
               </el-dropdown-item>
+              <el-dropdown-item divided command="image-host-settings">
+                {{ menuI18n.imageHostSettings }}
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -118,11 +121,18 @@
         {{ zenTipText }}
       </div>
     </transition>
+
+    <!-- 图床设置对话框 -->
+    <ImageHostSettings
+      v-model="showImageHostSettings"
+      :lang="currentLang"
+    />
   </div>
 </template>
 
 <script>
 import MyVditor from './components/MyVditor.vue'
+import ImageHostSettings from './components/ImageHostSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode } from './utils/store.js'
@@ -131,6 +141,7 @@ export default {
   name: 'App',
   components: {
     MyVditor,
+    ImageHostSettings,
     ArrowDown,
   },
   data() {
@@ -141,6 +152,7 @@ export default {
       isZenMode: false,
       showZenTip: false,
       zenTipTimer: null,
+      showImageHostSettings: false,
     }
   },
   computed: {
@@ -276,6 +288,8 @@ export default {
         await saveScrollRememberEnabled(this.scrollRememberEnabled)
         // 通知子组件更新状态
         this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
+      } else if (command === 'image-host-settings') {
+        this.showImageHostSettings = true
       }
     },
     

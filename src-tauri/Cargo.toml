@@ -20,9 +20,10 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
-tauri-plugin-http = "2"
+tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
 mime_guess = "2"
 url = "2"
+base64 = "0.22"
 
 [features]
 default = [ "custom-protocol" ]
