@@ -146,7 +146,7 @@ export class ScrollMemoryManager {
   
   /**
    * 处理模式切换
-   * @param {string} newMode - 新模后
+   * @param {string} newMode - 新模式
    * @param {string} oldMode - 旧模式
    * @param {Object} vditor - Vditor 实例
    */
