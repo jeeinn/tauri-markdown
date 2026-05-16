@@ -25,6 +25,7 @@ export default {
       checkUpdate: '检查更新',
       scrollRemember: '记住浏览位置',
       zenMode: 'Zen 模式',
+      imageHostSettings: '图床设置',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -237,6 +238,26 @@ export default {
         error: '更新失败',
         errorMsg: '检查更新时发生错误: {error}',
       },
+      // 图床设置
+      imageHost: {
+        title: '图床设置',
+        enableLabel: '启用图床上传',
+        enableDescription: '开启后,图片将上传到云端图床;关闭则使用本地存储',
+        storageType: {
+          label: '配置存储方式',
+          tauriStore: '使用应用内部存储(推荐)',
+          picgoNative: '使用 PicGo 原生配置文件',
+        },
+        save: '保存',
+        cancel: '取消',
+        testConnection: '测试连接',
+        saveSuccess: '图床配置保存成功',
+        saveFailed: '图床配置保存失败',
+        testSuccess: '连接测试成功',
+        testFailed: '连接测试失败',
+        selectHostType: '请选择图床类型',
+        fillRequiredFields: '请填写必填项',
+      },
     },
   },
 
@@ -261,6 +282,7 @@ export default {
       checkUpdate: 'Check for Updates',
       scrollRemember: 'Remember Reading Position',
       zenMode: 'Zen Mode',
+      imageHostSettings: 'Image Host Settings',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -464,6 +486,26 @@ export default {
         error: 'Update Failed',
         errorMsg: 'Error checking for updates: {error}',
       },
+      // Image Host Settings
+      imageHost: {
+        title: 'Image Host Settings',
+        enableLabel: 'Enable Image Host Upload',
+        enableDescription: 'When enabled, images will be uploaded to cloud host; otherwise use local storage',
+        storageType: {
+          label: 'Configuration Storage',
+          tauriStore: 'Use App Internal Storage (Recommended)',
+          picgoNative: 'Use PicGo Native Config File',
+        },
+        save: 'Save',
+        cancel: 'Cancel',
+        testConnection: 'Test Connection',
+        saveSuccess: 'Image host configuration saved successfully',
+        saveFailed: 'Failed to save image host configuration',
+        testSuccess: 'Connection test successful',
+        testFailed: 'Connection test failed',
+        selectHostType: 'Please select an image host type',
+        fillRequiredFields: 'Please fill in required fields',
+      },
     },
   },
 
@@ -488,6 +530,7 @@ export default {
       checkUpdate: 'アップデートを確認',
       scrollRemember: '閲覧位置を記憶',
       zenMode: 'Zen モード',
+      imageHostSettings: '画像ホスト設定',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -675,7 +718,7 @@ export default {
       },
       uploadNoFile: {
         title: 'ファイルを先に保存してください',
-        message: '現在のドキュメントはローカルに保存されていません。アップロードする前に、ファイルを保存（Ctrl+S）してください。',
+        message: '現在のドキュメントはローカルに保存されていません。アップロードする前に、ファイルを保存(Ctrl+S)してください。',
         confirmButtonText: '了解',
       },
       updater: {
@@ -690,6 +733,26 @@ export default {
         installConfirm: 'アップデートのダウンロードが完了しました。今すぐ再起動してインストールしますか？',
         error: 'アップデートエラー',
         errorMsg: 'アップデート確認中にエラーが発生しました: {error}',
+      },
+      // 画像ホスト設定
+      imageHost: {
+        title: '画像ホスト設定',
+        enableLabel: '画像ホストアップロードを有効化',
+        enableDescription: '有効にすると、画像はクラウドホストにアップロードされます。無効ならローカルストレージを使用します',
+        storageType: {
+          label: '設定の保存方法',
+          tauriStore: 'アプリ内部ストレージを使用（推奨）',
+          picgoNative: 'PicGo ネイティブ設定ファイルを使用',
+        },
+        save: '保存',
+        cancel: 'キャンセル',
+        testConnection: '接続テスト',
+        saveSuccess: '画像ホスト設定が正常に保存されました',
+        saveFailed: '画像ホスト設定の保存に失敗しました',
+        testSuccess: '接続テストに成功しました',
+        testFailed: '接続テストに失敗しました',
+        selectHostType: '画像ホストタイプを選択してください',
+        fillRequiredFields: '必須項目を入力してください',
       },
     },
   },
@@ -715,6 +778,7 @@ export default {
       checkUpdate: '업데이트 확인',
       scrollRemember: '읽기 위치 기억',
       zenMode: 'Zen 모드',
+      imageHostSettings: '이미지 호스트 설정',
     },
     windowTitle: {
       appName: 'Tauri Markdown',
@@ -917,6 +981,26 @@ export default {
         installConfirm: '업데이트 다운로드가 완료되었습니다. 지금 재시작하여 설치하시겠습니까?',
         error: '업데이트 오류',
         errorMsg: '업데이트 확인 중 오류 발생: {error}',
+      },
+      // 이미지 호스트 설정
+      imageHost: {
+        title: '이미지 호스트 설정',
+        enableLabel: '이미지 호스트 업로드 활성화',
+        enableDescription: '활성화하면 이미지가 클라우드 호스트로 업로드됩니다. 비활성화하면 로컬 저장소를 사용합니다',
+        storageType: {
+          label: '설정 저장 방식',
+          tauriStore: '앱 내부 저장소 사용 (권장)',
+          picgoNative: 'PicGo 네이티브 설정 파일 사용',
+        },
+        save: '저장',
+        cancel: '취소',
+        testConnection: '연결 테스트',
+        saveSuccess: '이미지 호스트 설정이 성공적으로 저장되었습니다',
+        saveFailed: '이미지 호스트 설정 저장 실패',
+        testSuccess: '연결 테스트 성공',
+        testFailed: '연결 테스트 실패',
+        selectHostType: '이미지 호스트 유형을 선택하세요',
+        fillRequiredFields: '필수 항목을 입력하세요',
       },
     },
   },

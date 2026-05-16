@@ -799,6 +799,29 @@ export default {
     async handleUpload(files) {
       console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
 
+      // 检查是否启用了图床上传
+      try {
+        const { getImageHostConfig } = await import('../utils/image-host-config.js');
+        const imageHostConfig = await getImageHostConfig();
+        
+        // 判断是否启用图床: enabled=true 且 current 有值
+        if (imageHostConfig && imageHostConfig.enabled && imageHostConfig.current) {
+          console.log('[Upload] 使用图床上传');
+          return await this.handleUploadToImageHost(files, imageHostConfig);
+        }
+      } catch (error) {
+        console.warn('[Upload] 获取图床配置失败,使用本地存储:', error);
+      }
+      
+      // 使用本地存储(原有逻辑)
+      console.log('[Upload] 使用本地存储');
+      return await this.handleLocalUpload(files);
+    },
+    
+    // 本地存储上传(原有逻辑提取)
+    async handleLocalUpload(files) {
+      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
+
       const errFiles = [];
       const succMap = {};
 
@@ -961,6 +984,105 @@ export default {
           }
         }
       ];
+    },
+    
+    // 图床上传
+    async handleUploadToImageHost(files, config) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { uploadToImageHost } = await import('../utils/image-host-config.js');
+      const errFiles = [];
+      const succMap = {};
+
+      for (const file of files) {
+        try {
+          console.log('[Upload] 图床上传处理文件:', file.name);
+          
+          // 判断是否为图片
+          const isImage = isImageFile(file);
+          
+          // 只上传图片文件到图床,非图片文件仍使用本地存储
+          if (!isImage) {
+            console.log('[Upload] 非图片文件,使用本地存储');
+            // 这里可以递归调用 handleLocalUpload,但为简化,我们跳过非图片文件
+            errFiles.push(file.name);
+            continue;
+          }
+          
+          // 将 File 对象保存到临时文件
+          const tempPath = await this.saveFileToTemp(file);
+          console.log('[Upload] 临时文件路径:', tempPath);
+          
+          // 调用 Rust 后端上传到图床
+          const imageUrl = await uploadToImageHost(tempPath, config);
+          console.log('[Upload] 图床返回 URL:', imageUrl);
+          
+          succMap[file.name] = { url: imageUrl, isImage: true };
+          
+          // 清理临时文件
+          await this.cleanupTempFile(tempPath);
+        } catch (error) {
+          console.error('[Upload] 图床上传失败:', file.name, error);
+          errFiles.push(file.name);
+        }
+      }
+
+      console.log('[Upload] 图床上载完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
+
+      // 显示通知
+      if (errFiles.length > 0) {
+        ElNotification.error({
+          title: this.t.uploadFailed?.title || '上传失败',
+          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
+          duration: 5000
+        });
+      }
+
+      if (Object.keys(succMap).length > 0) {
+        ElNotification.success({
+          title: this.t.uploadSuccess?.title || '上传成功',
+          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
+          duration: 3000
+        });
+      }
+
+      return [
+        {
+          code: 0,
+          msg: '',
+          data: {
+            errFiles: errFiles,
+            succMap: succMap
+          }
+        }
+      ];
+    },
+    
+    // 保存文件到临时目录
+    async saveFileToTemp(file) {
+      const { join } = await import('@tauri-apps/api/path');
+      const { tempDir } = await import('@tauri-apps/api/path');
+      const { writeFile } = await import('@tauri-apps/plugin-fs');
+      
+      const tempDirPath = await tempDir();
+      const tempFileName = `upload_${Date.now()}_${file.name}`;
+      const tempFilePath = await join(tempDirPath, tempFileName);
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      await writeFile(tempFilePath, uint8Array);
+      
+      return tempFilePath;
+    },
+    
+    // 清理临时文件
+    async cleanupTempFile(filePath) {
+      try {
+        const { remove } = await import('@tauri-apps/plugin-fs');
+        await remove(filePath);
+        console.log('[Upload] 临时文件已清理:', filePath);
+      } catch (error) {
+        console.warn('[Upload] 清理临时文件失败:', error);
+      }
     },
 
     // ========== 滚动位置记忆 ==========
