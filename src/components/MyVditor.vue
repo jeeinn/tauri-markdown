@@ -37,6 +37,9 @@ import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 
+// 日志级别控制（生产环境可关闭）
+const DEBUG = import.meta.env.DEV;
+
 export default {
   name: "MyVditor.vue",
   data() {
@@ -99,6 +102,10 @@ export default {
     if (this._unsubscribeModeSwitch) {
       this._unsubscribeModeSwitch()
       this._unsubscribeModeSwitch = null
+      
+      if (DEBUG) {
+        console.log('[Theme] 已取消主题模式切换订阅，当前订阅者数量:', modeSwitchListener.getSubscriberCount());
+      }
     }
     
     // 清理窗口关闭事件监听
@@ -306,14 +313,8 @@ export default {
         this.scrollMemory.setupScrollListener();
         this.scrollMemory.setupEditModeListener();
         
-        // 订阅模式切换事件，用于重新应用主题（只需订阅一次）
-        if (!this._unsubscribeModeSwitch) {
-          this._unsubscribeModeSwitch = modeSwitchListener.subscribe(async (newMode, oldMode) => {
-            console.log('[Theme] 模式切换完成，重新应用主题:', oldMode, '->', newMode);
-            // 重新应用主题
-            this.setVditorTheme(this.isDarkTheme);
-          });
-        }
+        // 设置主题模式切换监听器（只需订阅一次）
+        this.setupThemeModeSwitchListener();
         
         // 语言切换后重新应用主题（因为 Vditor 实例被重建）
         this.setVditorTheme(this.isDarkTheme);
@@ -973,6 +974,28 @@ export default {
     setScrollRememberEnabled(enabled) {
       if (this.scrollMemory) {
         this.scrollMemory.setEnabled(enabled)
+      }
+    },
+
+    // ========== 主题管理 ==========
+
+    /**
+     * 设置模式切换事件监听器，用于重新应用主题
+     * 只在首次调用时订阅，避免重复订阅导致内存泄漏
+     */
+    setupThemeModeSwitchListener() {
+      if (!this._unsubscribeModeSwitch) {
+        this._unsubscribeModeSwitch = modeSwitchListener.subscribe(async (newMode, oldMode) => {
+          if (DEBUG) {
+            console.log('[Theme] 模式切换完成，重新应用主题:', oldMode, '->', newMode);
+          }
+          // 重新应用主题
+          this.setVditorTheme(this.isDarkTheme);
+        });
+        
+        if (DEBUG) {
+          console.log('[Theme] 已订阅模式切换事件，当前订阅者数量:', modeSwitchListener.getSubscriberCount());
+        }
       }
     },
   },

@@ -181,6 +181,14 @@ class ModeSwitchListener {
     this._lastMode = null;
     console.log('[ModeSwitchListener] 实例已销毁');
   }
+  
+  /**
+   * 获取当前订阅者数量（用于调试）
+   * @returns {number} 订阅者数量
+   */
+  getSubscriberCount() {
+    return this._subscribers.length;
+  }
 }
 
 // 创建单例实例
