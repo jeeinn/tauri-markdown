@@ -80,8 +80,8 @@ $ReadmeContent = @"
 3. No installation required!
 
 ## Notes
-- All data is stored in `%APPDATA%\$AppName` by default
-- To make it truly portable, you may need to modify the app to use relative paths
+- All data (config, logs) is stored in the same directory as the executable
+- This enables true portability - just copy the folder anywhere
 - Auto-update is not supported in portable mode
 
 ## Version
