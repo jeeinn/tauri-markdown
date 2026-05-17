@@ -62,6 +62,7 @@ export default {
           message: '当前文档有未保存的修改，是否继续新建？',
           confirmButtonText: '继续',
           cancelButtonText: '取消',
+          thirdButtonText: '不保存并继续',
         },
       },
       // 关闭窗口
@@ -71,6 +72,7 @@ export default {
           message: '当前文档有未保存的修改，是否保存？',
           confirmButtonText: '保存并关闭',
           cancelButtonText: '取消',
+          thirdButtonText: '丢弃',
         },
       },
       // 文件冲突对话框
@@ -97,6 +99,7 @@ export default {
           message: '当前文档有未保存的修改，是否继续打开？',
           confirmButtonText: '继续',
           cancelButtonText: '取消',
+          thirdButtonText: '不保存并继续',
         },
         pathError: '文件路径获取失败',
         notExist: '文件不存在',
@@ -124,6 +127,7 @@ export default {
           message: '当前文档有未保存的修改，是否继续导出？',
           confirmButtonText: '继续',
           cancelButtonText: '取消',
+          thirdButtonText: '不保存并继续',
         },
         emptyContent: {
           title: '提示',
@@ -275,6 +279,7 @@ export default {
           message: 'Current document has unsaved changes. Continue to create a new file?',
           confirmButtonText: 'Continue',
           cancelButtonText: 'Cancel',
+          thirdButtonText: 'Discard & Continue',
         },
       },
       closeWindow: {
@@ -283,6 +288,7 @@ export default {
           message: 'Current document has unsaved changes. Save before closing?',
           confirmButtonText: 'Save & Close',
           cancelButtonText: 'Cancel',
+          thirdButtonText: 'Discard',
         },
       },
       fileConflict: {
@@ -306,6 +312,7 @@ export default {
           message: 'Current document has unsaved changes. Continue to open?',
           confirmButtonText: 'Continue',
           cancelButtonText: 'Cancel',
+          thirdButtonText: 'Discard & Continue',
         },
         pathError: 'Failed to get file path',
         notExist: 'File does not exist',
@@ -331,6 +338,7 @@ export default {
           message: 'Current document has unsaved changes. Continue to export?',
           confirmButtonText: 'Continue',
           cancelButtonText: 'Cancel',
+          thirdButtonText: 'Discard & Continue',
         },
         emptyContent: {
           title: 'Notice',
@@ -480,6 +488,7 @@ export default {
           message: '現在のドキュメントには未保存の変更があります。新規作成を続行しますか？',
           confirmButtonText: '続行',
           cancelButtonText: 'キャンセル',
+          thirdButtonText: '保存せずに続行',
         },
       },
       closeWindow: {
@@ -488,6 +497,7 @@ export default {
           message: '現在のドキュメントには未保存の変更があります。保存しますか？',
           confirmButtonText: '保存して閉じる',
           cancelButtonText: 'キャンセル',
+          thirdButtonText: '破棄',
         },
       },
       fileConflict: {
@@ -511,6 +521,7 @@ export default {
           message: '現在のドキュメントには未保存の変更があります。開きますか？',
           confirmButtonText: '続行',
           cancelButtonText: 'キャンセル',
+          thirdButtonText: '保存せずに続行',
         },
         pathError: 'ファイルパスの取得に失敗しました',
         notExist: 'ファイルが存在しません',
@@ -536,6 +547,7 @@ export default {
           message: '現在のドキュメントには未保存の変更があります。エクスポートしますか？',
           confirmButtonText: '続行',
           cancelButtonText: 'キャンセル',
+          thirdButtonText: '保存せずに続行',
         },
         emptyContent: {
           title: 'お知らせ',
@@ -685,6 +697,7 @@ export default {
           message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 새로 만들기를 계속하시겠습니까?',
           confirmButtonText: '계속',
           cancelButtonText: '취소',
+          thirdButtonText: '저장하지 않고 계속',
         },
       },
       closeWindow: {
@@ -693,6 +706,7 @@ export default {
           message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 저장하시겠습니까?',
           confirmButtonText: '저장 후 닫기',
           cancelButtonText: '취소',
+          thirdButtonText: '버리기',
         },
       },
       fileConflict: {
@@ -716,6 +730,7 @@ export default {
           message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 열기를 계속하시겠습니까?',
           confirmButtonText: '계속',
           cancelButtonText: '취소',
+          thirdButtonText: '저장하지 않고 계속',
         },
         pathError: '파일 경로를 가져오지 못했습니다',
         notExist: '파일이 존재하지 않습니다',
@@ -733,7 +748,7 @@ export default {
         success: {
           title: '파일을 저장했습니다',
         },
-        saveError: '파일 저장에 패했습니다',
+        saveError: '파일 저장에 실패했습니다',
       },
       exportFile: {
         unsavedChanges: {
@@ -741,6 +756,7 @@ export default {
           message: '현재 문서에 저장되지 않은 변경 사항이 있습니다. 내보내기를 계속하시겠습니까?',
           confirmButtonText: '계속',
           cancelButtonText: '취소',
+          thirdButtonText: '저장하지 않고 계속',
         },
         emptyContent: {
           title: '알림',

@@ -154,27 +154,29 @@ export default {
             event.preventDefault();
 
             try {
-              // 显示保存提示对话框
-              await ElMessageBox.confirm(
-                this.t.closeWindow.unsavedChanges.message,
-                this.t.closeWindow.unsavedChanges.title,
-                {
-                  confirmButtonText: this.t.closeWindow.unsavedChanges.confirmButtonText,
-                  cancelButtonText: this.t.closeWindow.unsavedChanges.cancelButtonText,
-                  type: 'warning',
-                  distinguishCancelAndClose: true
-                }
+              // 显示保存提示对话框，使用三按钮模式
+              const result = await checkUnsavedChanges(
+                this.isContentModified,
+                this.t.closeWindow.unsavedChanges,
+                true // 显示三个按钮
               );
 
-              // 用户点击"保存并关闭",执行保存
-              const saved = await this.saveMdFile();
-              if (saved) {
-                // 保存成功,关闭窗口
+              // 根据用户选择执行不同操作
+              if (result === 'discard') {
+                // 用户选择"不保存"，直接关闭窗口
                 await appWindow.destroy();
+              } else if (result === 'save') {
+                // 用户点击"保存并关闭",执行保存
+                const saved = await this.saveMdFile();
+                if (saved) {
+                  // 保存成功,关闭窗口
+                  await appWindow.destroy();
+                }
+                // 如果保存失败,窗口保持打开
               }
-              // 如果保存失败,窗口保持打开
+              // 如果用户点击"取消"或关闭对话框，窗口保持打开(不做任何操作)
             } catch {
-              // 用户点击"取消",窗口保持打开(不做任何操作)
+              // 用户点击"取消"或关闭对话框，窗口保持打开(不做任何操作)
             }
           } else {
             // 没有未保存的修改,关闭前保存滚动位置
@@ -518,8 +520,8 @@ export default {
     // 新建空白文档
     async newFile() {
       // 如果当前有未保存的修改,提示用户
-      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.newFile.unsavedChanges)
-      if (!canContinue) return false
+      const result = await checkUnsavedChanges(this.isContentModified, this.t.newFile.unsavedChanges)
+      if (result === 'cancel') return false
 
       // 清空编辑器内容
       this.vditor.setValue('')
@@ -535,8 +537,8 @@ export default {
     },
     async openMdFile() {
       // 如果当前有未保存的修改,提示用户
-      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.openFile.unsavedChanges)
-      if (!canContinue) return false
+      const result = await checkUnsavedChanges(this.isContentModified, this.t.openFile.unsavedChanges)
+      if (result === 'cancel') return false
 
       const filePath = await open({
         filters: [{
@@ -659,8 +661,8 @@ export default {
     },
     async exportFile() {
       // 如果当前有未保存的修改,提示用户
-      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
-      if (!canContinue) return false
+      const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
+      if (result === 'cancel') return false
 
       try {
         const content = this.vditor.getValue()
@@ -707,8 +709,8 @@ export default {
 
     async exportPdf() {
       // 如果当前有未保存的修改,提示用户
-      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
-      if (!canContinue) return false
+      const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
+      if (result === 'cancel') return false
 
       // 获取当前语言的 PDF 导出配置
       const pdfConfig = this.t.exportPdf
@@ -719,8 +721,8 @@ export default {
 
     async exportHtml() {
       // 如果当前有未保存的修改,提示用户
-      const canContinue = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
-      if (!canContinue) return false
+      const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
+      if (result === 'cancel') return false
 
       // 获取当前语言的 HTML 导出配置
       const htmlConfig = this.t.exportHtml
