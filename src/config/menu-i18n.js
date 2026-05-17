@@ -33,6 +33,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      zenMode: 'F11',
     },
     language: {
       label: '语言',
@@ -251,6 +252,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      zenMode: 'F11',
     },
     language: {
       label: 'Language',
@@ -460,6 +462,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      zenMode: 'F11',
     },
     language: {
       label: '言語',
@@ -669,6 +672,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      zenMode: 'F11',
     },
     language: {
       label: '언어',
