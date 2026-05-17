@@ -723,7 +723,7 @@ async fn upload_to_image_host(
     log(&format!("upload_to_image_host: file={}, host={}", file_path, config.current));
 
     match config.current.as_str() {
-        "smms" => upload_to_smms(file_path, config.smms.ok_or("SM.MS 配置缺失")?).await,
+        "smms" => Err("SM.MS 上传已在 JavaScript 端实现,不支持通过 Rust 调用".to_string()),
         "github" => upload_to_github(file_path, config.github.ok_or("GitHub 配置缺失")?).await,
         "gitee" => upload_to_gitee(file_path, config.gitee.ok_or("Gitee 配置缺失")?).await,
         "aliyun_oss" => upload_to_aliyun_oss(file_path, config.aliyun_oss.ok_or("阿里云 OSS 配置缺失")?).await,
@@ -731,11 +731,12 @@ async fn upload_to_image_host(
     }
 }
 
-/// 上传到 SM.MS
-async fn upload_to_smms(file_path: String, smms_config: SmmsConfig) -> Result<String, String> {
-    // 注意: tauri-plugin-http 的 reqwest 不支持 multipart
-    // 这里返回错误,提示用户暂时不支持 SM.MS
-    Err("SM.MS 上传需要 multipart 支持,当前版本暂不支持。请使用 GitHub 或 Gitee 图床。".to_string())
+/// 上传到 SM.MS (已移至 JavaScript 端实现)
+#[allow(dead_code)]
+async fn upload_to_smms(_file_path: String, _smms_config: SmmsConfig) -> Result<String, String> {
+    // SM.MS 上传已改为 JavaScript 端实现（支持 multipart FormData）
+    // 此函数保留仅供参考
+    Err("SM.MS 上传已在 JavaScript 端实现,请通过前端调用".to_string())
 }
 
 /// 上传到 GitHub

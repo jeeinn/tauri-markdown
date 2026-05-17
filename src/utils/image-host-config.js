@@ -81,3 +81,52 @@ export async function uploadToImageHost(filePath, config) {
     throw error
   }
 }
+
+/**
+ * 上传图片到 SM.MS (JavaScript 端实现)
+ * @param {File} file - File 对象
+ * @param {Object} config - SM.MS 配置对象
+ * @returns {Promise<string>} 图片 URL
+ */
+export async function uploadToSMMS(file, config) {
+  try {
+    console.log('[SM.MS Upload] 开始上传:', file.name)
+    
+    const formData = new FormData()
+    formData.append('smfile', file)
+    
+    const headers = {}
+    if (config.smms && config.smms.token) {
+      headers['Authorization'] = config.smms.token
+    }
+    
+    // 使用 Tauri HTTP 插件的 fetch
+    const { fetch } = await import('@tauri-apps/plugin-http')
+    
+    const response = await fetch('https://sm.ms/api/v2/upload', {
+      method: 'POST',
+      headers,
+      body: formData
+      // 注意: 不要手动设置 Content-Type，让 fetch 自动处理 multipart boundary
+    })
+    
+    const result = await response.json()
+    
+    // SM.MS 返回结构: { "code": "success", "data": { "url": "..." } }
+    if (result.code === 'success') {
+      const url = result.data?.url
+      if (url) {
+        console.log('[SM.MS Upload] 上传成功, URL:', url)
+        return url
+      } else {
+        throw new Error('上传成功但未返回图片链接')
+      }
+    } else {
+      const message = result.msg || result.message || '未知错误'
+      throw new Error(`上传失败: ${message}`)
+    }
+  } catch (error) {
+    console.error('[SM.MS Upload] 上传失败:', error)
+    throw error
+  }
+}
