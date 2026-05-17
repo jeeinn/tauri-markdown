@@ -15,6 +15,40 @@ Maybe we can call it `TMD` ? 🤔
 ### Dark Theme
 ![Dark Theme](imgs/tmd_theme_dark.png)
 
+## 📥 Download
+
+Get the latest version from [GitHub Releases](https://github.com/jeeinn/tauri-markdown/releases).
+
+### Windows
+
+| Version | Description |
+|---------|-------------|
+| **Portable ZIP** ⭐ | No installation required, just extract and run. Perfect for USB drives! |
+| Standalone EXE | Single executable file, minimal package |
+| NSIS Installer | Standard Windows installer with Start Menu shortcuts |
+| MSI Package | Windows Installer package for enterprise deployment |
+
+### macOS
+
+| Architecture | Format |
+|--------------|--------|
+| Apple Silicon (M1/M2/M3) | DMG |
+| Intel | DMG |
+
+### Linux
+
+| Distribution | Format |
+|--------------|--------|
+| Debian/Ubuntu | DEB |
+| Fedora/RHEL | RPM |
+| Any distro | AppImage |
+
+> 💡 **Why choose Portable version?**
+> - ✅ All configs stored alongside the executable
+> - ✅ Carry it on USB drive anywhere
+> - ✅ No traces left on your system
+> - ✅ Delete folder = complete uninstall
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for all version updates.

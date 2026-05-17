@@ -15,6 +15,40 @@
 ### 深色主题
 ![深色主题](imgs/tmd_theme_dark.png)
 
+## 📥 下载
+
+从 [GitHub Releases](https://github.com/jeeinn/tauri-markdown/releases) 获取最新版本。
+
+### Windows
+
+| 版本 | 说明 |
+|------|------|
+| **便携版 ZIP** ⭐推荐 | 无需安装，解压即用。适合 U 盘携带！ |
+| 独立 EXE 版 | 单个可执行文件，最小化包 |
+| NSIS 安装程序 | 标准 Windows 安装程序，创建开始菜单快捷方式 |
+| MSI 安装包 | Windows Installer 包，适合企业部署 |
+
+### macOS
+
+| 架构 | 格式 |
+|------|------|
+| Apple Silicon (M1/M2/M3) | DMG |
+| Intel | DMG |
+
+### Linux
+
+| 发行版 | 格式 |
+|--------|------|
+| Debian/Ubuntu | DEB |
+| Fedora/RHEL | RPM |
+| 任意发行版 | AppImage |
+
+> 💡 **为什么选择便携版？**
+> - ✅ 所有配置文件与可执行文件存储在同目录
+> - ✅ 可放在 U 盘中随身携带
+> - ✅ 不在系统中留下任何痕迹
+> - ✅ 删除文件夹 = 完全卸载
+
 ## 更新日志
 
 查看 [CHANGELOG.md](CHANGELOG.md) 了解所有版本更新。
