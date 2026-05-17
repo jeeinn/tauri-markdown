@@ -950,8 +950,7 @@ export default {
     
     // 图床上传
     async handleUploadToImageHost(files, config) {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const { uploadToImageHost } = await import('../utils/image-host-config.js');
+      const { uploadToImageHost, uploadToSMMS } = await import('../utils/image-host-config.js');
       const errFiles = [];
       const succMap = {};
 
@@ -965,23 +964,26 @@ export default {
           // 只上传图片文件到图床,非图片文件仍使用本地存储
           if (!isImage) {
             console.log('[Upload] 非图片文件,使用本地存储');
-            // 这里可以递归调用 handleLocalUpload,但为简化,我们跳过非图片文件
             errFiles.push(file.name);
             continue;
           }
           
-          // 将 File 对象保存到临时文件
-          const tempPath = await this.saveFileToTemp(file);
-          console.log('[Upload] 临时文件路径:', tempPath);
+          // 根据图床类型选择上传方式
+          let imageUrl;
+          if (config.current === 'smms') {
+            // SM.MS 使用 JavaScript 端上传（支持 multipart）
+            console.log('[Upload] 使用 JavaScript 端 SM.MS 上传');
+            imageUrl = await uploadToSMMS(file, config);
+          } else {
+            // GitHub/Gitee 使用 Rust 端上传（需要文件路径）
+            console.log('[Upload] 使用 Rust 端上传:', config.current);
+            const tempPath = await this.saveFileToTemp(file);
+            imageUrl = await uploadToImageHost(tempPath, config);
+            await this.cleanupTempFile(tempPath);
+          }
           
-          // 调用 Rust 后端上传到图床
-          const imageUrl = await uploadToImageHost(tempPath, config);
           console.log('[Upload] 图床返回 URL:', imageUrl);
-          
           succMap[file.name] = { url: imageUrl, isImage: true };
-          
-          // 清理临时文件
-          await this.cleanupTempFile(tempPath);
         } catch (error) {
           console.error('[Upload] 图床上传失败:', file.name, error);
           errFiles.push(file.name);
