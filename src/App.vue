@@ -59,7 +59,8 @@
                 <span v-if="currentTheme === 'dark'" class="theme-check">✓</span>
               </el-dropdown-item>
               <el-dropdown-item divided command="zen-mode">
-                {{ menuI18n.zenMode }}
+                <span>{{ menuI18n.zenMode }}</span>
+                <span class="shortcut">{{ menuShortcuts.zenMode }}</span>
                 <span v-if="isZenMode" class="theme-check">✓</span>
               </el-dropdown-item>
             </el-dropdown-menu>
@@ -476,13 +477,42 @@ export default {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
   z-index: 9999;
   pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: zen-tip-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Zen 提示框入场动画 */
+@keyframes zen-tip-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* 深色主题下增强 Zen 提示框可见度 */
+.dark .zen-tip {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #f0f0f0;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .fade-enter-active,
