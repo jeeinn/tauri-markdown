@@ -105,3 +105,34 @@
   flex: 1 !important;
   min-height: 0 !important;
 }
+
+/* 自定义 Vditor counter 元素的 tooltip 方向为左方向（west） */
+/* 将默认的 nw (northwest) 方向改为 w (west) 方向 */
+.vditor-counter.vditor-tooltipped__nw::after {
+  top: 50% !important;
+  right: 100% !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  margin-right: 8px !important;
+  margin-left: 0 !important;
+}
+
+/* 调整箭头位置 - 紧贴内容框右侧，指向右方的 counter 元素 */
+.vditor-counter.vditor-tooltipped__nw::before {
+  top: 50% !important;
+  right: 100% !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+  border-left-color: rgba(0, 0, 0, 0.8) !important;
+  border-right-color: transparent !important;
+}
