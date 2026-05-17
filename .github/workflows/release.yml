@@ -20,22 +20,20 @@ jobs:
           prerelease: true
           body: |
             ## 📦 安装包下载 / Download Packages
-            
-            ### Windows
-            
-            | 格式 | 文件名 | 说明 |
-            |------|--------|------|
-            | **Portable ZIP** ⭐推荐 | `tauri-markdown_{version}_x64_portable.zip` | 便携版，无需安装，解压即用 |
-            | Standalone EXE | `tauri-markdown_{version}_x64_standalone.zip` | 独立 EXE 版 |
-            | NSIS 安装程序 | `TauriMarkdown_{version}_x64-setup.exe` | 标准安装程序 |
-            | MSI 安装包 | `TauriMarkdown_{version}_x64_en-US.msi` | Windows Installer |
-            
-            > 💡 **便携版优势**：
-            > - ✅ 所有配置文件存储在可执行文件同目录
-            > - ✅ 可放在 U 盘中随身携带
-            > - ✅ 不会在系统中留下任何痕迹
-            > - ✅ 删除文件夹即完全卸载
-            > 
+
+            | 平台 | 架构/格式 | 文件名 |
+            |------|----------|--------|
+            | **Windows** | Portable ZIP ⭐推荐 | `tauri-markdown_{version}_x64_portable.zip` |
+            | **Windows** | Standalone EXE | `tauri-markdown_{version}_x64_standalone.zip` |
+            | **Windows** | NSIS 安装程序 | `TauriMarkdown_{version}_x64-setup.exe` |
+            | **Windows** | MSI 安装包 | `TauriMarkdown_{version}_x64_en-US.msi` |
+            | **macOS** | Apple Silicon | `TauriMarkdown_{version}_aarch64.dmg` ⭐推荐 |
+            | **macOS** | Intel | `TauriMarkdown_{version}_x64.dmg` |
+            | **Linux** | deb (Debian/Ubuntu) | `TauriMarkdown_{version}_amd64.deb` |
+            | **Linux** | AppImage | `TauriMarkdown_{version}_amd64.AppImage` |
+            | **Linux** | RPM (Fedora/RHEL) | `TauriMarkdown-{version}-1.x86_64.rpm` |
+
+            > 💡 Windows Portable: 无需安装，解压即用，配置文件存储在同目录，适合 U 盘携带
             > 💡 macOS: 解压后将 `.app` 拖入「应用程序」文件夹
             > 💡 Linux deb: `sudo dpkg -i <file>.deb`
             > 💡 Linux AppImage: `chmod +x <file>.AppImage && ./<file>.AppImage`
