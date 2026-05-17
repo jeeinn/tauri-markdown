@@ -54,11 +54,25 @@ fn init_log() {
     log("=== TauriMarkdown started ===");
 }
 
-/// setup 阶段：将日志路径切换到正式的 app_data_dir
+/// setup 阶段：将日志路径切换到正式的 app_data_dir 或便携目录
 fn switch_log_to_app_data(app_handle: &tauri::AppHandle) {
-    let Ok(dir) = app_handle.path().app_data_dir() else { return };
-    let _ = std::fs::create_dir_all(&dir);
-    let new_path = dir.join("app.log");
+    // 检测便携模式
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let portable_marker = exe_dir.join(".portable");
+    let is_portable = portable_marker.exists();
+    
+    let new_path = if is_portable {
+        // 便携模式：日志存储在可执行文件同目录
+        log("Using portable mode for log file");
+        exe_dir.join("app.log")
+    } else {
+        // 正常模式：日志存储在 app_data_dir
+        let Ok(dir) = app_handle.path().app_data_dir() else { return };
+        dir.join("app.log")
+    };
+    
+    let _ = std::fs::create_dir_all(new_path.parent().unwrap());
 
     // 将已有日志内容迁移到新路径
     let old_path = current_log_path();
@@ -81,6 +95,15 @@ struct CurrentDir(Mutex<Option<PathBuf>>);
 fn set_current_dir(dir: String, state: State<'_, CurrentDir>) {
     log(&format!("set_current_dir: {dir}"));
     *state.0.lock().unwrap() = Some(PathBuf::from(&dir));
+}
+
+/// 便携模式标记（通过 .portable 文件检测）
+struct PortableMode(bool);
+
+/// JS 端调用，获取便携模式状态
+#[tauri::command]
+fn get_portable_mode(state: State<'_, PortableMode>) -> bool {
+    state.0
 }
 
 /// 通过"打开方式"传入的文件路径（首次启动时由命令行参数获取）
@@ -262,14 +285,29 @@ fn main() {
     let opened_file = extract_opened_file();
     log(&format!("opened_file from args: {:?}", opened_file));
 
+    // 检测便携模式：检查可执行文件目录下是否存在 .portable 标记文件
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let portable_marker = exe_dir.join(".portable");
+    let is_portable = portable_marker.exists();
+    
+    log(&format!("Portable mode detected: {}", is_portable));
+    if is_portable {
+        log(&format!("Using portable data directory: {:?}", exe_dir));
+    }
+
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(
+            tauri_plugin_store::Builder::default()
+                .build()
+        )
         .manage(CurrentDir(Mutex::new(None)))
         .manage(OpenedFile(Mutex::new(opened_file)))
-        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder])
+        .manage(PortableMode(is_portable))
+        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder, get_portable_mode])
         .register_uri_scheme_protocol("tmd", tmd_protocol_handler)
         .setup(|app| {
             switch_log_to_app_data(app.handle());
