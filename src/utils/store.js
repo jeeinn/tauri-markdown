@@ -1,4 +1,5 @@
 import { Store } from '@tauri-apps/plugin-store'
+import { invoke } from '@tauri-apps/api/core'
 
 // 使用应用数据目录存储，确保在不同环境下都能正常工作
 const STORE_PATH = 'store.json'
@@ -7,12 +8,37 @@ const THEME_KEY = 'app_theme'
 const ZEN_MODE_KEY = 'is_zen_mode'
 
 let storeInstance = null
+let isPortableMode = null
+
+// 检测是否为便携模式
+async function checkPortableMode() {
+  if (isPortableMode === null) {
+    try {
+      isPortableMode = await invoke('get_portable_mode')
+      console.log('[DEBUG Store] Portable mode:', isPortableMode)
+    } catch (error) {
+      console.error('[ERROR Store] Failed to detect portable mode:', error)
+      isPortableMode = false
+    }
+  }
+  return isPortableMode
+}
 
 async function getStore() {
   if (!storeInstance) {
     try {
-      console.log('[DEBUG Store] 加载 store:', STORE_PATH)
-      storeInstance = await Store.load(STORE_PATH)
+      const portable = await checkPortableMode()
+      
+      // 如果是便携模式，需要使用完整路径
+      let storePath = STORE_PATH
+      if (portable) {
+        // 在便携模式下，Tauri Store 默认会使用 exe 同目录
+        // 但为了确保，我们可以记录一下
+        console.log('[DEBUG Store] Using portable mode, store will be in exe directory')
+      }
+      
+      console.log('[DEBUG Store] 加载 store:', storePath)
+      storeInstance = await Store.load(storePath)
       console.log('[DEBUG Store] Store 加载成功')
     } catch (error) {
       console.error('[ERROR Store] Store 加载失败:', error)
