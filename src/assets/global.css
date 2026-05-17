@@ -112,3 +112,14 @@ html.dark .language-label {
 .zen-mode .vditor-status {
   display: none !important;
 }
+
+/* 三按钮对话框样式 */
+.three-buttons-dialog .el-message-box__btns {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.three-buttons-dialog .el-message-box__btns button {
+  flex: 1;
+}
