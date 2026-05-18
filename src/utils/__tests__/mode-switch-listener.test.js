@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import modeSwitchListener from './mode-switch-listener.js'
+import modeSwitchListener from '../mode-switch-listener.js'
 
 describe('ModeSwitchListener', () => {
   let mockVditor
