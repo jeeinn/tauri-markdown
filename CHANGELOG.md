@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-05-18
+
+### Added
+- **Windows Portable Build**: Added Windows portable build support with dynamic path switching for store data
+- **About Dialog Version Display**: Show software version in the About dialog
+- **Zen Mode Shortcut Hint**: Added F11 shortcut hint in Zen mode menu with optimized tooltip styling
+- **Discard Changes Option**: Added 'discard' option for unsaved changes prompt
+- **Store Path Resolution**: Integrated backend store path resolution in frontend for portable mode support
+
+### Changed
+- **Counter Tooltip Direction**: Changed counter tooltip direction to west for better visibility
+- **Build Optimization**: Eliminated dynamic import warnings and optimized build performance
+- **Test Organization**: Moved test files to __tests__ directory for better project structure
+
+### Removed
+- **Drop Overlay**: Removed drop overlay for cleaner UI experience
+- **Outdated Documents**: Removed outdated planning and code review documents
+
 ## [0.5.1] - 2026-05-16
 
 ### Fixed
@@ -101,7 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.3.2...v0.4.0

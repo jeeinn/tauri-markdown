@@ -3,8 +3,15 @@
 # This script builds the app and creates a portable ZIP distribution
 
 param(
-    [string]$Version = "0.5.1"
+    [string]$Version = ""
 )
+
+# Auto-detect version from package.json if not provided
+if (-not $Version) {
+    $PackageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+    $Version = $PackageJson.version
+    Write-Host "📱 Auto-detected version from package.json: $Version" -ForegroundColor Cyan
+}
 
 Write-Host "🚀 Starting portable build process..." -ForegroundColor Cyan
 
