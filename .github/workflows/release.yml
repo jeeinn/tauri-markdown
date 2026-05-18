@@ -20,17 +20,21 @@ jobs:
           prerelease: true
           body: |
             ## 📦 安装包下载 / Download Packages
-          
+
             | 平台 | 架构/格式 | 文件名 |
             |------|----------|--------|
+            | **Windows** | Portable ZIP ⭐推荐 | `tauri-markdown_{version}_x64_portable.zip` |
+            | **Windows** | Standalone EXE | `tauri-markdown_{version}_x64_standalone.zip` |
+            | **Windows** | NSIS 安装程序 | `TauriMarkdown_{version}_x64-setup.exe` |
+            | **Windows** | MSI 安装包 | `TauriMarkdown_{version}_x64_en-US.msi` |
             | **macOS** | Apple Silicon | `TauriMarkdown_{version}_aarch64.dmg` ⭐推荐 |
             | **macOS** | Intel | `TauriMarkdown_{version}_x64.dmg` |
-            | **Windows** | NSIS 安装程序 | `TauriMarkdown_{version}_x64-setup.exe` 推荐 |
-            | **Windows** | MSI 安装包 | `TauriMarkdown_{version}_x64_en-US.msi` |
             | **Linux** | deb (Debian/Ubuntu) | `TauriMarkdown_{version}_amd64.deb` |
             | **Linux** | AppImage | `TauriMarkdown_{version}_amd64.AppImage` |
             | **Linux** | RPM (Fedora/RHEL) | `TauriMarkdown-{version}-1.x86_64.rpm` |
-          
+
+            > 💡 Windows Portable ZIP: 完整便携包，配置存储在同目录，适合 U 盘携带
+            > 💡 Windows Standalone EXE: 最小化包，手动创建 .portable 文件可启用便携模式
             > 💡 macOS: 解压后将 `.app` 拖入「应用程序」文件夹
             > 💡 Linux deb: `sudo dpkg -i <file>.deb`
             > 💡 Linux AppImage: `chmod +x <file>.AppImage && ./<file>.AppImage`
@@ -86,3 +90,32 @@ jobs:
           releaseDraft: true
           prerelease: true
           updaterJsonPreferNsis: true
+
+      - name: Build portable version (Windows only)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          
+          Write-Host "🚀 Building portable version $version..."
+          
+          # Build portable version using our script
+          npm run build:portable -- -Version $version
+          
+          Write-Host "✅ Portable build completed!"
+          
+          # List generated files
+          Write-Host "`n📦 Generated files:"
+          Get-ChildItem -Path "src-tauri/target/release/bundle" -Filter "*.zip" | 
+            ForEach-Object { Write-Host "  - $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)" }
+
+      - name: Upload portable artifacts to release
+        if: matrix.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/*_portable.zip
+            src-tauri/target/release/bundle/*_standalone.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

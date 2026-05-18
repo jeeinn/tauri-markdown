@@ -1,4 +1,5 @@
 import { Store } from '@tauri-apps/plugin-store'
+import { invoke } from '@tauri-apps/api/core'
 
 // 使用应用数据目录存储，确保在不同环境下都能正常工作
 const STORE_PATH = 'store.json'
@@ -7,15 +8,51 @@ const THEME_KEY = 'app_theme'
 const ZEN_MODE_KEY = 'is_zen_mode'
 
 let storeInstance = null
+let isPortableMode = null
+
+// 检测是否为便携模式
+async function checkPortableMode() {
+  if (isPortableMode === null) {
+    try {
+      isPortableMode = await invoke('get_portable_mode')
+      console.log('[DEBUG Store] Portable mode:', isPortableMode)
+    } catch (error) {
+      console.error('[ERROR Store] Failed to detect portable mode:', error)
+      isPortableMode = false
+    }
+  }
+  return isPortableMode
+}
 
 async function getStore() {
   if (!storeInstance) {
     try {
-      console.log('[DEBUG Store] 加载 store:', STORE_PATH)
-      storeInstance = await Store.load(STORE_PATH)
-      console.log('[DEBUG Store] Store 加载成功')
+      const portable = await checkPortableMode()
+      
+      let storePath = STORE_PATH
+      if (portable) {
+        // 在便携模式下，从后端获取正确的绝对路径
+        try {
+          storePath = await invoke('get_store_path')
+          console.log('[DEBUG Store] Portable mode: using path from backend:', storePath)
+        } catch (error) {
+          console.error('[ERROR Store] Failed to get store path from backend, falling back to relative path:', error)
+          storePath = STORE_PATH
+        }
+      } else {
+        console.log('[DEBUG Store] Normal mode: using default path:', storePath)
+      }
+      
+      console.log('[DEBUG Store] Loading store with path:', storePath)
+      storeInstance = await Store.load(storePath)
+      console.log('[DEBUG Store] Store loaded successfully')
     } catch (error) {
-      console.error('[ERROR Store] Store 加载失败:', error)
+      console.error('[ERROR Store] Failed to load store:', error)
+      console.error('[ERROR Store] Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      })
       throw error
     }
   }

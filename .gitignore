@@ -31,3 +31,9 @@ nul
 
 # Vitest
 coverage
+
+# Tauri build outputs (except for release artifacts)
+src-tauri/target/release/bundle/portable
+src-tauri/target/release/bundle/standalone
+*_portable.zip
+*_standalone.zip
