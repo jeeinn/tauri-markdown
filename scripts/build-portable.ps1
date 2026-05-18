@@ -6,6 +6,8 @@ param(
     [string]$Version = ""
 )
 
+Write-Host "🔧 PowerShell version: $($PSVersionTable.PSVersion)" -ForegroundColor Cyan
+
 # Auto-detect version from package.json if not provided
 if (-not $Version) {
     Write-Host "📱 No version parameter provided, auto-detecting from package.json..." -ForegroundColor Yellow
@@ -42,11 +44,17 @@ $BundleDir = "src-tauri/target/release/bundle"
 $PortableDir = "$BundleDir/portable"
 
 # Auto-detect the executable name from Cargo.toml
-$CargoToml = Get-Content "src-tauri/Cargo.toml" -Raw
-$NameLine = ($CargoToml -split "`n") | Where-Object { $_ -match '^\s*name\s*=' } | Select-Object -First 1
+$CargoTomlPath = "src-tauri/Cargo.toml"
+if (-not (Test-Path $CargoTomlPath)) {
+    Write-Host "❌ Cargo.toml not found: $CargoTomlPath" -ForegroundColor Red
+    exit 1
+}
+$CargoToml = Get-Content $CargoTomlPath -Raw
+$NameLine = ($CargoToml -split "`n") | Where-Object { $_ -match '^\s*name\s*=' -and $_ -notmatch '^\s*#' } | Select-Object -First 1
 if ($NameLine) {
     $AppName = ($NameLine -split '"')[1]
-} else {
+}
+if (-not $AppName) {
     Write-Host "❌ Could not detect app name from Cargo.toml" -ForegroundColor Red
     exit 1
 }
