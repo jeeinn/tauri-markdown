@@ -29,19 +29,48 @@ async function getStore() {
     try {
       const portable = await checkPortableMode()
       
-      // 如果是便携模式，需要使用完整路径
       let storePath = STORE_PATH
       if (portable) {
-        // 在便携模式下，Tauri Store 默认会使用 exe 同目录
-        // 但为了确保，我们可以记录一下
-        console.log('[DEBUG Store] Using portable mode, store will be in exe directory')
+        // 在便携模式下，从后端获取正确的绝对路径
+        try {
+          storePath = await invoke('get_store_path')
+          console.log('[DEBUG Store] Portable mode: using path from backend:', storePath)
+        } catch (error) {
+          console.error('[ERROR Store] Failed to get store path from backend, falling back to relative path:', error)
+          storePath = STORE_PATH
+        }
+      } else {
+        console.log('[DEBUG Store] Normal mode: using default path:', storePath)
       }
       
-      console.log('[DEBUG Store] 加载 store:', storePath)
+      console.log('[DEBUG Store] Loading store with path:', storePath)
       storeInstance = await Store.load(storePath)
-      console.log('[DEBUG Store] Store 加载成功')
+      console.log('[DEBUG Store] Store loaded successfully')
+      
+      // 测试读写并记录实际存储位置
+      try {
+        const testKey = '_path_test'
+        const testValue = 'test_' + Date.now()
+        await storeInstance.set(testKey, testValue)
+        await storeInstance.save()
+        
+        // 读取验证
+        const readValue = await storeInstance.get(testKey)
+        console.log('[DEBUG Store] Test write/read successful:', readValue === testValue ? 'PASS' : 'FAIL')
+        
+        // 清理测试数据
+        await storeInstance.delete(testKey)
+        await storeInstance.save()
+      } catch (testError) {
+        console.error('[ERROR Store] Test write/read failed:', testError)
+      }
     } catch (error) {
-      console.error('[ERROR Store] Store 加载失败:', error)
+      console.error('[ERROR Store] Failed to load store:', error)
+      console.error('[ERROR Store] Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      })
       throw error
     }
   }
