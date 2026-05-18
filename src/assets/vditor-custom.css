@@ -11,13 +11,69 @@
   float: left !important;
 }
 
-/* Vditor 容器基础样式 */
+/* ── 拖拽文件打开遮罩层 ──────────────────────────── */
 .vditor-container {
   position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.vditor-container .drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(2px);
+  border: 3px dashed #3b82f6;
+  border-radius: 8px;
+  margin: 4px;
+  pointer-events: none;
+  animation: drop-overlay-fade-in 0.2s ease-out;
+}
+
+.vditor-container .drop-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #3b82f6;
+}
+
+.vditor-container .drop-icon {
+  opacity: 0.8;
+}
+
+.vditor-container .drop-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+/* 暗色主题适配 */
+.dark .vditor-container .drop-overlay {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: #60a5fa;
+}
+
+.dark .vditor-container .drop-overlay-content {
+  color: #60a5fa;
+}
+
+@keyframes drop-overlay-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Zen 模式下的 Vditor 样式微调 */
