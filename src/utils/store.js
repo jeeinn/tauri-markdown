@@ -46,24 +46,6 @@ async function getStore() {
       console.log('[DEBUG Store] Loading store with path:', storePath)
       storeInstance = await Store.load(storePath)
       console.log('[DEBUG Store] Store loaded successfully')
-      
-      // 测试读写并记录实际存储位置
-      try {
-        const testKey = '_path_test'
-        const testValue = 'test_' + Date.now()
-        await storeInstance.set(testKey, testValue)
-        await storeInstance.save()
-        
-        // 读取验证
-        const readValue = await storeInstance.get(testKey)
-        console.log('[DEBUG Store] Test write/read successful:', readValue === testValue ? 'PASS' : 'FAIL')
-        
-        // 清理测试数据
-        await storeInstance.delete(testKey)
-        await storeInstance.save()
-      } catch (testError) {
-        console.error('[ERROR Store] Test write/read failed:', testError)
-      }
     } catch (error) {
       console.error('[ERROR Store] Failed to load store:', error)
       console.error('[ERROR Store] Error details:', {
