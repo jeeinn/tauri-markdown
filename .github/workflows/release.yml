@@ -33,7 +33,8 @@ jobs:
             | **Linux** | AppImage | `TauriMarkdown_{version}_amd64.AppImage` |
             | **Linux** | RPM (Fedora/RHEL) | `TauriMarkdown-{version}-1.x86_64.rpm` |
 
-            > 💡 Windows Portable: 无需安装，解压即用，配置文件存储在同目录，适合 U 盘携带
+            > 💡 Windows Portable ZIP: 完整便携包，配置存储在同目录，适合 U 盘携带
+            > 💡 Windows Standalone EXE: 最小化包，手动创建 .portable 文件可启用便携模式
             > 💡 macOS: 解压后将 `.app` 拖入「应用程序」文件夹
             > 💡 Linux deb: `sudo dpkg -i <file>.deb`
             > 💡 Linux AppImage: `chmod +x <file>.AppImage && ./<file>.AppImage`

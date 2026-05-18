@@ -106,6 +106,22 @@ fn get_portable_mode(state: State<'_, PortableMode>) -> bool {
     state.0
 }
 
+#[tauri::command]
+fn get_store_path(state: State<'_, PortableMode>) -> String {
+    if state.0 {
+        // 便携模式：返回 exe 同目录的绝对路径
+        let exe_path = std::env::current_exe().unwrap_or_default();
+        let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+        let store_path = exe_dir.join("store.json");
+        log(&format!("[Rust] Store path (portable): {:?}", store_path));
+        store_path.to_string_lossy().to_string()
+    } else {
+        // 正常模式：返回相对路径，让 Tauri 自动处理
+        log("[Rust] Store path (normal): store.json");
+        "store.json".to_string()
+    }
+}
+
 /// 通过"打开方式"传入的文件路径（首次启动时由命令行参数获取）
 struct OpenedFile(Mutex<Option<PathBuf>>);
 
@@ -300,14 +316,11 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(
-            tauri_plugin_store::Builder::default()
-                .build()
-        )
+        .plugin(tauri_plugin_store::Builder::default().build())
         .manage(CurrentDir(Mutex::new(None)))
         .manage(OpenedFile(Mutex::new(opened_file)))
         .manage(PortableMode(is_portable))
-        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder, get_portable_mode])
+        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder, get_portable_mode, get_store_path])
         .register_uri_scheme_protocol("tmd", tmd_protocol_handler)
         .setup(|app| {
             switch_log_to_app_data(app.handle());

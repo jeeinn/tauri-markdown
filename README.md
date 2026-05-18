@@ -23,10 +23,14 @@ Get the latest version from [GitHub Releases](https://github.com/jeeinn/tauri-ma
 
 | Version | Description |
 |---------|-------------|
-| **Portable ZIP** ⭐ | No installation required, just extract and run. Perfect for USB drives! |
-| Standalone EXE | Single executable file, minimal package |
+| **Portable ZIP** ⭐ | Full portable package with config files stored alongside executable. Perfect for USB drives! |
+| Standalone EXE | Minimal package with only the executable. Create `.portable` file manually to enable portable mode. |
 | NSIS Installer | Standard Windows installer with Start Menu shortcuts |
 | MSI Package | Windows Installer package for enterprise deployment |
+
+> 💡 **Portable ZIP vs Standalone EXE:**
+> - **Portable ZIP**: Includes `.portable` marker file, README, and resources. Configs auto-saved in same directory.
+> - **Standalone EXE**: Only the executable. Add `.portable` file manually if you want portable behavior.
 
 ### macOS
 
