@@ -35,7 +35,7 @@ describe('Store Utils', () => {
     mockStoreLoad = storePlugin.Store.load
     
     // 导入 store 模块
-    storeModule = await import('./store.js')
+    storeModule = await import('../store.js')
   })
 
   describe('便携模式检测', () => {

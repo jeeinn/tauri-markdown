@@ -3,10 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { ScrollMemoryManager, createScrollMemoryManager } from './scroll-memory.js'
+import { ScrollMemoryManager, createScrollMemoryManager } from '../scroll-memory.js'
 
 // Mock store 模块
-vi.mock('./store.js', () => ({
+vi.mock('../store.js', () => ({
   saveScrollPosition: vi.fn().mockResolvedValue(undefined),
   getScrollPosition: vi.fn().mockResolvedValue(null),
 }))
@@ -185,7 +185,7 @@ describe('ScrollMemoryManager', () => {
 
   describe('flushScrollPosition', () => {
     it('功能禁用时不应该写入 Store', async () => {
-      const { saveScrollPosition } = await import('./store.js')
+      const { saveScrollPosition } = await import('../store.js')
       manager.setEnabled(false)
       manager.scrollPositionsCache['/test/file.md'] = 0.5
       await manager.flushScrollPosition()
@@ -193,14 +193,14 @@ describe('ScrollMemoryManager', () => {
     })
 
     it('应该将缓存的位置写入 Store', async () => {
-      const { saveScrollPosition } = await import('./store.js')
+      const { saveScrollPosition } = await import('../store.js')
       manager.scrollPositionsCache['/test/file.md'] = 0.75
       await manager.flushScrollPosition()
       expect(saveScrollPosition).toHaveBeenCalledWith('/test/file.md', 0.75)
     })
 
     it('没有缓存位置时不应该调用 Store', async () => {
-      const { saveScrollPosition } = await import('./store.js')
+      const { saveScrollPosition } = await import('../store.js')
       await manager.flushScrollPosition()
       expect(saveScrollPosition).not.toHaveBeenCalled()
     })
@@ -208,7 +208,7 @@ describe('ScrollMemoryManager', () => {
 
   describe('restoreScrollPosition', () => {
     it('功能禁用时不应该恢复位置', async () => {
-      const { getScrollPosition } = await import('./store.js')
+      const { getScrollPosition } = await import('../store.js')
       manager.setEnabled(false)
       await manager.restoreScrollPosition('/test/file.md')
       expect(getScrollPosition).not.toHaveBeenCalled()
@@ -222,7 +222,7 @@ describe('ScrollMemoryManager', () => {
     })
 
     it('应该恢复保存的滚动位置', async () => {
-      const { getScrollPosition } = await import('./store.js')
+      const { getScrollPosition } = await import('../store.js')
       getScrollPosition.mockResolvedValue(0.5)
 
       const el = mockVditor.vditor.ir.element
@@ -238,7 +238,7 @@ describe('ScrollMemoryManager', () => {
 
   describe('destroy', () => {
     it('应该清理所有资源', async () => {
-      const { saveScrollPosition } = await import('./store.js')
+      const { saveScrollPosition } = await import('../store.js')
       
       manager.setupScrollListener()
       manager.scrollPositionsCache['/test/file.md'] = 0.5

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { getI18nText, getI18nTexts, getI18nConfig, hasLanguage, getSupportedLanguages } from './i18n-helper.js'
+import { getI18nText, getI18nTexts, getI18nConfig, hasLanguage, getSupportedLanguages } from '../i18n-helper.js'
 
 describe('i18n-helper', () => {
   describe('getI18nText', () => {
