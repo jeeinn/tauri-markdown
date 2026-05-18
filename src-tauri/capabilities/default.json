@@ -30,6 +30,7 @@
       "identifier": "http:allow-fetch",
       "allow": [{ "url": "https://*" }, { "url": "http://*" }]
     },
-    "core:event:default"
+    "core:event:default",
+    "core:app:allow-version"
   ]
 }
