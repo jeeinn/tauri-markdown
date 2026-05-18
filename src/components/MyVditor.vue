@@ -25,13 +25,13 @@ import { getI18nText, getI18nConfig } from '../utils/i18n-helper.js'
 import { toRefs } from 'vue'  // 用于解构 composable 返回的 ref
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { getLastFilePath, saveLastFilePath } from '../utils/store.js'
+import { getLastFilePath, saveLastFilePath, clearLastFilePath, clearScrollPosition } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
-import { dirname, join } from '@tauri-apps/api/path'
-import { exportPdf as exportPdfUtil } from '../utils/pdf-export.js'
+import { dirname, join, normalize } from '@tauri-apps/api/path'
+import { invoke } from '@tauri-apps/api/core'
 import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
@@ -373,7 +373,6 @@ export default {
       this.isContentModified = false
 
       // 清除 store 中的记录
-      const { clearLastFilePath, clearScrollPosition } = await import('../utils/store.js')
       await clearLastFilePath()
 
       // 清除该文件的滚动位置记录
@@ -408,9 +407,7 @@ export default {
 
     async autoLoadLastFile() {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-
-        // 优先处理通过"打开方式"传入的文件(由 Rust 端通过 command 获取)
+        // 优先处理通过“打开方式”传入的文件(由 Rust 端通过 command 获取)
         const openedFile = await invoke('take_opened_file');
         await invoke('log_message', { msg: `autoLoadLastFile: take_opened_file returned: ${openedFile}` });
         if (openedFile) {
@@ -473,7 +470,6 @@ export default {
 
     // 根据路径加载文件(供 autoLoadLastFile / openMdFile / 打开方式 共用)
     async loadFileByPath(filePath) {
-      const { invoke } = await import('@tauri-apps/api/core');
       await invoke('log_message', { msg: `loadFileByPath: ${filePath}` });
 
       if (!this.vditor) {
@@ -491,7 +487,6 @@ export default {
 
       const data = await readTextFile(filePath)
 
-      const { dirname } = await import('@tauri-apps/api/path');
       const baseDir = await dirname(filePath);
 
       await invoke('set_current_dir', { dir: baseDir });
@@ -712,6 +707,9 @@ export default {
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
+      // 动态导入 PDF 导出模块（懒加载，减少初始包体积）
+      const { exportPdf: exportPdfUtil } = await import('../utils/pdf-export.js')
+
       // 获取当前语言的 PDF 导出配置
       const pdfConfig = this.t.exportPdf
 
@@ -800,7 +798,6 @@ export default {
           const subDir = isImage ? 'assets/images' : 'assets/files';
 
           // 使用 path 模块处理路径,确保跨平台兼容
-          const { dirname, join, normalize } = await import('@tauri-apps/api/path');
           const currentDir = await dirname(this.currentFilePath);
           console.log('[Upload] 当前文件目录:', currentDir);
 
@@ -817,7 +814,6 @@ export default {
           // 如果目录不存在,创建它
           if (!assetsDirExists) {
             console.log('[Upload] 开始创建目录...');
-            const { mkdir } = await import('@tauri-apps/plugin-fs');
 
             try {
               // 方法1: 尝试直接使用完整路径创建(使用 parents 参数)
@@ -867,7 +863,6 @@ export default {
             console.log('[Upload] 文件已存在,跳过写入(去重)');
           } else {
             // 写入文件(使用 writeFile 进行二进制写入)
-            const { writeFile } = await import('@tauri-apps/plugin-fs');
             await writeFile(destPath, uint8Array);
             console.log('[Upload] 文件写入成功');
           }
