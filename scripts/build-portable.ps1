@@ -8,9 +8,21 @@ param(
 
 # Auto-detect version from package.json if not provided
 if (-not $Version) {
-    $PackageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
-    $Version = $PackageJson.version
-    Write-Host "📱 Auto-detected version from package.json: $Version" -ForegroundColor Cyan
+    Write-Host "📱 No version parameter provided, auto-detecting from package.json..." -ForegroundColor Yellow
+    try {
+        $PackageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+        $Version = $PackageJson.version
+        if (-not $Version) {
+            Write-Host "❌ Could not read version from package.json" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "✅ Auto-detected version: $Version" -ForegroundColor Green
+    } catch {
+        Write-Host "❌ Failed to parse package.json: $_" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "📱 Using provided version: $Version" -ForegroundColor Cyan
 }
 
 Write-Host "🚀 Starting portable build process..." -ForegroundColor Cyan
@@ -31,8 +43,9 @@ $PortableDir = "$BundleDir/portable"
 
 # Auto-detect the executable name from Cargo.toml
 $CargoToml = Get-Content "src-tauri/Cargo.toml" -Raw
-if ($CargoToml -match 'name\s*=\s*"([^"]+)"') {
-    $AppName = $matches[1]
+$NameLine = ($CargoToml -split "`n") | Where-Object { $_ -match '^\s*name\s*=' } | Select-Object -First 1
+if ($NameLine) {
+    $AppName = ($NameLine -split '"')[1]
 } else {
     Write-Host "❌ Could not detect app name from Cargo.toml" -ForegroundColor Red
     exit 1
@@ -40,9 +53,12 @@ if ($CargoToml -match 'name\s*=\s*"([^"]+)"') {
 
 $ExeName = "$AppName.exe"
 $ZipName = "${AppName}_${Version}_x64_portable.zip"
+$StandaloneZipName = "${AppName}_${Version}_x64_standalone.zip"
 
 Write-Host "📱 Detected app name: $AppName" -ForegroundColor Cyan
 Write-Host "📄 Executable: $ExeName" -ForegroundColor Cyan
+Write-Host "📦 ZIP filename: $ZipName" -ForegroundColor Cyan
+Write-Host "🔢 Version: $Version" -ForegroundColor Cyan
 
 # 3. Create portable directory
 Write-Host "📁 Creating portable directory..." -ForegroundColor Yellow
@@ -106,14 +122,14 @@ Compress-Archive -Path "$PortableDir/*" -DestinationPath "$BundleDir/$ZipName" -
 # 10. Display results
 Write-Host "`n✅ Portable build completed successfully!" -ForegroundColor Green
 Write-Host "📦 Output: $BundleDir/$ZipName" -ForegroundColor Cyan
-Write-Host "📊 Size: $((Get-Item "$BundleDir/$ZipName").Length / 1MB) MB" -ForegroundColor Cyan
+$FileSize = (Get-Item "$BundleDir/$ZipName").Length / 1MB
+Write-Host "📊 Size: $FileSize MB" -ForegroundColor Cyan
 
 # Optional: Also create a simple EXE-only distribution
 Write-Host "`n📦 Creating standalone EXE distribution..." -ForegroundColor Yellow
 $StandaloneDir = "$BundleDir/standalone"
 New-Item -ItemType Directory -Force -Path $StandaloneDir | Out-Null
 Copy-Item $ExePath "$StandaloneDir/" -Force
-$StandaloneZipName = "${AppName}_${Version}_x64_standalone.zip"
 Compress-Archive -Path "$StandaloneDir/*" -DestinationPath "$BundleDir/$StandaloneZipName" -Force
 
 Write-Host "✅ Standalone EXE created: $BundleDir/$StandaloneZipName" -ForegroundColor Green
