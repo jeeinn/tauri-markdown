@@ -712,9 +712,21 @@ export default {
       // 调用工具模块执行 HTML 导出
       return await exportHtmlUtil(this.vditor, htmlConfig)
     },
-    showAbout() {
+    async showAbout() {
+      // 获取应用版本号
+      let appVersion = '未知版本';
+      try {
+        const { getVersion } = await import('@tauri-apps/api/app');
+        appVersion = await getVersion();
+      } catch (error) {
+        console.error('[About] 获取版本号失败:', error);
+      }
+
       ElMessageBox.alert(
           '&nbsp;&nbsp;&nbsp;&nbsp;' +
+          `<div style="text-align: center; margin-bottom: 15px;">` +
+          `<strong style="font-size: 16px;">Tauri Markdown v${appVersion}</strong>` +
+          `</div>` +
           '这是基于开源项目开发的一个本地 Markdown 写作工具,可以跨平台使用(Windows、macOS、Linux) <br/>' +
           '项目主页👉 <a target="_blank" href="https://github.com/jeeinn/tauri-markdown">github.com/jeeinn/tauri-markdown</a><br/>' +
           '鸣谢🙏 (右键可复制链接)<br/>' +
