@@ -90,7 +90,7 @@ describe('i18n-helper', () => {
       
       // 验证深层字段存在（深合并的关键）
       expect(config.notifications.openFile.success.title).toBe('File Opened Successfully')
-      expect(config.dragDrop.hint).toBe('Drop to open Markdown file')
+      expect(config.dragDrop.title).toBe('Unsupported Format')
     })
 
     it('应该在语言不存在时回退到中文', () => {
@@ -157,7 +157,6 @@ describe('i18n-helper', () => {
       expect(enConfig.notifications.openFile.success).toHaveProperty('title')
       
       // 验证拖拽相关字段也存在
-      expect(enConfig.dragDrop).toHaveProperty('hint')
       expect(enConfig.dragDrop).toHaveProperty('title')
       expect(enConfig.dragDrop).toHaveProperty('unsupported')
     })

@@ -1,17 +1,6 @@
 <template>
   <div class="vditor-container">
     <div id="vditorEle" class="vditor"></div>
-    <!-- 拖拽文件高亮遮罩层 -->
-    <div v-if="showDropOverlay" class="drop-overlay">
-      <div class="drop-overlay-content">
-        <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <p class="drop-text">{{ dropHintText }}</p>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -21,8 +10,7 @@ import 'vditor/dist/index.css'
 import '../assets/vditor-custom.css'
 import {ElMessageBox, ElNotification} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
-import { getI18nText, getI18nConfig } from '../utils/i18n-helper.js'
-import { toRefs } from 'vue'  // 用于解构 composable 返回的 ref
+import { getI18nConfig } from '../utils/i18n-helper.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs'
@@ -40,6 +28,7 @@ import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useDragDrop } from '../composables/useDragDrop.js'
 // 导入工具函数
 import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
+import { ref } from 'vue'  // 用于创建响应式引用
 
 // 日志级别控制（生产环境可关闭）
 const DEBUG = import.meta.env.DEV;
@@ -78,12 +67,7 @@ export default {
     // 获取当前语言的窗口标题配置
     wt() {
       return getI18nConfig(this.lang).windowTitle;
-    },
-    // 拖拽提示文本
-    dropHintText() {
-      return getI18nText(this.lang, 'dragDrop.hint');
     }
-    // showDropOverlay 已通过 toRefs 解构到组件实例，可直接在模板中使用
   },
   mounted() {
     this.initVditor();
@@ -101,10 +85,8 @@ export default {
       (filePath) => this.loadFileByPath(filePath),
       () => this.lang  // 传入 getter 函数，确保语言切换时获取最新值
     );
-    this.dragDropManager.setupDragDrop();
     
-    // 将 composable 返回的 ref 解构到组件实例，方便在模板和 computed 中直接使用
-    Object.assign(this, toRefs(this.dragDropManager));
+    this.dragDropManager.setupDragDrop();
   },
   beforeUnmount() {
     // 清理滚动记忆管理器
@@ -127,7 +109,9 @@ export default {
     }
 
     // 清理拖拽文件管理器
-    this.dragDropManager?.cleanup();
+    if (this.dragDropManager) {
+      this.dragDropManager.cleanup();
+    }
   },
   methods: {
     // ========== 语言切换 ==========

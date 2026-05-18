@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
-import { useDragDrop } from './useDragDrop.js'
+import { useDragDrop } from '../useDragDrop.js'
 
 // Mock Tauri API
 vi.mock('@tauri-apps/api/webview', () => ({
@@ -17,13 +17,13 @@ vi.mock('element-plus', () => ({
 }))
 
 // Mock i18n-helper
-vi.mock('../utils/i18n-helper.js', () => ({
+vi.mock('../../utils/i18n-helper.js', () => ({
   getI18nText: vi.fn((lang, key) => `${lang}:${key}`)
 }))
 
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { ElNotification } from 'element-plus'
-import { getI18nText } from '../utils/i18n-helper.js'
+import { getI18nText } from '../../utils/i18n-helper.js'
 
 describe('useDragDrop', () => {
   let mockUnlisten = null
@@ -59,10 +59,8 @@ describe('useDragDrop', () => {
       const manager = useDragDrop(onFileDrop, () => langRef.value)
       
       expect(manager).toBeDefined()
-      expect(manager.showDropOverlay).toBeDefined()
       expect(manager.setupDragDrop).toBeDefined()
       expect(manager.cleanup).toBeDefined()
-      expect(manager.showDropOverlay.value).toBe(false)
     })
 
     it('应该支持传入 getter 函数', () => {
@@ -88,47 +86,6 @@ describe('useDragDrop', () => {
       expect(mockWebview.onDragDropEvent).toHaveBeenCalled()
     })
 
-    it('应该在拖入窗口时显示遮罩', async () => {
-      const manager = useDragDrop(onFileDrop, () => langRef.value)
-      await manager.setupDragDrop()
-      
-      // 获取注册的回调函数
-      const callback = mockWebview.onDragDropEvent.mock.calls[0][0]
-      
-      // 模拟拖入事件
-      callback({ payload: { type: 'over', paths: [] } })
-      
-      expect(manager.showDropOverlay.value).toBe(true)
-    })
-
-    it('应该在离开窗口时隐藏遮罩', async () => {
-      const manager = useDragDrop(onFileDrop, () => langRef.value)
-      await manager.setupDragDrop()
-      
-      const callback = mockWebview.onDragDropEvent.mock.calls[0][0]
-      
-      // 先显示遮罩
-      callback({ payload: { type: 'over', paths: [] } })
-      expect(manager.showDropOverlay.value).toBe(true)
-      
-      // 然后离开
-      callback({ payload: { type: 'leave', paths: [] } })
-      expect(manager.showDropOverlay.value).toBe(false)
-    })
-
-    it('应该在取消时隐藏遮罩', async () => {
-      const manager = useDragDrop(onFileDrop, () => langRef.value)
-      await manager.setupDragDrop()
-      
-      const callback = mockWebview.onDragDropEvent.mock.calls[0][0]
-      
-      callback({ payload: { type: 'over', paths: [] } })
-      expect(manager.showDropOverlay.value).toBe(true)
-      
-      callback({ payload: { type: 'cancel', paths: [] } })
-      expect(manager.showDropOverlay.value).toBe(false)
-    })
-
     it('应该在拖放 Markdown 文件时调用回调', async () => {
       const manager = useDragDrop(onFileDrop, () => langRef.value)
       await manager.setupDragDrop()
@@ -138,7 +95,6 @@ describe('useDragDrop', () => {
       
       callback({ payload: { type: 'drop', paths: [testPath] } })
       
-      expect(manager.showDropOverlay.value).toBe(false)
       expect(onFileDrop).toHaveBeenCalledWith(testPath)
     })
 
