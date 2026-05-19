@@ -123,3 +123,208 @@ html.dark .language-label {
 .three-buttons-dialog .el-message-box__btns button {
   flex: 1;
 }
+
+/* 打印样式 */
+@media print {
+  /* ── 强制浅色模式 ─────────────────────────────── */
+  html, html.dark, html.dark body {
+    color-scheme: light !important;
+    background-color: #fff !important;
+    color: #333 !important;
+  }
+
+  /* ── 隐藏 UI 元素 ─────────────────────────────── */
+  .app-menubar,
+  .zen-tip,
+  .vditor-toolbar,
+  .vditor-status,
+  .vditor-outline,
+  .drop-overlay,
+  .el-popper,
+  .el-overlay,
+  .el-message-box,
+  .el-notification {
+    display: none !important;
+  }
+
+  /* ── 重置页面布局 ─────────────────────────────── */
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    padding: 2cm 1.5cm !important;
+  }
+
+  #app {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex: none !important;
+  }
+
+  /* ── 重置编辑器容器 ───────────────────────────── */
+  .vditor-container {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex: none !important;
+    position: static !important;
+  }
+
+  .vditor {
+    width: 100% !important;
+    height: auto !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .vditor-content {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    position: static !important;
+    transform: none !important;
+  }
+
+  .vditor-ir, .vditor-wysiwyg, .vditor-sv {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    max-height: none !important;
+    transform: none !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    padding-top: 0.5cm !important;
+  }
+
+  /* ── 内容区域 ─────────────────────────────────── */
+  .vditor-reset {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    max-height: none !important;
+    transform: none !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    color: #333 !important;
+    background-color: #fff !important;
+    max-width: 680px !important;
+    line-height: 1.6 !important;
+  }
+
+  /* 标题 */
+  .vditor-reset h1 {
+    font-size: 2em !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 0.3em !important;
+  }
+  .vditor-reset h2 {
+    font-size: 1.5em !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 0.3em !important;
+  }
+  .vditor-reset h3 { font-size: 1.25em !important; }
+
+  /* 引用块 */
+  .vditor-reset blockquote {
+    border-left: 4px solid #ddd !important;
+    padding-left: 16px !important;
+    color: #666 !important;
+    margin: 16px 0 !important;
+  }
+
+  /* 代码块 */
+  .vditor-reset pre > code {
+    background-color: #f6f8fa !important;
+    color: #333 !important;
+    height: auto !important;
+    max-height: none !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+  }
+
+  /* 表格 */
+  .vditor-reset table {
+    display: table !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 16px 0 !important;
+  }
+  .vditor-reset th,
+  .vditor-reset td {
+    border: 1px solid #ddd !important;
+    padding: 8px 12px !important;
+  }
+  .vditor-reset th {
+    background: #f6f8fa !important;
+  }
+
+  /* 分隔线 */
+  .vditor-reset hr {
+    border: none !important;
+    border-top: 1px solid #eee !important;
+    margin: 24px 0 !important;
+  }
+
+  /* 图片 */
+  .vditor-reset img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  /* ── 分页控制 ─────────────────────────────────── */
+  .vditor-reset pre,
+  .vditor-reset code,
+  .vditor-reset table,
+  .vditor-reset blockquote,
+  .vditor-reset img {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+
+  .vditor-reset p,
+  .vditor-reset li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* ── 滚动条 ───────────────────────────────────── */
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* ── 页面边距（隐藏浏览器默认页眉页脚）────────── */
+  @page {
+    margin: 0;
+  }
+}

@@ -33,6 +33,10 @@
               <el-dropdown-item command="export-html">
                 <span>{{ menuI18n.exportHtml }}</span>
               </el-dropdown-item>
+              <el-dropdown-item divided command="print">
+                <span>{{ menuI18n.print }}</span>
+                <span class="shortcut">Ctrl+P</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -233,6 +237,13 @@ export default {
         this.$refs.vditor?.exportFile();
         return;
       }
+
+      // Ctrl/Cmd + P: 打印
+      if (ctrlOrCmd && event.key === 'p' && !event.shiftKey) {
+        event.preventDefault();
+        this.$refs.vditor?.printPage();
+        return;
+      }
     },
     
     // 处理文件菜单命令
@@ -255,6 +266,9 @@ export default {
           break;
         case 'export-html':
           this.$refs.vditor?.exportHtml();
+          break;
+        case 'print':
+          this.$refs.vditor?.printPage();
           break;
       }
     },
@@ -289,7 +303,7 @@ export default {
         this.$refs.vditor?.showAbout();
       }
     },
-    
+
     // 切换语言
     async switchLanguage(lang) {
       this.currentLang = lang;
