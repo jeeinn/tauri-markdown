@@ -32,6 +32,7 @@ import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join, normalize } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
+import { printPage as printPageUtil } from '../utils/print-export.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
@@ -725,6 +726,9 @@ export default {
 
       // 调用工具模块执行 HTML 导出
       return await exportHtmlUtil(this.vditor, htmlConfig)
+    },
+    async printPage() {
+      return await printPageUtil(this)
     },
     async showAbout() {
       // 获取应用版本号

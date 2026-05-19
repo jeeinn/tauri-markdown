@@ -126,24 +126,28 @@ html.dark .language-label {
 
 /* 打印样式 */
 @media print {
-  /* 强制浅色模式，避免暗色主题导致 PDF 灰蒙蒙 */
+  /* ── 强制浅色模式 ─────────────────────────────── */
   html, html.dark, html.dark body {
     color-scheme: light !important;
     background-color: #fff !important;
     color: #333 !important;
   }
 
-  /* 隐藏菜单栏 */
-  .app-menubar {
+  /* ── 隐藏 UI 元素 ─────────────────────────────── */
+  .app-menubar,
+  .zen-tip,
+  .vditor-toolbar,
+  .vditor-status,
+  .vditor-outline,
+  .drop-overlay,
+  .el-popper,
+  .el-overlay,
+  .el-message-box,
+  .el-notification {
     display: none !important;
   }
 
-  /* 隐藏 Zen 模式提示 */
-  .zen-tip {
-    display: none !important;
-  }
-
-  /* 重置页面布局 */
+  /* ── 重置页面布局 ─────────────────────────────── */
   html, body {
     width: 100% !important;
     height: auto !important;
@@ -152,7 +156,10 @@ html.dark .language-label {
     padding: 0 !important;
   }
 
-  /* 调整编辑器布局 */
+  body {
+    padding: 2cm 1.5cm !important;
+  }
+
   #app {
     width: 100% !important;
     height: auto !important;
@@ -161,27 +168,7 @@ html.dark .language-label {
     flex: none !important;
   }
 
-  /* 隐藏 Vditor 工具栏 */
-  .vditor-toolbar {
-    display: none !important;
-  }
-
-  /* 隐藏 Vditor 状态栏 */
-  .vditor-status {
-    display: none !important;
-  }
-
-  /* 隐藏大纲侧栏 */
-  .vditor-outline {
-    display: none !important;
-  }
-
-  /* 隐藏拖拽遮罩层 */
-  .drop-overlay {
-    display: none !important;
-  }
-
-  /* 调整编辑器容器 */
+  /* ── 重置编辑器容器 ───────────────────────────── */
   .vditor-container {
     width: 100% !important;
     height: auto !important;
@@ -202,7 +189,6 @@ html.dark .language-label {
     box-sizing: border-box !important;
   }
 
-  /* 编辑器内容区域 */
   .vditor-content {
     width: 100% !important;
     height: auto !important;
@@ -212,7 +198,6 @@ html.dark .language-label {
     transform: none !important;
   }
 
-  /* 确保内容可打印 - 重置所有编辑模式 */
   .vditor-ir, .vditor-wysiwyg, .vditor-sv {
     width: 100% !important;
     height: auto !important;
@@ -222,9 +207,10 @@ html.dark .language-label {
     transform: none !important;
     white-space: normal !important;
     word-wrap: break-word !important;
+    padding-top: 0.5cm !important;
   }
 
-  /* 重置编辑器内容区域 */
+  /* ── 内容区域 ─────────────────────────────────── */
   .vditor-reset {
     width: 100% !important;
     height: auto !important;
@@ -235,12 +221,35 @@ html.dark .language-label {
     white-space: normal !important;
     word-wrap: break-word !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     color: #333 !important;
     background-color: #fff !important;
+    max-width: 680px !important;
+    line-height: 1.6 !important;
   }
 
-  /* 代码块：浅色背景 + 移除高度限制 + 长行自动换行 */
+  /* 标题 */
+  .vditor-reset h1 {
+    font-size: 2em !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 0.3em !important;
+  }
+  .vditor-reset h2 {
+    font-size: 1.5em !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 0.3em !important;
+  }
+  .vditor-reset h3 { font-size: 1.25em !important; }
+
+  /* 引用块 */
+  .vditor-reset blockquote {
+    border-left: 4px solid #ddd !important;
+    padding-left: 16px !important;
+    color: #666 !important;
+    margin: 16px 0 !important;
+  }
+
+  /* 代码块 */
   .vditor-reset pre > code {
     background-color: #f6f8fa !important;
     color: #333 !important;
@@ -250,49 +259,72 @@ html.dark .language-label {
     word-break: break-all !important;
   }
 
-  /* 表格：恢复 table 布局并移除滚动限制 */
+  /* 表格 */
   .vditor-reset table {
     display: table !important;
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 16px 0 !important;
+  }
+  .vditor-reset th,
+  .vditor-reset td {
+    border: 1px solid #ddd !important;
+    padding: 8px 12px !important;
+  }
+  .vditor-reset th {
+    background: #f6f8fa !important;
   }
 
-  /* 确保内容块正常显示 */
-  .vditor-ir pre, .vditor-wysiwyg pre, .vditor-sv pre,
-  .vditor-ir blockquote, .vditor-wysiwyg blockquote {
+  /* 分隔线 */
+  .vditor-reset hr {
+    border: none !important;
+    border-top: 1px solid #eee !important;
+    margin: 24px 0 !important;
+  }
+
+  /* 图片 */
+  .vditor-reset img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  /* ── 分页控制 ─────────────────────────────────── */
+  .vditor-reset pre,
+  .vditor-reset code,
+  .vditor-reset table,
+  .vditor-reset blockquote,
+  .vditor-reset img {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 
-  /* 避免标题后立即分页 */
   h1, h2, h3, h4, h5, h6 {
     page-break-after: avoid;
   }
 
-  /* 隐藏所有滚动条 */
+  .vditor-reset p,
+  .vditor-reset li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* ── 滚动条 ───────────────────────────────────── */
   * {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
   }
-
   *::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
   }
 
-  /* 移除页面边距以隐藏浏览器默认页眉页脚 */
+  /* ── 页面边距（隐藏浏览器默认页眉页脚）────────── */
   @page {
     margin: 0;
-  }
-
-  /* 通过 body padding 模拟页面边距 */
-  body {
-    padding: 2cm 1.5cm !important;
-  }
-
-  /* 给内容添加顶部内边距 */
-  .vditor-wysiwyg, .vditor-ir, .vditor-sv {
-    padding-top: 0.5cm !important;
   }
 }
