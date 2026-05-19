@@ -15,6 +15,7 @@ export default {
       exportMd: '导出为 Markdown',
       exportPdf: '导出为 PDF',
       exportHtml: '导出为 HTML',
+      print: '打印',
       appearance: '外观',
       settings: '设置',
       help: '帮助',
@@ -33,6 +34,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      print: 'Ctrl+P',
       zenMode: 'F11',
     },
     language: {
@@ -234,6 +236,7 @@ export default {
       exportMd: 'Export as Markdown',
       exportPdf: 'Export as PDF',
       exportHtml: 'Export as HTML',
+      print: 'Print',
       appearance: 'Appearance',
       settings: 'Settings',
       help: 'Help',
@@ -252,6 +255,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      print: 'Ctrl+P',
       zenMode: 'F11',
     },
     language: {
@@ -444,6 +448,7 @@ export default {
       exportMd: 'Markdown でエクスポート',
       exportPdf: 'PDF でエクスポート',
       exportHtml: 'HTML でエクスポート',
+      print: '印刷',
       appearance: '外観',
       settings: '設定',
       help: 'ヘルプ',
@@ -462,6 +467,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      print: 'Ctrl+P',
       zenMode: 'F11',
     },
     language: {
@@ -654,6 +660,7 @@ export default {
       exportMd: 'Markdown으로 내보내기',
       exportPdf: 'PDF로 내보내기',
       exportHtml: 'HTML로 내보내기',
+      print: '인쇄',
       appearance: '모양',
       settings: '설정',
       help: '도움말',
@@ -672,6 +679,7 @@ export default {
       open: 'Ctrl+O',
       save: 'Ctrl+S',
       export: 'Ctrl+Shift+S',
+      print: 'Ctrl+P',
       zenMode: 'F11',
     },
     language: {

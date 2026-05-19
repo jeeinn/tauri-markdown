@@ -123,3 +123,76 @@ html.dark .language-label {
 .three-buttons-dialog .el-message-box__btns button {
   flex: 1;
 }
+
+/* 打印样式 */
+@media print {
+  /* 隐藏菜单栏 */
+  .app-menubar {
+    display: none !important;
+  }
+
+  /* 隐藏 Zen 模式提示 */
+  .zen-tip {
+    display: none !important;
+  }
+
+  /* 调整编辑器布局 */
+  #app {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 隐藏 Vditor 工具栏 */
+  .vditor-toolbar {
+    display: none !important;
+  }
+
+  /* 隐藏 Vditor 状态栏 */
+  .vditor-status {
+    display: none !important;
+  }
+
+  /* 隐藏大纲侧栏 */
+  .vditor-outline {
+    display: none !important;
+  }
+
+  /* 调整编辑器内容区域 */
+  .vditor {
+    height: auto !important;
+    border: none !important;
+  }
+
+  .vditor-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 确保内容可打印 */
+  .vditor-ir, .vditor-wysiwyg, .vditor-sv {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 隐藏所有滚动条 */
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* 调整页面设置 */
+  @page {
+    margin: 1cm;
+  }
+
+  body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+}
