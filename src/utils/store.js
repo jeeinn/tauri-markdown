@@ -6,6 +6,7 @@ const STORE_PATH = 'store.json'
 const LAST_FILE_KEY = 'last_opened_file'
 const THEME_KEY = 'app_theme'
 const ZEN_MODE_KEY = 'is_zen_mode'
+const LANGUAGE_KEY = 'app_language'
 
 let storeInstance = null
 let isPortableMode = null
@@ -203,6 +204,28 @@ export async function getScrollRememberEnabled() {
   } catch (error) {
     console.error('[Store] 获取滚动记忆开关失败:', error)
     return true // 默认启用
+  }
+}
+
+// 语言设置相关函数
+export async function saveLanguage(language) {
+  try {
+    const store = await getStore()
+    await store.set(LANGUAGE_KEY, language)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存语言设置失败:', error)
+  }
+}
+
+export async function getLanguage() {
+  try {
+    const store = await getStore()
+    const language = await store.get(LANGUAGE_KEY)
+    return language || 'zh_CN'
+  } catch (error) {
+    console.error('[Store] 获取语言设置失败:', error)
+    return 'zh_CN'
   }
 }
 

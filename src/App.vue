@@ -126,7 +126,7 @@
 import MyVditor from './components/MyVditor.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode } from './utils/store.js'
+import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage } from './utils/store.js'
 
 export default {
   name: 'App',
@@ -291,8 +291,10 @@ export default {
     },
     
     // 切换语言
-    switchLanguage(lang) {
+    async switchLanguage(lang) {
       this.currentLang = lang;
+      // 保存语言设置到 store
+      await saveLanguage(lang);
       // 调用子组件的语言切换方法
       if (this.$refs.vditor) {
         this.$refs.vditor.switchLanguage(lang);
@@ -346,6 +348,12 @@ export default {
     async initViewSettings() {
       this.scrollRememberEnabled = await getScrollRememberEnabled()
       this.isZenMode = await getZenMode()
+      // 初始化语言设置
+      const savedLang = await getLanguage()
+      if (savedLang && savedLang !== this.currentLang) {
+        this.currentLang = savedLang
+        this.$refs.vditor?.switchLanguage(savedLang)
+      }
       // 通知子组件同步状态
       this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
       this.applyZenMode(this.isZenMode)
