@@ -310,16 +310,66 @@ export default {
       document.querySelectorAll('.el-dropdown-menu').forEach(menu => {
         menu.style.display = 'none';
       });
-      // 延迟执行打印，确保菜单已关闭
+
+      // 获取编辑器所有相关容器
+      const vditorContainer = document.querySelector('.vditor-container');
+      const vditor = document.querySelector('.vditor');
+      const vditorContent = document.querySelector('.vditor-content');
+      const vditorIR = document.querySelector('.vditor-ir');
+      const vditorWysiwyg = document.querySelector('.vditor-wysiwyg');
+      const vditorSV = document.querySelector('.vditor-sv');
+      const vditorReset = document.querySelector('.vditor-reset');
+      const appElement = document.getElementById('app');
+
+      // 保存原始样式
+      const elements = [appElement, vditorContainer, vditor, vditorContent, vditorIR, vditorWysiwyg, vditorSV, vditorReset].filter(Boolean);
+      const originalStyles = elements.map(el => ({
+        el,
+        height: el.style.height,
+        overflow: el.style.overflow,
+        maxHeight: el.style.maxHeight,
+        minHeight: el.style.minHeight,
+        position: el.style.position,
+        display: el.style.display,
+        flex: el.style.flex,
+        width: el.style.width
+      }));
+
+      // 强制展开内容
+      elements.forEach(el => {
+        el.style.height = 'auto';
+        el.style.overflow = 'visible';
+        el.style.maxHeight = 'none';
+        el.style.minHeight = '0';
+        el.style.position = 'static';
+        if (el === appElement || el === vditorContainer) {
+          el.style.display = 'block';
+          el.style.flex = 'none';
+        }
+      });
+
+      // 延迟执行打印，确保样式已应用
       setTimeout(() => {
         window.print();
-        // 打印完成后恢复菜单显示
+
+        // 打印完成后恢复原始样式
         setTimeout(() => {
+          originalStyles.forEach(({ el, height, overflow, maxHeight, minHeight, position, display, flex, width }) => {
+            el.style.height = height;
+            el.style.overflow = overflow;
+            el.style.maxHeight = maxHeight;
+            el.style.minHeight = minHeight;
+            el.style.position = position;
+            el.style.display = display;
+            el.style.flex = flex;
+            el.style.width = width;
+          });
+          // 恢复菜单显示
           document.querySelectorAll('.el-dropdown-menu').forEach(menu => {
             menu.style.display = '';
           });
         }, 100);
-      }, 50);
+      }, 100);
     },
 
     // 切换语言

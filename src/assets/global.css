@@ -136,10 +136,22 @@ html.dark .language-label {
     display: none !important;
   }
 
-  /* 调整编辑器布局 */
-  #app {
+  /* 重置页面布局 */
+  html, body {
+    width: 100% !important;
     height: auto !important;
     overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 调整编辑器布局 */
+  #app {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex: none !important;
   }
 
   /* 隐藏 Vditor 工具栏 */
@@ -157,21 +169,66 @@ html.dark .language-label {
     display: none !important;
   }
 
-  /* 调整编辑器内容区域 */
+  /* 隐藏拖拽遮罩层 */
+  .drop-overlay {
+    display: none !important;
+  }
+
+  /* 调整编辑器容器 */
+  .vditor-container {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex: none !important;
+    position: static !important;
+  }
+
   .vditor {
+    width: 100% !important;
     height: auto !important;
     border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
   }
 
+  /* 编辑器内容区域 */
   .vditor-content {
+    width: 100% !important;
     height: auto !important;
     overflow: visible !important;
+    border: none !important;
+    position: static !important;
   }
 
-  /* 确保内容可打印 */
+  /* 确保内容可打印 - 重置所有编辑模式 */
   .vditor-ir, .vditor-wysiwyg, .vditor-sv {
+    width: 100% !important;
     height: auto !important;
     overflow: visible !important;
+    position: static !important;
+    max-height: none !important;
+  }
+
+  /* 重置编辑器内容区域 */
+  .vditor-reset {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    max-height: none !important;
+  }
+
+  /* 确保内容块正常显示 */
+  .vditor-ir pre, .vditor-wysiwyg pre, .vditor-sv pre,
+  .vditor-ir blockquote, .vditor-wysiwyg blockquote {
+    page-break-inside: avoid;
+  }
+
+  /* 避免标题后立即分页 */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
   }
 
   /* 隐藏所有滚动条 */
@@ -186,13 +243,13 @@ html.dark .language-label {
     height: 0 !important;
   }
 
-  /* 调整页面设置 */
+  /* 调整页面设置 - 顶部留更多边距 */
   @page {
-    margin: 1cm;
+    margin: 2cm 1.5cm;
   }
 
-  body {
-    overflow: visible !important;
-    height: auto !important;
+  /* 给内容添加顶部内边距 */
+  .vditor-wysiwyg, .vditor-ir, .vditor-sv {
+    padding-top: 0.5cm !important;
   }
 }
