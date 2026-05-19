@@ -311,6 +311,16 @@ export default {
         menu.style.display = 'none';
       });
 
+      // 设置打印页标题为当前文档名
+      const originalTitle = document.title;
+      const filePath = this.$refs.vditor?.currentFilePath;
+      if (filePath) {
+        const fileName = filePath.split('/').pop().split('\\').pop().replace(/\.md$/i, '');
+        document.title = fileName;
+      } else {
+        document.title = 'TauriMarkdown';
+      }
+
       // 获取编辑器所有相关容器
       const vditorContainer = document.querySelector('.vditor-container');
       const vditor = document.querySelector('.vditor');
@@ -368,6 +378,8 @@ export default {
           document.querySelectorAll('.el-dropdown-menu').forEach(menu => {
             menu.style.display = '';
           });
+          // 恢复页面标题
+          document.title = originalTitle;
         }, 100);
       }, 100);
     },

@@ -243,9 +243,14 @@ html.dark .language-label {
     height: 0 !important;
   }
 
-  /* 调整页面设置 - 顶部留更多边距 */
+  /* 移除页面边距以隐藏浏览器默认页眉页脚 */
   @page {
-    margin: 2cm 1.5cm;
+    margin: 0;
+  }
+
+  /* 通过 body padding 模拟页面边距 */
+  body {
+    padding: 2cm 1.5cm !important;
   }
 
   /* 给内容添加顶部内边距 */
