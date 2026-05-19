@@ -5,6 +5,7 @@
  * 支持 Markdown 文件的拖拽打开
  */
 
+import { ref } from 'vue'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { ElNotification } from 'element-plus'
 import { getI18nText } from '../utils/i18n-helper.js'
@@ -16,6 +17,7 @@ import { getI18nText } from '../utils/i18n-helper.js'
  * @returns {object} 拖拽管理器对象
  */
 export function useDragDrop(onFileDrop, getLang) {
+  const showDropOverlay = ref(false)
   let _unlistenDragDrop = null
 
   /**
@@ -40,8 +42,22 @@ export function useDragDrop(onFileDrop, getLang) {
       _unlistenDragDrop = await webview.onDragDropEvent((event) => {
         const { type, paths } = event.payload
 
+        if (type === 'over') {
+          // 拖入窗口 - 显示高亮遮罩
+          showDropOverlay.value = true
+          return
+        }
+
+        if (type === 'leave' || type === 'cancel') {
+          // 离开窗口或取消 - 隐藏遮罩
+          showDropOverlay.value = false
+          return
+        }
+
         if (type === 'drop') {
-          // 文件已拖放
+          // 文件已拖放 - 隐藏遮罩
+          showDropOverlay.value = false
+
           if (!paths || paths.length === 0) return
 
           // 查找第一个 Markdown 文件
@@ -81,6 +97,7 @@ export function useDragDrop(onFileDrop, getLang) {
   }
 
   return {
+    showDropOverlay,
     setupDragDrop,
     cleanup
   }
