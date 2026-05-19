@@ -126,6 +126,13 @@ html.dark .language-label {
 
 /* 打印样式 */
 @media print {
+  /* 强制浅色模式，避免暗色主题导致 PDF 灰蒙蒙 */
+  html, html.dark, html.dark body {
+    color-scheme: light !important;
+    background-color: #fff !important;
+    color: #333 !important;
+  }
+
   /* 隐藏菜单栏 */
   .app-menubar {
     display: none !important;
@@ -229,6 +236,26 @@ html.dark .language-label {
     word-wrap: break-word !important;
     padding: 0 !important;
     margin: 0 !important;
+    color: #333 !important;
+    background-color: #fff !important;
+  }
+
+  /* 代码块：浅色背景 + 移除高度限制 + 长行自动换行 */
+  .vditor-reset pre > code {
+    background-color: #f6f8fa !important;
+    color: #333 !important;
+    height: auto !important;
+    max-height: none !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+  }
+
+  /* 表格：恢复 table 布局并移除滚动限制 */
+  .vditor-reset table {
+    display: table !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
   }
 
   /* 确保内容块正常显示 */

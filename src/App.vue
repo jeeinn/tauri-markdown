@@ -366,6 +366,12 @@ export default {
       clearStyles(containerEls, [...layoutProps, 'display']);
       clearStyles(contentEls, layoutProps);
 
+      // 清除代码块和表格的高度限制（vditor 可能通过 inline style 设置了固定高度）
+      const codeProps = ['height', 'maxHeight', 'display', 'overflow'];
+      const codeEls = document.querySelectorAll('.vditor-reset pre > code, .vditor-reset table');
+      const codeSaved = saveStyles(Array.from(codeEls), codeProps);
+      clearStyles(Array.from(codeEls), codeProps);
+
       // 延迟执行打印，确保样式已应用
       setTimeout(() => {
         window.print();
@@ -382,6 +388,7 @@ export default {
 
           restoreStyles(containerSaved);
           restoreStyles(contentSaved);
+          restoreStyles(codeSaved);
 
           // 恢复菜单显示
           document.querySelectorAll('.el-dropdown-menu').forEach(menu => {
