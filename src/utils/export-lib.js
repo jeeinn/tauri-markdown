@@ -202,8 +202,9 @@ async function convertImagesToBase64(html, onProgress = null) {
 const sharedStyles = `
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    font-size: 11pt;
     line-height: 1.6;
-    color: #333;
+    color: #1a1a1a;
     max-width: 680px;
     margin: 0 auto;
     padding: 40px 20px;
@@ -220,12 +221,14 @@ const sharedStyles = `
   li { margin: 0.3em 0; }
   pre {
     background: #f6f8fa;
-    padding: 16px;
+    padding: 12px;
     overflow-x: auto;
     border-radius: 6px;
     border: 1px solid #e1e4e8;
-    font-size: 85%;
+    font-size: 9pt;
     line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
   code {
     background: #f6f8fa;
@@ -234,7 +237,13 @@ const sharedStyles = `
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: 85%;
   }
-  pre code { background: none; padding: 0; border-radius: 0; }
+  pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
   blockquote {
     border-left: 4px solid #dfe2e5;
     padding: 0 1em;
@@ -244,14 +253,19 @@ const sharedStyles = `
   table {
     border-collapse: collapse;
     width: 100%;
+    max-width: 100%;
     margin: 1em 0;
-    display: block;
-    overflow-x: auto;
+    table-layout: auto;
+    word-break: normal;
   }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
   th, td {
     border: 1px solid #dfe2e5;
     padding: 8px 12px;
     text-align: left;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
   th { background: #f6f8fa; font-weight: 600; }
   tr:nth-child(even) { background: #f8f9fa; }
@@ -265,16 +279,38 @@ const sharedStyles = `
   hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }
   a { color: #0366d6; text-decoration: none; }
   a:hover { text-decoration: underline; }
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666;
+    word-break: break-all;
+  }
   input[type="checkbox"] { margin-right: 6px; }
+  @page {
+    size: A4;
+    margin: 15mm 14mm 20mm 14mm;
+  }
 `
 
 const printPdfExtraStyles = `
   @media print {
-    body { max-width: none; padding: 0; }
-    h1 { page-break-before: always; break-before: page; page-break-after: avoid; break-after: avoid-page; }
-    h2, h3, h4 { page-break-after: avoid; break-after: avoid-page; }
-    pre, code, table, blockquote, img { page-break-inside: avoid; break-inside: avoid; }
+    body { max-width: none; padding: 0; font-size: 11pt; color: #1a1a1a; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    h1 { break-before: page; page-break-before: always; break-after: avoid; page-break-after: avoid; }
+    h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    pre, code {
+      break-inside: avoid; page-break-inside: avoid;
+      white-space: pre-wrap !important;
+      word-break: break-all !important;
+      height: auto !important; max-height: none !important; overflow: visible !important;
+    }
+    blockquote, img { break-inside: avoid; page-break-inside: avoid; }
+    table { break-inside: auto; page-break-inside: auto; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     p, li { orphans: 3; widows: 3; }
+    .html2pdf__page-break { page-break-after: always; break-after: page; }
   }
 `
 
@@ -405,7 +441,7 @@ async function doPdf(processedHtml, component, options = {}) {
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'avoid-all'], avoid: ['img', 'pre', 'table', 'blockquote'] },
+      pagebreak: { mode: ['css', 'avoid-all'], avoid: ['img', 'pre', 'table', 'blockquote', 'tr'] },
       ...options.pdfOptions,
     }
 
