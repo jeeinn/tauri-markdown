@@ -321,59 +321,68 @@ export default {
         document.title = 'TauriMarkdown';
       }
 
-      // 获取编辑器所有相关容器
-      const vditorContainer = document.querySelector('.vditor-container');
-      const vditor = document.querySelector('.vditor');
-      const vditorContent = document.querySelector('.vditor-content');
-      const vditorIR = document.querySelector('.vditor-ir');
-      const vditorWysiwyg = document.querySelector('.vditor-wysiwyg');
-      const vditorSV = document.querySelector('.vditor-sv');
-      const vditorReset = document.querySelector('.vditor-reset');
-      const appElement = document.getElementById('app');
+      // Vditor 会根据容器尺寸动态计算 inline style（width、padding-left 等），
+      // 最大化窗口后这些值会很大。@media print CSS 无法覆盖 inline style，
+      // 因此需要在打印前清除这些 inline style，打印后恢复。
 
-      // 保存原始样式
-      const elements = [appElement, vditorContainer, vditor, vditorContent, vditorIR, vditorWysiwyg, vditorSV, vditorReset].filter(Boolean);
-      const originalStyles = elements.map(el => ({
-        el,
-        height: el.style.height,
-        overflow: el.style.overflow,
-        maxHeight: el.style.maxHeight,
-        minHeight: el.style.minHeight,
-        position: el.style.position,
-        display: el.style.display,
-        flex: el.style.flex,
-        width: el.style.width
-      }));
+      // 需要处理的属性（这些属性 vditor 会动态设置 inline style）
+      const layoutProps = [
+        'width', 'height', 'maxHeight', 'minHeight', 'maxWidth', 'minWidth',
+        'overflow', 'overflowX', 'overflowY',
+        'paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom',
+        'marginLeft', 'marginRight', 'marginTop', 'marginBottom',
+        'position', 'flex', 'flexShrink', 'flexGrow',
+        'top', 'left', 'right', 'bottom',
+        'transform', 'boxSizing'
+      ];
 
-      // 强制展开内容
-      elements.forEach(el => {
-        el.style.height = 'auto';
-        el.style.overflow = 'visible';
-        el.style.maxHeight = 'none';
-        el.style.minHeight = '0';
-        el.style.position = 'static';
-        if (el === appElement || el === vditorContainer) {
-          el.style.display = 'block';
-          el.style.flex = 'none';
-        }
+      // 容器元素：可以安全清除所有布局属性（包括 display）
+      const containerSelectors = ['#app', '.vditor-container', '.vditor-outline'];
+      // 内容元素：只清除布局属性，保留 display（避免让隐藏的非活动编辑模式显示出来）
+      const contentSelectors = ['.vditor', '.vditor-content', '.vditor-ir', '.vditor-wysiwyg', '.vditor-sv', '.vditor-reset'];
+
+      const containerEls = containerSelectors.map(s => document.querySelector(s)).filter(Boolean);
+      const contentEls = contentSelectors.map(s => document.querySelector(s)).filter(Boolean);
+
+      // 保存原始 inline style
+      const saveStyles = (els, props) => els.map(el => {
+        const saved = {};
+        props.forEach(prop => { saved[prop] = el.style[prop]; });
+        return { el, styles: saved };
       });
+
+      const containerSaved = saveStyles(containerEls, [...layoutProps, 'display']);
+      const contentSaved = saveStyles(contentEls, layoutProps);
+
+      // 清除 inline style，让 @media print CSS 生效
+      const clearStyles = (els, props) => {
+        els.forEach(el => {
+          props.forEach(prop => {
+            el.style.removeProperty(prop.replace(/([A-Z])/g, '-$1').toLowerCase());
+          });
+        });
+      };
+
+      clearStyles(containerEls, [...layoutProps, 'display']);
+      clearStyles(contentEls, layoutProps);
 
       // 延迟执行打印，确保样式已应用
       setTimeout(() => {
         window.print();
 
-        // 打印完成后恢复原始样式
+        // 打印完成后恢复原始 inline style
         setTimeout(() => {
-          originalStyles.forEach(({ el, height, overflow, maxHeight, minHeight, position, display, flex, width }) => {
-            el.style.height = height;
-            el.style.overflow = overflow;
-            el.style.maxHeight = maxHeight;
-            el.style.minHeight = minHeight;
-            el.style.position = position;
-            el.style.display = display;
-            el.style.flex = flex;
-            el.style.width = width;
-          });
+          const restoreStyles = (savedList) => {
+            savedList.forEach(({ el, styles }) => {
+              Object.entries(styles).forEach(([prop, value]) => {
+                el.style[prop] = value;
+              });
+            });
+          };
+
+          restoreStyles(containerSaved);
+          restoreStyles(contentSaved);
+
           // 恢复菜单显示
           document.querySelectorAll('.el-dropdown-menu').forEach(menu => {
             menu.style.display = '';

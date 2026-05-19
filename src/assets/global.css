@@ -191,6 +191,8 @@ html.dark .language-label {
     margin: 0 !important;
     padding: 0 !important;
     position: static !important;
+    transform: none !important;
+    box-sizing: border-box !important;
   }
 
   /* 编辑器内容区域 */
@@ -200,6 +202,7 @@ html.dark .language-label {
     overflow: visible !important;
     border: none !important;
     position: static !important;
+    transform: none !important;
   }
 
   /* 确保内容可打印 - 重置所有编辑模式 */
@@ -209,6 +212,9 @@ html.dark .language-label {
     overflow: visible !important;
     position: static !important;
     max-height: none !important;
+    transform: none !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
   }
 
   /* 重置编辑器内容区域 */
@@ -218,6 +224,11 @@ html.dark .language-label {
     overflow: visible !important;
     position: static !important;
     max-height: none !important;
+    transform: none !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   /* 确保内容块正常显示 */
