@@ -31,8 +31,7 @@ import { getLastFilePath, saveLastFilePath, clearLastFilePath, clearScrollPositi
 import imagePathMapper from '../utils/image-path-mapper.js'
 import { dirname, join, normalize } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
-import { exportHtml as exportHtmlUtil } from '../utils/html-export.js'
-import { printPage as printPageUtil } from '../utils/print-export.js'
+import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
@@ -702,33 +701,57 @@ export default {
     },
 
     async exportPdf() {
-      // 如果当前有未保存的修改,提示用户
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
-      // 动态导入 PDF 导出模块（懒加载，减少初始包体积）
-      const { exportPdf: exportPdfUtil } = await import('../utils/pdf-export.js')
-
-      // 获取当前语言的 PDF 导出配置
       const pdfConfig = this.t.exportPdf
+      const exportResult = await exportTo('pdf', this, {
+        onProgress: (current, total) => {
+          if (current === 0) {
+            ElNotification.info({ title: pdfConfig.processingImages.title, message: pdfConfig.processingImages.message.replace('{count}', total), duration: 0 })
+          } else if (current < total) {
+            ElNotification.closeAll()
+            ElNotification.info({ title: pdfConfig.processingImages.title, message: pdfConfig.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
+          }
+        },
+      })
 
-      // 调用工具模块执行 PDF 导出
-      return await exportPdfUtil(this.vditor, pdfConfig)
+      ElNotification.closeAll()
+      if (exportResult.success) {
+        ElNotification.success({ title: pdfConfig.success.title, message: pdfConfig.fileSaved, duration: 3000 })
+      } else if (exportResult.error) {
+        ElNotification.error({ title: pdfConfig.exportError?.title, message: exportResult.error.message, duration: 3000 })
+      }
+      return exportResult.success
     },
 
     async exportHtml() {
-      // 如果当前有未保存的修改,提示用户
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
-      // 获取当前语言的 HTML 导出配置
       const htmlConfig = this.t.exportHtml
+      const exportResult = await exportTo('html', this, {
+        onProgress: (current, total) => {
+          if (current === 0) {
+            ElNotification.info({ title: htmlConfig.processingImages.title, message: htmlConfig.processingImages.message.replace('{count}', total), duration: 0 })
+          } else if (current < total) {
+            ElNotification.closeAll()
+            ElNotification.info({ title: htmlConfig.processingImages.title, message: htmlConfig.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
+          }
+        },
+      })
 
-      // 调用工具模块执行 HTML 导出
-      return await exportHtmlUtil(this.vditor, htmlConfig)
+      ElNotification.closeAll()
+      if (exportResult.success) {
+        ElNotification.success({ title: htmlConfig.success.title, message: htmlConfig.fileSaved, duration: 3000 })
+      } else if (exportResult.error) {
+        ElNotification.error({ title: htmlConfig.exportError?.title, message: exportResult.error.message, duration: 3000 })
+      }
+      return exportResult.success
     },
     async printPage() {
-      return await printPageUtil(this)
+      const result = await exportTo('print', this)
+      return result.success
     },
     async showAbout() {
       // 获取应用版本号
