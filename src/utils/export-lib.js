@@ -100,16 +100,21 @@ async function readRelativePathImageToBase64(relativePath) {
 
 let vditorCssCache = null
 let vditorThemeCssCache = null
+let codeThemeCssCache = null
 
 /**
  * 动态加载 Vditor CSS 文件（仅浅色主题）
  * @param {string} vditorCdn - Vditor CDN 路径
- * @returns {Promise<{vditorCss: string, themeCss: string}>}
+ * @returns {Promise<{vditorCss: string, themeCss: string, codeThemeCss: string}>}
  */
 async function loadVditorCss(vditorCdn = '/vditor-cdn') {
-  if (vditorCssCache && vditorThemeCssCache) {
+  if (vditorCssCache && vditorThemeCssCache && codeThemeCssCache) {
     console.log('[Export] 使用缓存的 Vditor CSS')
-    return { vditorCss: vditorCssCache, themeCss: vditorThemeCssCache }
+    return { 
+      vditorCss: vditorCssCache, 
+      themeCss: vditorThemeCssCache,
+      codeThemeCss: codeThemeCssCache
+    }
   }
   
   try {
@@ -117,17 +122,19 @@ async function loadVditorCss(vditorCdn = '/vditor-cdn') {
     
     const baseUrl = window.location.origin
     
-    const [vditorCssRes, themeCssRes] = await Promise.all([
+    const [vditorCssRes, themeCssRes, codeThemeCssRes] = await Promise.all([
       fetch(`${baseUrl}${vditorCdn}/dist/index.css`),
-      fetch(`${baseUrl}${vditorCdn}/dist/css/content-theme/light.css`)
+      fetch(`${baseUrl}${vditorCdn}/dist/css/content-theme/light.css`),
+      fetch(`${baseUrl}${vditorCdn}/dist/js/highlight.js/styles/github.min.css`)
     ])
     
-    if (!vditorCssRes.ok || !themeCssRes.ok) {
-      throw new Error(`CSS 加载失败: index.css=${vditorCssRes.status}, light.css=${themeCssRes.status}`)
+    if (!vditorCssRes.ok || !themeCssRes.ok || !codeThemeCssRes.ok) {
+      throw new Error(`CSS 加载失败: index.css=${vditorCssRes.status}, light.css=${themeCssRes.status}, github.css=${codeThemeCssRes.status}`)
     }
     
     let vditorCss = await vditorCssRes.text()
     let themeCss = await themeCssRes.text()
+    let codeThemeCss = await codeThemeCssRes.text()
     
     // 移除暗色主题相关的 CSS
     // 移除 @media (prefers-color-scheme: dark) 块（包括嵌套的大括号）
@@ -139,15 +146,21 @@ async function loadVditorCss(vditorCdn = '/vditor-cdn') {
     
     vditorCssCache = vditorCss
     vditorThemeCssCache = themeCss
+    codeThemeCssCache = codeThemeCss
     
     console.log('[Export] Vditor CSS 加载成功（已移除暗色主题）')
     console.log('[Export] index.css 大小:', vditorCssCache.length, 'bytes')
     console.log('[Export] light.css 大小:', vditorThemeCssCache.length, 'bytes')
+    console.log('[Export] github.css 大小:', codeThemeCssCache.length, 'bytes')
     
-    return { vditorCss: vditorCssCache, themeCss: vditorThemeCssCache }
+    return { 
+      vditorCss: vditorCssCache, 
+      themeCss: vditorThemeCssCache,
+      codeThemeCss: codeThemeCssCache
+    }
   } catch (error) {
     console.error('[Export] 加载 Vditor CSS 失败:', error)
-    return { vditorCss: '', themeCss: '' }
+    return { vditorCss: '', themeCss: '', codeThemeCss: '' }
   }
 }
 
@@ -255,10 +268,75 @@ async function convertImagesToBase64(html, onProgress = null) {
 // ── 样式 ──────────────────────────────────────────────
 
 const sharedStyles = `
-  /* 强制浅色主题 - 覆盖所有暗色样式 */
-  html {
+  /* ===== 强制浅色主题 - 最高优先级覆盖 ===== */
+  
+  /* 1. 根元素和 body 强制浅色 */
+  html, body {
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
     color-scheme: light !important;
   }
+  
+  /* 2. 移除所有可能的暗色类名影响 */
+  .dark, .vditor--dark, .theme-dark, .dark-theme,
+  [class*="dark"], [class*="Dark"] {
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  
+  /* 3. 暗色类名的子元素继承浅色 */
+  .dark *, .vditor--dark *, .theme-dark *, .dark-theme *,
+  [class*="dark"] *, [class*="Dark"] * {
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+  
+  /* 4. Vditor 容器强制浅色 */
+  .vditor-reset {
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  
+  .vditor-reset * {
+    color: #1a1a1a !important;
+  }
+  
+  /* 5. 代码块强制浅色背景 */
+  .vditor-reset pre,
+  .vditor-reset code,
+  .vditor-reset .hljs {
+    background-color: #f6f8fa !important;
+    color: #24292e !important;
+  }
+  
+  /* 6. 表格强制浅色 */
+  .vditor-reset table {
+    background-color: #ffffff !important;
+  }
+  
+  .vditor-reset th {
+    background-color: #f6f8fa !important;
+    color: #1a1a1a !important;
+  }
+  
+  .vditor-reset td {
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  
+  /* 7. 引用块 */
+  .vditor-reset blockquote {
+    background-color: #f6f8fa !important;
+    color: #1a1a1a !important;
+    border-left-color: #dfe2e5 !important;
+  }
+  
+  /* 8. 链接颜色 */
+  .vditor-reset a {
+    color: #0366d6 !important;
+  }
+  
+  /* ===== 基础样式 ===== */
   
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
@@ -445,7 +523,7 @@ const printPdfExtraStyles = `
  * 构建完整 HTML 文档（用于 PDF/Print 导出）
  * @param {string} bodyContent
  * @param {boolean} [includePrintStyles=false] - 是否包含打印/分页样式
- * @param {Object} [vditorCss=null] - Vditor CSS 对象 {vditorCss, themeCss}
+ * @param {Object} [vditorCss=null] - Vditor CSS 对象 {vditorCss, themeCss, codeThemeCss}
  */
 function buildFullHtml(bodyContent, includePrintStyles = false, vditorCss = null) {
   return `<!DOCTYPE html>
@@ -462,67 +540,15 @@ function buildFullHtml(bodyContent, includePrintStyles = false, vditorCss = null
     /* Vditor Light 主题样式 */
     ${vditorCss?.themeCss || ''}
     
+    /* 代码高亮浅色主题 (github) */
+    ${vditorCss?.codeThemeCss || ''}
+    
     /* 自定义样式 */
     ${sharedStyles}
     ${includePrintStyles ? printPdfExtraStyles : ''}
   </style>
-  <script>
-    // 强制设置浅色主题
-    (function() {
-      // 等待 DOM 加载完成
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyLightTheme);
-      } else {
-        applyLightTheme();
-      }
-      
-      function applyLightTheme() {
-        console.log('[Export] 强制应用浅色主题');
-        
-        // 1. 设置 color-scheme
-        document.documentElement.style.colorScheme = 'light';
-        document.body.style.colorScheme = 'light';
-        
-        // 2. 移除可能的暗色类名
-        document.documentElement.classList.remove('dark', 'vditor--dark');
-        document.body.classList.remove('dark', 'vditor--dark');
-        
-        // 3. 强制设置背景和文字颜色
-        document.documentElement.style.backgroundColor = '#ffffff';
-        document.documentElement.style.color = '#1a1a1a';
-        document.body.style.backgroundColor = '#ffffff';
-        document.body.style.color = '#1a1a1a';
-        
-        // 4. 处理 vditor-reset 容器
-        const vditorReset = document.querySelector('.vditor-reset');
-        if (vditorReset) {
-          vditorReset.style.backgroundColor = '#ffffff';
-          vditorReset.style.color = '#1a1a1a';
-          vditorReset.classList.remove('vditor-reset--dark');
-        }
-        
-        // 5. 强制所有代码块使用浅色背景
-        document.querySelectorAll('pre, code').forEach(el => {
-          el.style.backgroundColor = '#f6f8fa';
-          el.style.color = '#24292e';
-        });
-        
-        // 6. 强制表格使用浅色背景
-        document.querySelectorAll('table, th, td').forEach(el => {
-          if (el.tagName === 'TH') {
-            el.style.backgroundColor = '#f6f8fa';
-          } else if (el.tagName === 'TR') {
-            // 保持斑马纹
-          } else {
-            el.style.backgroundColor = '#ffffff';
-          }
-          el.style.color = '#1a1a1a';
-        });
-        
-        console.log('[Export] 浅色主题应用完成');
-      }
-    })();
-  </script>
+  <!-- PDF 导出专用 - 强制应用浅色主题 -->
+  <script src="/export-theme-switcher.js"></script>
 </head>
 <body>
   <div class="vditor-reset">
@@ -539,6 +565,8 @@ function buildFullHtml(bodyContent, includePrintStyles = false, vditorCss = null
  * @returns {Promise<{iframe: HTMLIFrameElement, doc: Document}>}
  */
 async function renderToIframe(fullHtml) {
+  console.log('[Export] 开始创建 iframe')
+  
   const iframe = document.createElement('iframe')
   iframe.style.position = 'absolute'
   iframe.style.left = '-9999px'
@@ -552,24 +580,62 @@ async function renderToIframe(fullHtml) {
   doc.open()
   doc.write(fullHtml)
   doc.close()
+  
+  console.log('[Export] HTML 已写入 iframe')
+  
+  // 检查 CSP 配置
+  const cspMeta = doc.head.querySelector('meta[http-equiv="Content-Security-Policy"]');
+  if (cspMeta) {
+    console.log('[Export] ⚠️ 检测到 CSP Meta 标签:', cspMeta.content);
+  } else {
+    console.log('[Export] ✓ 无 CSP Meta 标签（使用父页面 CSP）');
+  }
+  
+  // 检查 script 标签
+  const scripts = doc.scripts;
+  console.log('[Export] iframe 中 script 标签数量:', scripts.length);
+  for (let i = 0; i < scripts.length; i++) {
+    console.log(`[Export]   Script ${i}:`, scripts[i].src || 'inline', scripts[i].nonce ? '(with nonce)' : '');
+  }
 
   // 等待 iframe 加载完成
   await new Promise(resolve => {
     iframe.onload = resolve
-    if (iframe.contentDocument.readyState === 'complete') resolve()
+    if (iframe.contentDocument.readyState === 'complete') {
+      console.log('[Export] iframe 已就绪（readyState complete）')
+      resolve()
+    }
   })
+  console.log('[Export] iframe onload 事件触发')
 
   // 等待字体加载完成（重要：确保文字渲染正确）
   if (doc.fonts && doc.fonts.ready) {
+    console.log('[Export] 等待字体加载...')
     await doc.fonts.ready
+    console.log('[Export] 字体加载完成')
   }
 
   // 额外等待，确保 JavaScript 执行完成（应用浅色主题）
-  await new Promise(resolve => setTimeout(resolve, 100))
+  console.log('[Export] 等待 JavaScript 执行完成...')
+  await new Promise(resolve => setTimeout(resolve, 300))
 
   console.log('[Export] iframe 渲染完成，主题已应用')
   console.log('[Export] body backgroundColor:', doc.body.style.backgroundColor)
   console.log('[Export] body color:', doc.body.style.color)
+  
+  // 检查计算后的样式
+  const computedStyle = iframe.contentWindow.getComputedStyle(doc.body)
+  console.log('[Export] 计算后的样式:')
+  console.log('[Export]   - backgroundColor:', computedStyle.backgroundColor)
+  console.log('[Export]   - color:', computedStyle.color)
+  console.log('[Export]   - colorScheme:', computedStyle.colorScheme)
+  
+  // 检查外部脚本是否执行
+  if (iframe.contentWindow.__exportApplyLightTheme) {
+    console.log('[Export] ✓ 外部脚本已加载并执行（全局函数存在）');
+  } else {
+    console.warn('[Export] ⚠️ 外部脚本可能未执行（全局函数不存在）');
+  }
 
   return { iframe, doc }
 }
@@ -629,6 +695,31 @@ async function doPdf(processedHtml, component, options = {}) {
   const fullHtml = buildFullHtml(processedHtml, true, vditorCss)
   const { iframe, doc } = await renderToIframe(fullHtml)
 
+  // 临时禁用父页面中的暗色代码主题 CSS
+  const disabledStylesheets = []
+  try {
+    console.log('[Export] 检查并临时禁用父页面的暗色代码主题...')
+    const stylesheets = Array.from(document.styleSheets)
+    
+    for (const sheet of stylesheets) {
+      try {
+        // 检查是否是暗色代码主题
+        const href = sheet.href || ''
+        if (href.includes('github-dark') || href.includes('dark.min.css') || 
+            href.includes('atom-one-dark') || href.includes('highlight.js/styles/') && href.includes('dark')) {
+          console.log('[Export] 禁用暗色主题:', href)
+          sheet.disabled = true
+          disabledStylesheets.push(sheet)
+        }
+      } catch (e) {
+        // 跨域样式表无法访问，忽略
+      }
+    }
+    console.log('[Export] 已禁用', disabledStylesheets.length, '个暗色主题样式表')
+  } catch (error) {
+    console.warn('[Export] 禁用暗色主题时出错:', error)
+  }
+
   try {
     // 等待图片加载并处理宽图片
     const images = doc.body.querySelectorAll('img')
@@ -674,7 +765,10 @@ async function doPdf(processedHtml, component, options = {}) {
       ...options.pdfOptions,
     }
 
+    console.log('[Export] 开始生成 PDF...')
     const pdfBlob = await html2pdf().set(opt).from(doc.body).outputPdf('blob')
+    console.log('[Export] PDF 生成完成')
+    
     cleanupIframe(iframe)
 
     // 保存文件
@@ -700,6 +794,14 @@ async function doPdf(processedHtml, component, options = {}) {
   } catch (error) {
     cleanupIframe(iframe)
     return { success: false, format: 'pdf', error }
+  } finally {
+    // 恢复被禁用的样式表
+    if (disabledStylesheets.length > 0) {
+      console.log('[Export] 恢复', disabledStylesheets.length, '个样式表')
+      disabledStylesheets.forEach(sheet => {
+        sheet.disabled = false
+      })
+    }
   }
 }
 
