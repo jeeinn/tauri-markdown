@@ -21,6 +21,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-http = "2"
+tauri-plugin-window-state = "2"
 mime_guess = "2"
 url = "2"
 
