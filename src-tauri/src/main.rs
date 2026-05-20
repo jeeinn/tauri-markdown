@@ -152,6 +152,18 @@ fn open_log_folder() {
     { let _ = std::process::Command::new("xdg-open").arg(path.parent().unwrap_or(&path)).spawn(); }
 }
 
+/// JS 端调用，打开开发者工具
+#[tauri::command]
+fn open_devtools(app_handle: tauri::AppHandle) {
+    log("open_devtools called");
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.open_devtools();
+        log("DevTools opened");
+    } else {
+        log("Failed to get main window");
+    }
+}
+
 // ── tmd 协议 ─────────────────────────────────────────
 
 /// 从 request URI 中提取相对路径
@@ -320,7 +332,7 @@ fn main() {
         .manage(CurrentDir(Mutex::new(None)))
         .manage(OpenedFile(Mutex::new(opened_file)))
         .manage(PortableMode(is_portable))
-        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder, get_portable_mode, get_store_path])
+        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder, get_portable_mode, get_store_path, open_devtools])
         .register_uri_scheme_protocol("tmd", tmd_protocol_handler)
         .setup(|app| {
             switch_log_to_app_data(app.handle());

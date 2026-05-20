@@ -96,6 +96,7 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="viewLog">{{ menuI18n.viewLog }}</el-dropdown-item>
+              <el-dropdown-item command="devTools">{{ menuI18n.devTools }}</el-dropdown-item>
               <el-dropdown-item command="about">{{ menuI18n.about }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -299,6 +300,9 @@ export default {
       if (command === 'viewLog') {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('open_log_folder');
+      } else if (command === 'devTools') {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('open_devtools');
       } else if (command === 'about') {
         this.$refs.vditor?.showAbout();
       }
