@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-05-20
+
+### Added
+- **Print Function**: Added print function to file menu with optimized styles for code blocks, tables, and dark mode
+- **Language Persistence**: Language setting now persists to store.json across sessions
+
+### Fixed
+- **Markdown Export Path Conversion**: Fixed path conversion for markdown export to relative paths
+- **Print Layout Issues**: Resolved print truncated content by resetting vditor-reset and container overflow
+- **Print Window Title**: Use document title in print and hide browser header/footer
+- **Maximized Window Print**: Fixed print layout issues when window is maximized
+- **Drop Overlay Display**: Restored drop overlay functionality with enhanced visual effects following Vue3 best practices
+- **Webview Print Permission**: Added webview print permission for Tauri v2
+
+### Changed
+- **Export Module Unification**: Unified print/pdf/html export into single export-lib module
+- **Vditor CSS Loading**: Added dynamic Vditor CSS loading with light theme enforcement for exports
+- **Print Styles Enhancement**: Improved print styles for better output quality
+
 ## [0.5.2] - 2026-05-18
 
 ### Added
@@ -119,7 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.4.0...v0.5.0
