@@ -96,6 +96,61 @@ async function readRelativePathImageToBase64(relativePath) {
   return `data:${mimeType};base64,${base64}`
 }
 
+// ── Vditor CSS 缓存 ─────────────────────────────────
+
+let vditorCssCache = null
+let vditorThemeCssCache = null
+
+/**
+ * 动态加载 Vditor CSS 文件（仅浅色主题）
+ * @param {string} vditorCdn - Vditor CDN 路径
+ * @returns {Promise<{vditorCss: string, themeCss: string}>}
+ */
+async function loadVditorCss(vditorCdn = '/vditor-cdn') {
+  if (vditorCssCache && vditorThemeCssCache) {
+    console.log('[Export] 使用缓存的 Vditor CSS')
+    return { vditorCss: vditorCssCache, themeCss: vditorThemeCssCache }
+  }
+  
+  try {
+    console.log('[Export] 开始加载 Vditor CSS（浅色主题）...')
+    
+    const baseUrl = window.location.origin
+    
+    const [vditorCssRes, themeCssRes] = await Promise.all([
+      fetch(`${baseUrl}${vditorCdn}/dist/index.css`),
+      fetch(`${baseUrl}${vditorCdn}/dist/css/content-theme/light.css`)
+    ])
+    
+    if (!vditorCssRes.ok || !themeCssRes.ok) {
+      throw new Error(`CSS 加载失败: index.css=${vditorCssRes.status}, light.css=${themeCssRes.status}`)
+    }
+    
+    let vditorCss = await vditorCssRes.text()
+    let themeCss = await themeCssRes.text()
+    
+    // 移除暗色主题相关的 CSS
+    // 移除 @media (prefers-color-scheme: dark) 块（包括嵌套的大括号）
+    vditorCss = vditorCss.replace(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{[\s\S]*?\}\s*\}/g, '')
+    themeCss = themeCss.replace(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{[\s\S]*?\}\s*\}/g, '')
+    
+    // 移除 .vditor--dark 相关的样式
+    vditorCss = vditorCss.replace(/\.vditor--dark[^{]*\{[^}]*\}/g, '')
+    
+    vditorCssCache = vditorCss
+    vditorThemeCssCache = themeCss
+    
+    console.log('[Export] Vditor CSS 加载成功（已移除暗色主题）')
+    console.log('[Export] index.css 大小:', vditorCssCache.length, 'bytes')
+    console.log('[Export] light.css 大小:', vditorThemeCssCache.length, 'bytes')
+    
+    return { vditorCss: vditorCssCache, themeCss: vditorThemeCssCache }
+  } catch (error) {
+    console.error('[Export] 加载 Vditor CSS 失败:', error)
+    return { vditorCss: '', themeCss: '' }
+  }
+}
+
 // ── 共享管道 ──────────────────────────────────────────
 
 /**
@@ -200,15 +255,20 @@ async function convertImagesToBase64(html, onProgress = null) {
 // ── 样式 ──────────────────────────────────────────────
 
 const sharedStyles = `
+  /* 强制浅色主题 - 覆盖所有暗色样式 */
+  html {
+    color-scheme: light !important;
+  }
+  
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
     font-size: 11pt;
     line-height: 1.6;
-    color: #1a1a1a;
+    color: #1a1a1a !important;
     max-width: 680px;
     margin: 0 auto;
     padding: 40px 20px;
-    background: #fff;
+    background: #fff !important;
     overflow-x: hidden;
   }
   h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; margin-top: 1.5em; }
@@ -220,7 +280,8 @@ const sharedStyles = `
   ul, ol { padding-left: 2em; }
   li { margin: 0.3em 0; }
   pre {
-    background: #f6f8fa;
+    background: #f6f8fa !important;
+    color: #24292e !important;
     padding: 12px;
     overflow-x: auto;
     border-radius: 6px;
@@ -231,14 +292,15 @@ const sharedStyles = `
     word-break: break-all;
   }
   code {
-    background: #f6f8fa;
+    background: #f6f8fa !important;
+    color: #24292e !important;
     padding: 2px 6px;
     border-radius: 3px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: 85%;
   }
   pre code {
-    background: none;
+    background: none !important;
     padding: 0;
     border-radius: 0;
     white-space: pre-wrap;
@@ -294,45 +356,178 @@ const sharedStyles = `
 
 const printPdfExtraStyles = `
   @media print {
-    body { max-width: none; padding: 0; font-size: 11pt; color: #1a1a1a; }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    h1 { break-before: page; page-break-before: always; break-after: avoid; page-break-after: avoid; }
-    h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    html, body {
+      background: #fff !important;
+      color: #1a1a1a !important;
+      color-scheme: light !important;
+    }
+    body { 
+      max-width: none; 
+      padding: 0; 
+      font-size: 11pt; 
+      color: #1a1a1a !important;
+      background: #fff !important;
+    }
+    * { 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact;
+      color-scheme: light !important;
+    }
+    h1 { 
+      break-before: page; 
+      page-break-before: always; 
+      break-after: avoid; 
+      page-break-after: avoid;
+      color: #1a1a1a !important;
+    }
+    h2, h3, h4 { 
+      break-after: avoid; 
+      page-break-after: avoid;
+      color: #1a1a1a !important;
+    }
     pre, code {
-      break-inside: avoid; page-break-inside: avoid;
+      break-inside: avoid; 
+      page-break-inside: avoid;
       white-space: pre-wrap !important;
       word-break: break-all !important;
-      height: auto !important; max-height: none !important; overflow: visible !important;
+      height: auto !important; 
+      max-height: none !important; 
+      overflow: visible !important;
+      background: #f6f8fa !important;
+      color: #24292e !important;
     }
-    blockquote, img { break-inside: avoid; page-break-inside: avoid; }
-    table { break-inside: auto; page-break-inside: auto; }
-    tr { break-inside: avoid; page-break-inside: avoid; }
+    blockquote, img { 
+      break-inside: avoid; 
+      page-break-inside: avoid; 
+    }
+    table { 
+      break-inside: auto; 
+      page-break-inside: auto;
+      background: #fff !important;
+    }
+    tr { 
+      break-inside: avoid; 
+      page-break-inside: avoid; 
+    }
+    th, td {
+      color: #1a1a1a !important;
+      background: transparent !important;
+    }
+    th {
+      background: #f6f8fa !important;
+    }
     thead { display: table-header-group; }
     tfoot { display: table-footer-group; }
-    p, li { orphans: 3; widows: 3; }
-    .html2pdf__page-break { page-break-after: always; break-after: page; }
+    p, li { 
+      orphans: 3; 
+      widows: 3;
+      color: #1a1a1a !important;
+    }
+    .html2pdf__page-break { 
+      page-break-after: always; 
+      break-after: page; 
+    }
+  }
+  
+  /* PDF 导出专用样式 - 防止元素被截断 */
+  .vditor-reset > * {
+    page-break-inside: avoid;
+  }
+  .vditor-reset pre,
+  .vditor-reset blockquote,
+  .vditor-reset table,
+  .vditor-reset img {
+    page-break-inside: avoid;
   }
 `
 
 /**
- * 构建完整 HTML 文档
+ * 构建完整 HTML 文档（用于 PDF/Print 导出）
  * @param {string} bodyContent
  * @param {boolean} [includePrintStyles=false] - 是否包含打印/分页样式
+ * @param {Object} [vditorCss=null] - Vditor CSS 对象 {vditorCss, themeCss}
  */
-function buildFullHtml(bodyContent, includePrintStyles = false) {
+function buildFullHtml(bodyContent, includePrintStyles = false, vditorCss = null) {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
   <title>Markdown Export</title>
   <style>
+    /* Vditor 核心样式 */
+    ${vditorCss?.vditorCss || ''}
+    
+    /* Vditor Light 主题样式 */
+    ${vditorCss?.themeCss || ''}
+    
+    /* 自定义样式 */
     ${sharedStyles}
     ${includePrintStyles ? printPdfExtraStyles : ''}
   </style>
+  <script>
+    // 强制设置浅色主题
+    (function() {
+      // 等待 DOM 加载完成
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyLightTheme);
+      } else {
+        applyLightTheme();
+      }
+      
+      function applyLightTheme() {
+        console.log('[Export] 强制应用浅色主题');
+        
+        // 1. 设置 color-scheme
+        document.documentElement.style.colorScheme = 'light';
+        document.body.style.colorScheme = 'light';
+        
+        // 2. 移除可能的暗色类名
+        document.documentElement.classList.remove('dark', 'vditor--dark');
+        document.body.classList.remove('dark', 'vditor--dark');
+        
+        // 3. 强制设置背景和文字颜色
+        document.documentElement.style.backgroundColor = '#ffffff';
+        document.documentElement.style.color = '#1a1a1a';
+        document.body.style.backgroundColor = '#ffffff';
+        document.body.style.color = '#1a1a1a';
+        
+        // 4. 处理 vditor-reset 容器
+        const vditorReset = document.querySelector('.vditor-reset');
+        if (vditorReset) {
+          vditorReset.style.backgroundColor = '#ffffff';
+          vditorReset.style.color = '#1a1a1a';
+          vditorReset.classList.remove('vditor-reset--dark');
+        }
+        
+        // 5. 强制所有代码块使用浅色背景
+        document.querySelectorAll('pre, code').forEach(el => {
+          el.style.backgroundColor = '#f6f8fa';
+          el.style.color = '#24292e';
+        });
+        
+        // 6. 强制表格使用浅色背景
+        document.querySelectorAll('table, th, td').forEach(el => {
+          if (el.tagName === 'TH') {
+            el.style.backgroundColor = '#f6f8fa';
+          } else if (el.tagName === 'TR') {
+            // 保持斑马纹
+          } else {
+            el.style.backgroundColor = '#ffffff';
+          }
+          el.style.color = '#1a1a1a';
+        });
+        
+        console.log('[Export] 浅色主题应用完成');
+      }
+    })();
+  </script>
 </head>
 <body>
-  ${bodyContent}
+  <div class="vditor-reset">
+    ${bodyContent}
+  </div>
 </body>
 </html>`
 }
@@ -358,10 +553,23 @@ async function renderToIframe(fullHtml) {
   doc.write(fullHtml)
   doc.close()
 
+  // 等待 iframe 加载完成
   await new Promise(resolve => {
     iframe.onload = resolve
     if (iframe.contentDocument.readyState === 'complete') resolve()
   })
+
+  // 等待字体加载完成（重要：确保文字渲染正确）
+  if (doc.fonts && doc.fonts.ready) {
+    await doc.fonts.ready
+  }
+
+  // 额外等待，确保 JavaScript 执行完成（应用浅色主题）
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  console.log('[Export] iframe 渲染完成，主题已应用')
+  console.log('[Export] body backgroundColor:', doc.body.style.backgroundColor)
+  console.log('[Export] body color:', doc.body.style.color)
 
   return { iframe, doc }
 }
@@ -378,7 +586,9 @@ function cleanupIframe(iframe) {
  * 打印：iframe 渲染后调用浏览器打印
  */
 async function doPrint(processedHtml, component) {
-  const fullHtml = buildFullHtml(processedHtml, true)
+  const vditorCdn = component?.cdn || '/vditor-cdn'
+  const vditorCss = await loadVditorCss(vditorCdn)
+  const fullHtml = buildFullHtml(processedHtml, true, vditorCss)
   const { iframe, doc } = await renderToIframe(fullHtml)
 
   // 设置打印标题
@@ -414,11 +624,13 @@ async function doPrint(processedHtml, component) {
  * PDF：iframe 渲染后用 html2pdf.js 生成
  */
 async function doPdf(processedHtml, component, options = {}) {
-  const fullHtml = buildFullHtml(processedHtml, true)
+  const vditorCdn = component?.cdn || '/vditor-cdn'
+  const vditorCss = await loadVditorCss(vditorCdn)
+  const fullHtml = buildFullHtml(processedHtml, true, vditorCss)
   const { iframe, doc } = await renderToIframe(fullHtml)
 
   try {
-    // 等待图片加载
+    // 等待图片加载并处理宽图片
     const images = doc.body.querySelectorAll('img')
     images.forEach(img => {
       if (img.naturalWidth > 680) {
@@ -431,6 +643,7 @@ async function doPdf(processedHtml, component, options = {}) {
       img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r })
     ))
 
+    // 额外等待确保渲染完成
     await new Promise(r => setTimeout(r, 300))
 
     const { default: html2pdf } = await import('html2pdf.js')
@@ -438,10 +651,26 @@ async function doPdf(processedHtml, component, options = {}) {
     const opt = {
       margin: [15, 15, 20, 15],
       filename: options.filename || 'markdown-export.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'avoid-all'], avoid: ['img', 'pre', 'table', 'blockquote', 'tr'] },
+      image: { 
+        type: 'jpeg', 
+        quality: 0.98 
+      },
+      html2canvas: { 
+        scale: 2,                    // 高清渲染
+        useCORS: true,               // 允许跨域图片（虽然我们用了 base64，但以防万一）
+        letterRendering: true,       // 优化文字渲染
+        logging: false,              // 关闭日志
+        backgroundColor: '#ffffff'   // 强制白色背景
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      },
+      pagebreak: { 
+        mode: ['avoid-all', 'css', 'legacy'],  // 智能分页，防止元素被截断
+        avoid: ['img', 'pre', 'table', 'blockquote', 'tr', 'h1', 'h2', 'h3', 'h4']
+      },
       ...options.pdfOptions,
     }
 
@@ -478,7 +707,9 @@ async function doPdf(processedHtml, component, options = {}) {
  * HTML：直接保存为独立 HTML 文件
  */
 async function doHtml(processedHtml, component, options = {}) {
-  const fullHtml = buildFullHtml(processedHtml, false)
+  const vditorCdn = component?.cdn || '/vditor-cdn'
+  const vditorCss = await loadVditorCss(vditorCdn)
+  const fullHtml = buildFullHtml(processedHtml, false, vditorCss)
 
   const now = new Date()
   const ts = now.getFullYear() +
