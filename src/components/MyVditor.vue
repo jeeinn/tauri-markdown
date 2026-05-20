@@ -658,7 +658,7 @@ export default {
       if (result === 'cancel') return false
 
       try {
-        const content = this.vditor.getValue()
+        let content = this.vditor.getValue()
 
         // 检查内容是否为空
         if (!content.trim()) {
@@ -669,6 +669,10 @@ export default {
           })
           return false
         }
+
+        // 使用工具模块将 tmd URL 转换为相对路径（导出前处理）
+        content = imagePathMapper.convertToRelative(content);
+        console.log('[Export] 已转换 tmd URL 为相对路径');
 
         // 打开保存对话框
         const filePath = await save({
