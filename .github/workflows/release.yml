@@ -10,6 +10,14 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          version=${GITHUB_REF#refs/tags/}
+          if [[ "$version" == v* ]]; then
+            version=${version:1}
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -23,15 +31,15 @@ jobs:
 
             | 平台 | 架构/格式 | 文件名 |
             |------|----------|--------|
-            | **Windows** | Portable ZIP ⭐推荐 | `tauri-markdown_{version}_x64_portable.zip` |
-            | **Windows** | Standalone EXE | `tauri-markdown_{version}_x64_standalone.zip` |
-            | **Windows** | NSIS 安装程序 | `TauriMarkdown_{version}_x64-setup.exe` |
-            | **Windows** | MSI 安装包 | `TauriMarkdown_{version}_x64_en-US.msi` |
-            | **macOS** | Apple Silicon | `TauriMarkdown_{version}_aarch64.dmg` ⭐推荐 |
-            | **macOS** | Intel | `TauriMarkdown_{version}_x64.dmg` |
-            | **Linux** | deb (Debian/Ubuntu) | `TauriMarkdown_{version}_amd64.deb` |
-            | **Linux** | AppImage | `TauriMarkdown_{version}_amd64.AppImage` |
-            | **Linux** | RPM (Fedora/RHEL) | `TauriMarkdown-{version}-1.x86_64.rpm` |
+            | **Windows** | Portable ZIP ⭐推荐 | `tauri-markdown_${{ steps.extract_version.outputs.version }}_x64_portable.zip` |
+            | **Windows** | Standalone EXE | `tauri-markdown_${{ steps.extract_version.outputs.version }}_x64_standalone.zip` |
+            | **Windows** | NSIS 安装程序 | `TauriMarkdown_${{ steps.extract_version.outputs.version }}_x64-setup.exe` |
+            | **Windows** | MSI 安装包 | `TauriMarkdown_${{ steps.extract_version.outputs.version }}_x64_en-US.msi` |
+            | **macOS** | Apple Silicon | `TauriMarkdown_${{ steps.extract_version.outputs.version }}_aarch64.dmg` ⭐推荐 |
+            | **macOS** | Intel | `TauriMarkdown_${{ steps.extract_version.outputs.version }}_x64.dmg` |
+            | **Linux** | deb (Debian/Ubuntu) | `TauriMarkdown_${{ steps.extract_version.outputs.version }}_amd64.deb` |
+            | **Linux** | AppImage | `TauriMarkdown_${{ steps.extract_version.outputs.version }}_amd64.AppImage` |
+            | **Linux** | RPM (Fedora/RHEL) | `TauriMarkdown-${{ steps.extract_version.outputs.version }}-1.x86_64.rpm` |
 
             > 💡 Windows Portable ZIP: 完整便携包，配置存储在同目录，适合 U 盘携带
             > 💡 Windows Standalone EXE: 最小化包，手动创建 .portable 文件可启用便携模式
@@ -84,6 +92,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Tauri Markdown ${{ github.ref_name }}"
@@ -95,7 +105,7 @@ jobs:
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          # Extract version from tag (remove 'v' prefix)
+          # version 仅用于文件名，去掉前导 v
           $version = "${{ github.ref_name }}" -replace '^v', ''
           
           Write-Host "🚀 Building portable version $version..."
