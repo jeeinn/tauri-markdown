@@ -32,6 +32,8 @@
     },
     "core:event:default",
     "core:app:allow-version",
-    "core:webview:allow-print"
+    "core:webview:allow-print",
+    "updater:default",
+    "process:default"
   ]
 }
