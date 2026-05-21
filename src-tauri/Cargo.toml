@@ -20,7 +20,6 @@ tauri = { version = "2", features = ["protocol-asset", "devtools"] }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
-tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
 tauri-plugin-http = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-updater = "2"
