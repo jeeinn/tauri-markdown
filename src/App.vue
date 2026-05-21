@@ -97,6 +97,7 @@
             <el-dropdown-menu>
               <el-dropdown-item command="viewLog">{{ menuI18n.viewLog }}</el-dropdown-item>
               <el-dropdown-item command="devTools">{{ menuI18n.devTools }}</el-dropdown-item>
+              <el-dropdown-item command="checkUpdate">{{ menuI18n.checkUpdate }}</el-dropdown-item>
               <el-dropdown-item command="about">{{ menuI18n.about }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -131,6 +132,7 @@
 import MyVditor from './components/MyVditor.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { ElNotification, ElMessageBox } from 'element-plus'
 import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage } from './utils/store.js'
 
 export default {
@@ -179,6 +181,8 @@ export default {
     this.initTheme();
     // 初始化视图设置
     this.initViewSettings();
+    // 启动时自动检查更新（延迟 10 秒，不阻塞主界面加载）
+    setTimeout(() => this.checkForUpdate(false), 10000);
   },
   
   beforeUnmount() {
@@ -305,6 +309,74 @@ export default {
         await invoke('open_devtools');
       } else if (command === 'about') {
         this.$refs.vditor?.showAbout();
+      } else if (command === 'checkUpdate') {
+        this.checkForUpdate(true);
+      }
+    },
+
+    // 检查更新
+    async checkForUpdate(manual = false) {
+      try {
+        const { check } = await import('@tauri-apps/plugin-updater');
+        const { relaunch } = await import('@tauri-apps/plugin-process');
+        const updaterI18n = this.menuI18n.updater || {};
+
+        console.log('[updater] checking for update...');
+        const update = await check();
+        console.log('[updater] check result:', update);
+        if (update) {
+          ElMessageBox({
+            title: updaterI18n.available || '发现新版本',
+            message: (updaterI18n.availableMsg || '新版本 {version} 已发布，是否立即更新？').replace('{version}', update.version),
+            showCancelButton: true,
+            confirmButtonText: '更新',
+            cancelButtonText: '取消',
+            beforeClose: async (action, instance, done) => {
+              if (action === 'confirm') {
+                instance.confirmButtonLoading = true;
+                instance.confirmButtonText = updaterI18n.downloading || '正在下载...';
+                try {
+                  let progressText = '';
+                  await update.downloadAndInstall((event) => {
+                    if (event.event === 'Started' && event.data.contentLength) {
+                      instance.message = `${updaterI18n.downloading || '正在下载更新'}...`;
+                    } else if (event.event === 'Progress') {
+                      const percent = Math.round((event.data.chunkLength / (event.data.contentLength || 1)) * 100);
+                      const msg = (updaterI18n.downloadProgress || '下载进度: {progress}%').replace('{progress}', percent);
+                      if (msg !== progressText) {
+                        instance.message = msg;
+                        progressText = msg;
+                      }
+                    } else if (event.event === 'Finished') {
+                      instance.message = updaterI18n.downloadComplete || '下载完成，准备安装...';
+                    }
+                  });
+                  done();
+                  ElMessageBox({
+                    title: updaterI18n.available || '更新就绪',
+                    message: updaterI18n.installConfirm || '更新已下载完成，是否立即重启应用以完成安装？',
+                    showCancelButton: true,
+                    confirmButtonText: '重启',
+                    cancelButtonText: '稍后',
+                  }).then(() => relaunch()).catch(() => {});
+                } catch (err) {
+                  done();
+                  ElNotification.error({ title: updaterI18n.error || '更新失败', message: (updaterI18n.errorMsg || '更新失败: {error}').replace('{error}', String(err)) });
+                }
+              } else {
+                done();
+              }
+            },
+          }).catch(() => {});
+        } else if (manual) {
+          ElNotification.info({ title: updaterI18n.noUpdate || '检查更新', message: updaterI18n.noUpdateMsg || '当前版本已是最新' });
+        }
+      } catch (err) {
+        console.error('[updater] check error:', err);
+        if (manual) {
+          const updaterI18n = this.menuI18n.updater || {};
+          ElNotification.error({ title: updaterI18n.error || '更新失败', message: (updaterI18n.errorMsg || '检查更新时发生错误: {error}').replace('{error}', String(err)) });
+        }
       }
     },
 

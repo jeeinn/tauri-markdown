@@ -27,7 +27,7 @@
         "img-src": "'self' asset: http://asset.localhost http://tmd.localhost https: http: blob: data:",
         "style-src": "'self' 'unsafe-inline' http://asset.localhost",
         "script-src": "'self' 'unsafe-inline' 'unsafe-eval' http://asset.localhost",
-        "connect-src": "'self' http://ipc.localhost ws://localhost:1420"
+        "connect-src": "'self' http://ipc.localhost ws://localhost:1420 https://github.com"
       },
       "assetProtocol": {
         "enable": true,
@@ -73,6 +73,14 @@
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": ""
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/jeeinn/tauri-markdown/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU2NUY4MkVBQjBENEJENzgKUldSNHZkU3c2b0pmVm1RdW0ybXNPNE1uMjhaWllIbGpicVN1enlzYWhsQjJQZmxNQnlDUFdTRlAK"
     }
   }
 }

@@ -22,6 +22,7 @@ export default {
       viewLog: '查看日志',
       devTools: '开发者工具',
       about: '关于',
+      checkUpdate: '检查更新',
       scrollRemember: '记住浏览位置',
       zenMode: 'Zen 模式',
     },
@@ -223,9 +224,22 @@ export default {
         message: '当前文档尚未保存到本地，无法确定存储位置。请先保存文件（Ctrl+S）后再上传。',
         confirmButtonText: '我知道了',
       },
+      updater: {
+        available: '发现新版本',
+        availableMsg: '新版本 {version} 已发布，是否立即更新？',
+        releaseNotes: '更新日志',
+        noUpdate: '已是最新版本',
+        noUpdateMsg: '当前版本已是最新',
+        downloading: '正在下载更新',
+        downloadProgress: '下载进度: {progress}%',
+        downloadComplete: '下载完成，准备安装...',
+        installConfirm: '更新已下载完成，是否立即重启应用以完成安装？',
+        error: '更新失败',
+        errorMsg: '检查更新时发生错误: {error}',
+      },
     },
   },
-  
+
   // 英文
   en_US: {
     menu: {
@@ -244,6 +258,7 @@ export default {
       viewLog: 'View Log',
       devTools: 'Developer Tools',
       about: 'About',
+      checkUpdate: 'Check for Updates',
       scrollRemember: 'Remember Reading Position',
       zenMode: 'Zen Mode',
     },
@@ -436,9 +451,22 @@ export default {
         message: 'The current document has not been saved locally. Please save the file (Ctrl+S) before uploading.',
         confirmButtonText: 'OK',
       },
+      updater: {
+        available: 'Update Available',
+        availableMsg: 'Version {version} is available. Would you like to update now?',
+        releaseNotes: 'Release Notes',
+        noUpdate: 'Up to Date',
+        noUpdateMsg: 'You are already using the latest version',
+        downloading: 'Downloading Update',
+        downloadProgress: 'Progress: {progress}%',
+        downloadComplete: 'Download complete, preparing to install...',
+        installConfirm: 'Update downloaded. Restart now to install?',
+        error: 'Update Failed',
+        errorMsg: 'Error checking for updates: {error}',
+      },
     },
   },
-  
+
   // 日文
   ja_JP: {
     menu: {
@@ -457,6 +485,7 @@ export default {
       viewLog: 'ログを表示',
       devTools: '開発者ツール',
       about: 'について',
+      checkUpdate: 'アップデートを確認',
       scrollRemember: '閲覧位置を記憶',
       zenMode: 'Zen モード',
     },
@@ -649,9 +678,22 @@ export default {
         message: '現在のドキュメントはローカルに保存されていません。アップロードする前に、ファイルを保存（Ctrl+S）してください。',
         confirmButtonText: '了解',
       },
+      updater: {
+        available: 'アップデートがあります',
+        availableMsg: 'バージョン {version} が利用可能です。今すぐアップデートしますか？',
+        releaseNotes: 'リリースノート',
+        noUpdate: '最新バージョンです',
+        noUpdateMsg: '現在のバージョンは最新です',
+        downloading: 'アップデートをダウンロード中',
+        downloadProgress: '進行状況: {progress}%',
+        downloadComplete: 'ダウンロード完了、インストール準備中...',
+        installConfirm: 'アップデートのダウンロードが完了しました。今すぐ再起動してインストールしますか？',
+        error: 'アップデートエラー',
+        errorMsg: 'アップデート確認中にエラーが発生しました: {error}',
+      },
     },
   },
-  
+
   // 韩文
   ko_KR: {
     menu: {
@@ -670,6 +712,7 @@ export default {
       viewLog: '로그 보기',
       devTools: '개발자 도구',
       about: '정보',
+      checkUpdate: '업데이트 확인',
       scrollRemember: '읽기 위치 기억',
       zenMode: 'Zen 모드',
     },
@@ -861,6 +904,19 @@ export default {
         title: '파일을 먼저 저장하세요',
         message: '현재 문서가 로컬에 저장되지 않았습니다. 업로드하기 전에 파일을 저장(Ctrl+S)해주세요.',
         confirmButtonText: '확인',
+      },
+      updater: {
+        available: '업데이트 가능',
+        availableMsg: '버전 {version}이(가) 있습니다. 지금 업데이트하시겠습니까?',
+        releaseNotes: '릴리스 노트',
+        noUpdate: '최신 버전입니다',
+        noUpdateMsg: '현재 버전이 최신입니다',
+        downloading: '업데이트 다운로드 중',
+        downloadProgress: '진행률: {progress}%',
+        downloadComplete: '다운로드 완료, 설치 준비 중...',
+        installConfirm: '업데이트 다운로드가 완료되었습니다. 지금 재시작하여 설치하시겠습니까?',
+        error: '업데이트 오류',
+        errorMsg: '업데이트 확인 중 오류 발생: {error}',
       },
     },
   },
