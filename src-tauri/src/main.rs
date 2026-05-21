@@ -336,18 +336,20 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .manage(CurrentDir(Mutex::new(None)))
         .manage(OpenedFile(Mutex::new(opened_file)))
+        .manage(PortableMode(is_portable))
         .invoke_handler(tauri::generate_handler![
             set_current_dir,
             take_opened_file,
             log_message,
             open_log_folder,
+            get_portable_mode,
+            get_store_path,
+            open_devtools,
             save_image_host_config,
             get_image_host_config,
             test_image_host_connection,
             upload_to_image_host
         ])
-        .manage(PortableMode(is_portable))
-        .invoke_handler(tauri::generate_handler![set_current_dir, take_opened_file, log_message, open_log_folder, get_portable_mode, get_store_path, open_devtools])
         .register_uri_scheme_protocol("tmd", tmd_protocol_handler)
         .setup(|app| {
             switch_log_to_app_data(app.handle());
