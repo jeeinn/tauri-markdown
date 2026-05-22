@@ -27,6 +27,8 @@ tauri-plugin-process = "2"
 mime_guess = "2"
 url = "2"
 base64 = "0.22"
+hmac = "0.12"
+sha1 = "0.10"
 
 [features]
 default = [ "custom-protocol" ]

@@ -79,7 +79,7 @@
                 <el-form-item :label="'分支名'" prop="branch">
                   <el-input
                     v-model="currentConfig.branch"
-                    placeholder="默认: main"
+                    placeholder="默认: master"
                   />
                 </el-form-item>
                 <el-form-item :label="'Token'" prop="token">
@@ -96,20 +96,26 @@
                     placeholder="例如: images/ (可选)"
                   />
                 </el-form-item>
-                <el-form-item :label="'自定义域名'" prop="customDomain">
+                <el-form-item :label="'自定义域名'" prop="customUrl">
                   <el-input
-                    v-model="currentConfig.customDomain"
+                    v-model="currentConfig.customUrl"
                     placeholder="例如: https://cdn.jsdelivr.net/gh/... (可选)"
                   />
                 </el-form-item>
               </template>
 
-              <!-- Gitee 配置 -->
+              <!-- Gitee 配置 (兼容 PicGo gitee 插件) -->
               <template v-if="config.current === 'gitee'">
+                <el-form-item :label="'Owner'" prop="owner">
+                  <el-input
+                    v-model="currentConfig.owner"
+                    placeholder="仓库所属用户名或组织"
+                  />
+                </el-form-item>
                 <el-form-item :label="'仓库名'" prop="repo">
                   <el-input
                     v-model="currentConfig.repo"
-                    placeholder="格式: username/repo"
+                    placeholder="仓库名称"
                   />
                 </el-form-item>
                 <el-form-item :label="'分支名'" prop="branch">
@@ -132,9 +138,9 @@
                     placeholder="例如: images/ (可选)"
                   />
                 </el-form-item>
-                <el-form-item :label="'自定义域名'" prop="customDomain">
+                <el-form-item :label="'自定义域名'" prop="customUrl">
                   <el-input
-                    v-model="currentConfig.customDomain"
+                    v-model="currentConfig.customUrl"
                     placeholder="例如: https://gitee.com/.../raw/... (可选)"
                   />
                 </el-form-item>
@@ -179,9 +185,9 @@
                     placeholder="例如: images/ (可选)"
                   />
                 </el-form-item>
-                <el-form-item :label="'自定义域名'" prop="url">
+                <el-form-item :label="'自定义域名'" prop="customUrl">
                   <el-input
-                    v-model="currentConfig.url"
+                    v-model="currentConfig.customUrl"
                     placeholder="例如: https://your-domain.com (可选)"
                   />
                 </el-form-item>
@@ -210,10 +216,26 @@
       <div class="settings-footer">
         <div class="storage-type-section">
           <span class="storage-type-label">{{ t.storageType.label }}</span>
-          <el-radio-group v-model="storageType" size="small">
-            <el-radio value="tauri_store">{{ t.storageType.tauriStore }}</el-radio>
-            <el-radio value="picgo_native">{{ t.storageType.picgoNative }}</el-radio>
-          </el-radio-group>
+          <div class="storage-type-options">
+            <label class="storage-radio-row">
+              <input type="radio" v-model="storageType" value="tauri_store" class="storage-radio" />
+              <span>{{ t.storageType.tauriStore }}</span>
+            </label>
+            <label class="storage-radio-row">
+              <input type="radio" v-model="storageType" value="picgo_native" class="storage-radio" />
+              <span>{{ t.storageType.picgoNative }}</span>
+              <el-button
+                v-if="storageType === 'picgo_native'"
+                type="primary"
+                size="small"
+                :loading="importing"
+                @click.stop.prevent="handleImportPicgo"
+                class="import-btn"
+              >
+                {{ t.importConfig }}
+              </el-button>
+            </label>
+          </div>
         </div>
 
         <div class="action-buttons">
@@ -235,7 +257,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture, Connection, Upload, Cloudy } from '@element-plus/icons-vue'
 import { getI18nConfig } from '../utils/i18n-helper.js'
-import { saveImageHostConfig, getImageHostConfig, testImageHostConnection } from '../utils/image-host-config.js'
+import { saveImageHostConfig, getImageHostConfig, importPicgoConfig, testImageHostConnection } from '../utils/image-host-config.js'
 
 const props = defineProps({
   modelValue: {
@@ -272,9 +294,9 @@ const config = ref({
   enabled: false,
   current: '',
   smms: { token: '', backupDomain: '' },
-  github: { repo: '', branch: 'main', token: '', path: '', customDomain: '' },
-  gitee: { repo: '', branch: 'master', token: '', path: '', customDomain: '' },
-  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'z0', path: '', url: '', options: '' }
+  github: { repo: '', branch: 'master', token: '', path: '', customUrl: '' },
+  gitee: { owner: '', repo: '', branch: 'master', token: '', path: '', customUrl: '' },
+  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'z0', path: '', customUrl: '', options: '' }
 })
 
 // 存储方式
@@ -286,6 +308,7 @@ const formRef = ref(null)
 // 加载状态
 const saving = ref(false)
 const testing = ref(false)
+const importing = ref(false)
 
 // 当前图床的配置
 const currentConfig = computed(() => {
@@ -299,7 +322,11 @@ const formRules = computed(() => {
   
   if (config.value.current === 'smms') {
     rules.token = [{ required: true, message: 'Token 不能为空', trigger: 'blur' }]
-  } else if (config.value.current === 'github' || config.value.current === 'gitee') {
+  } else if (config.value.current === 'github') {
+    rules.repo = [{ required: true, message: '仓库名不能为空', trigger: 'blur' }]
+    rules.token = [{ required: true, message: 'Token 不能为空', trigger: 'blur' }]
+  } else if (config.value.current === 'gitee') {
+    rules.owner = [{ required: true, message: 'Owner 不能为空', trigger: 'blur' }]
     rules.repo = [{ required: true, message: '仓库名不能为空', trigger: 'blur' }]
     rules.token = [{ required: true, message: 'Token 不能为空', trigger: 'blur' }]
   } else if (config.value.current === 'aliyun_oss') {
@@ -317,15 +344,57 @@ const selectHostType = (type) => {
   config.value.current = type
 }
 
-// 加载配置
+// 深度合并配置,保留默认值
+const deepMergeConfig = (defaults, saved) => {
+  const result = { ...defaults }
+  for (const key of Object.keys(saved)) {
+    if (saved[key] !== null && saved[key] !== undefined) {
+      if (typeof saved[key] === 'object' && !Array.isArray(saved[key]) && typeof defaults[key] === 'object' && defaults[key] !== null) {
+        result[key] = deepMergeConfig(defaults[key], saved[key])
+      } else {
+        result[key] = saved[key]
+      }
+    }
+  }
+  return result
+}
+
+const defaultConfig = {
+  enabled: false,
+  current: '',
+  smms: { token: '', backupDomain: '' },
+  github: { repo: '', branch: 'master', token: '', path: '', customUrl: '' },
+  gitee: { owner: '', repo: '', branch: 'master', token: '', path: '', customUrl: '' },
+  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'z0', path: '', customUrl: '', options: '' }
+}
+
+// 加载配置 (仅从 store.json)
 const loadConfig = async () => {
   try {
     const savedConfig = await getImageHostConfig()
     if (savedConfig) {
-      config.value = { ...config.value, ...savedConfig }
+      config.value = deepMergeConfig(defaultConfig, savedConfig)
+    } else {
+      config.value = { ...defaultConfig }
     }
   } catch (error) {
     console.error('[ImageHost] 加载配置失败:', error)
+  }
+}
+
+// 从 PicGo 导入配置
+const handleImportPicgo = async () => {
+  importing.value = true
+  try {
+    const picgoConfig = await importPicgoConfig()
+    config.value = deepMergeConfig(defaultConfig, picgoConfig)
+    storageType.value = 'tauri_store'
+    ElMessage.success(t.value.importSuccess)
+  } catch (error) {
+    console.error('[ImageHost] PicGo 导入失败:', error)
+    ElMessage.error(t.value.importFailed)
+  } finally {
+    importing.value = false
   }
 }
 
@@ -335,11 +404,6 @@ const handleSave = async () => {
   if (config.value.enabled && !config.value.current) {
     ElMessage.warning(t.value.selectHostType)
     return
-  }
-
-  // 如果选择了图床类型但未启用,自动启用
-  if (!config.value.enabled && config.value.current) {
-    config.value.enabled = true
   }
 
   // 表单验证
@@ -516,9 +580,8 @@ onMounted(() => {
 
 .storage-type-section {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .storage-type-label {
@@ -527,9 +590,28 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.storage-type-section :deep(.el-radio) {
-  margin-right: 12px;
+.storage-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.storage-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
+  color: #606266;
+  cursor: pointer;
+}
+
+.storage-radio {
+  margin: 0;
+  cursor: pointer;
+}
+
+.import-btn {
+  margin-left: 8px;
 }
 
 .action-buttons {

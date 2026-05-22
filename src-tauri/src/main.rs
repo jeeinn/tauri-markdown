@@ -347,6 +347,7 @@ fn main() {
             open_devtools,
             save_image_host_config,
             get_image_host_config,
+            import_picgo_config,
             test_image_host_connection,
             upload_to_image_host
         ])
@@ -382,34 +383,19 @@ fn main() {
 
 // ── 图床配置 ─────────────────────────────────────────
 
-/// SM.MS 图床配置
+/// SM.MS 图床配置 (兼容 PicGo picBed.smms)
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 struct SmmsConfig {
     token: String,
     #[serde(default)]
     backup_domain: Option<String>,
 }
 
-/// GitHub 图床配置
+/// GitHub 图床配置 (兼容 PicGo picBed.github)
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 struct GithubConfig {
-    repo: String,
-    #[serde(default = "default_main_branch")]
-    branch: String,
-    token: String,
-    #[serde(default)]
-    path: Option<String>,
-    #[serde(default)]
-    custom_domain: Option<String>,
-}
-
-fn default_main_branch() -> String {
-    "main".to_string()
-}
-
-/// Gitee 图床配置
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct GiteeConfig {
     repo: String,
     #[serde(default = "default_master_branch")]
     branch: String,
@@ -417,15 +403,34 @@ struct GiteeConfig {
     #[serde(default)]
     path: Option<String>,
     #[serde(default)]
-    custom_domain: Option<String>,
+    custom_url: Option<String>,
+}
+
+/// Gitee 图床配置 (兼容 PicGo picBed.gitee 插件)
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+struct GiteeConfig {
+    #[serde(default)]
+    owner: Option<String>,
+    repo: String,
+    #[serde(default = "default_master_branch")]
+    branch: String,
+    token: String,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    custom_url: Option<String>,
+    #[serde(default)]
+    message: Option<String>,
 }
 
 fn default_master_branch() -> String {
     "master".to_string()
 }
 
-/// 阿里云 OSS 图床配置
+/// 阿里云 OSS 图床配置 (兼容 PicGo picBed.aliyun)
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 struct AliyunOssConfig {
     access_key_id: String,
     access_key_secret: String,
@@ -435,7 +440,7 @@ struct AliyunOssConfig {
     #[serde(default)]
     path: Option<String>,
     #[serde(default)]
-    url: Option<String>,
+    custom_url: Option<String>,
     #[serde(default)]
     options: Option<String>,
 }
@@ -444,7 +449,7 @@ fn default_area() -> String {
     "z0".to_string()
 }
 
-/// 图床总配置
+/// 图床总配置 (兼容 PicGo picBed 结构)
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ImageHostConfig {
     enabled: bool,
@@ -472,7 +477,8 @@ impl Default for ImageHostConfig {
     }
 }
 
-/// 保存图床配置
+// ── 配置保存/加载 ────────────────────────────────────
+
 #[tauri::command]
 async fn save_image_host_config(
     app_handle: tauri::AppHandle,
@@ -488,7 +494,6 @@ async fn save_image_host_config(
     }
 }
 
-/// 从 Tauri Store 保存配置
 async fn save_to_tauri_store(app_handle: &tauri::AppHandle, config: &ImageHostConfig) -> Result<(), String> {
     use tauri_plugin_store::StoreExt;
 
@@ -500,7 +505,6 @@ async fn save_to_tauri_store(app_handle: &tauri::AppHandle, config: &ImageHostCo
     Ok(())
 }
 
-/// 保存到 PicGo 原生配置文件
 async fn save_to_picgo_config(config: &ImageHostConfig) -> Result<(), String> {
     let picgo_config = convert_to_picgo_format(config);
     let config_path = get_picgo_config_path()?;
@@ -509,20 +513,32 @@ async fn save_to_picgo_config(config: &ImageHostConfig) -> Result<(), String> {
         std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
-    let json = serde_json::to_string_pretty(&picgo_config).map_err(|e| e.to_string())?;
+    // 如果已存在 PicGo 配置,合并而非覆盖
+    let mut root = if let Ok(content) = std::fs::read_to_string(&config_path) {
+        serde_json::from_str::<serde_json::Value>(&content).unwrap_or_else(|_| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    // 只更新 picBed 部分
+    if let Some(obj) = root.as_object_mut() {
+        obj.insert("picBed".to_string(), picgo_config);
+    }
+
+    let json = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
     std::fs::write(&config_path, json).map_err(|e| format!("写入文件失败: {}", e))?;
 
     log(&format!("图床配置已保存到 PicGo 配置: {:?}", config_path));
     Ok(())
 }
 
-/// 转换为 PicGo 格式
+/// 转换为 PicGo picBed 格式
 fn convert_to_picgo_format(config: &ImageHostConfig) -> serde_json::Value {
     let mut picgo_bed = serde_json::Map::new();
     picgo_bed.insert("current".to_string(), serde_json::Value::String(config.current.clone()));
     picgo_bed.insert("uploader".to_string(), serde_json::Value::String(config.current.clone()));
 
-    // 添加各图床配置
+    // SM.MS
     if let Some(smms) = &config.smms {
         let mut sm = serde_json::Map::new();
         sm.insert("token".to_string(), serde_json::Value::String(smms.token.clone()));
@@ -532,6 +548,7 @@ fn convert_to_picgo_format(config: &ImageHostConfig) -> serde_json::Value {
         picgo_bed.insert("smms".to_string(), serde_json::Value::Object(sm));
     }
 
+    // GitHub
     if let Some(github) = &config.github {
         let mut gh = serde_json::Map::new();
         gh.insert("repo".to_string(), serde_json::Value::String(github.repo.clone()));
@@ -540,21 +557,51 @@ fn convert_to_picgo_format(config: &ImageHostConfig) -> serde_json::Value {
         if let Some(path) = &github.path {
             gh.insert("path".to_string(), serde_json::Value::String(path.clone()));
         }
-        if let Some(domain) = &github.custom_domain {
-            gh.insert("customUrl".to_string(), serde_json::Value::String(domain.clone()));
+        if let Some(url) = &github.custom_url {
+            gh.insert("customUrl".to_string(), serde_json::Value::String(url.clone()));
         }
         picgo_bed.insert("github".to_string(), serde_json::Value::Object(gh));
     }
 
-    // Gitee 和 Aliyun OSS 类似处理...
+    // Gitee (PicGo 插件使用 owner/repo 分开的格式)
+    if let Some(gitee) = &config.gitee {
+        let mut ge = serde_json::Map::new();
+        if let Some(owner) = &gitee.owner {
+            ge.insert("owner".to_string(), serde_json::Value::String(owner.clone()));
+        }
+        ge.insert("repo".to_string(), serde_json::Value::String(gitee.repo.clone()));
+        ge.insert("token".to_string(), serde_json::Value::String(gitee.token.clone()));
+        if let Some(path) = &gitee.path {
+            ge.insert("path".to_string(), serde_json::Value::String(path.clone()));
+        }
+        if let Some(msg) = &gitee.message {
+            ge.insert("message".to_string(), serde_json::Value::String(msg.clone()));
+        }
+        picgo_bed.insert("gitee".to_string(), serde_json::Value::Object(ge));
+    }
 
-    let mut root = serde_json::Map::new();
-    root.insert("picBed".to_string(), serde_json::Value::Object(picgo_bed));
+    // 阿里云 OSS
+    if let Some(oss) = &config.aliyun_oss {
+        let mut al = serde_json::Map::new();
+        al.insert("accessKeyId".to_string(), serde_json::Value::String(oss.access_key_id.clone()));
+        al.insert("accessKeySecret".to_string(), serde_json::Value::String(oss.access_key_secret.clone()));
+        al.insert("bucket".to_string(), serde_json::Value::String(oss.bucket.clone()));
+        al.insert("area".to_string(), serde_json::Value::String(oss.area.clone()));
+        if let Some(path) = &oss.path {
+            al.insert("path".to_string(), serde_json::Value::String(path.clone()));
+        }
+        if let Some(url) = &oss.custom_url {
+            al.insert("customUrl".to_string(), serde_json::Value::String(url.clone()));
+        }
+        if let Some(opts) = &oss.options {
+            al.insert("options".to_string(), serde_json::Value::String(opts.clone()));
+        }
+        picgo_bed.insert("aliyun".to_string(), serde_json::Value::Object(al));
+    }
 
-    serde_json::Value::Object(root)
+    serde_json::Value::Object(picgo_bed)
 }
 
-/// 获取 PicGo 配置文件路径
 fn get_picgo_config_path() -> Result<PathBuf, String> {
     let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| "无法获取用户主目录".to_string())?;
@@ -571,20 +618,12 @@ fn get_picgo_config_path() -> Result<PathBuf, String> {
     Ok(path)
 }
 
-/// 获取图床配置
 #[tauri::command]
 async fn get_image_host_config(app_handle: tauri::AppHandle) -> Result<Option<ImageHostConfig>, String> {
     log("get_image_host_config called");
 
-    // 优先从 Tauri Store 读取
     if let Ok(config) = load_from_tauri_store(&app_handle).await {
         log("从 Tauri Store 加载配置成功");
-        return Ok(Some(config));
-    }
-
-    // 尝试从 PicGo 原生配置读取
-    if let Ok(config) = load_from_picgo_config().await {
-        log("从 PicGo 配置加载成功");
         return Ok(Some(config));
     }
 
@@ -592,7 +631,13 @@ async fn get_image_host_config(app_handle: tauri::AppHandle) -> Result<Option<Im
     Ok(None)
 }
 
-/// 从 Tauri Store 加载配置
+/// 从 PicGo 原生配置文件导入
+#[tauri::command]
+async fn import_picgo_config() -> Result<ImageHostConfig, String> {
+    log("import_picgo_config called");
+    load_from_picgo_config().await
+}
+
 async fn load_from_tauri_store(app_handle: &tauri::AppHandle) -> Result<ImageHostConfig, String> {
     use tauri_plugin_store::StoreExt;
 
@@ -602,38 +647,72 @@ async fn load_from_tauri_store(app_handle: &tauri::AppHandle) -> Result<ImageHos
     Ok(config)
 }
 
-/// 从 PicGo 原生配置加载
 async fn load_from_picgo_config() -> Result<ImageHostConfig, String> {
     let config_path = get_picgo_config_path()?;
     let content = std::fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
     let picgo_data: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-
-    // 转换 PicGo 格式为我们的格式
     convert_from_picgo_format(&picgo_data)
 }
 
-/// 从 PicGo 格式转换
+/// 从 PicGo 格式转换为我们的格式
 fn convert_from_picgo_format(picgo_data: &serde_json::Value) -> Result<ImageHostConfig, String> {
     let pic_bed = picgo_data.get("picBed").ok_or("无效的 PicGo 配置")?;
 
     let current = pic_bed.get("current")
+        .or_else(|| pic_bed.get("uploader"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
 
-    let config = ImageHostConfig {
+    // 解析 SM.MS
+    let smms = pic_bed.get("smms").map(|v| SmmsConfig {
+        token: v.get("token").and_then(|t| t.as_str()).unwrap_or("").to_string(),
+        backup_domain: v.get("backupDomain").and_then(|d| d.as_str()).map(|s| s.to_string()),
+    });
+
+    // 解析 GitHub
+    let github = pic_bed.get("github").map(|v| GithubConfig {
+        repo: v.get("repo").and_then(|r| r.as_str()).unwrap_or("").to_string(),
+        branch: v.get("branch").and_then(|b| b.as_str()).unwrap_or("master").to_string(),
+        token: v.get("token").and_then(|t| t.as_str()).unwrap_or("").to_string(),
+        path: v.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()),
+        custom_url: v.get("customUrl").and_then(|u| u.as_str()).map(|s| s.to_string()),
+    });
+
+    // 解析 Gitee
+    let gitee = pic_bed.get("gitee").map(|v| GiteeConfig {
+        owner: v.get("owner").and_then(|o| o.as_str()).map(|s| s.to_string()),
+        repo: v.get("repo").and_then(|r| r.as_str()).unwrap_or("").to_string(),
+        branch: v.get("branch").and_then(|b| b.as_str()).unwrap_or("master").to_string(),
+        token: v.get("token").and_then(|t| t.as_str()).unwrap_or("").to_string(),
+        path: v.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()),
+        custom_url: None,
+        message: v.get("message").and_then(|m| m.as_str()).map(|s| s.to_string()),
+    });
+
+    // 解析阿里云 OSS
+    let aliyun_oss = pic_bed.get("aliyun").map(|v| AliyunOssConfig {
+        access_key_id: v.get("accessKeyId").and_then(|k| k.as_str()).unwrap_or("").to_string(),
+        access_key_secret: v.get("accessKeySecret").and_then(|k| k.as_str()).unwrap_or("").to_string(),
+        bucket: v.get("bucket").and_then(|b| b.as_str()).unwrap_or("").to_string(),
+        area: v.get("area").and_then(|a| a.as_str()).unwrap_or("z0").to_string(),
+        path: v.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()),
+        custom_url: v.get("customUrl").and_then(|u| u.as_str()).map(|s| s.to_string()),
+        options: v.get("options").and_then(|o| o.as_str()).map(|s| s.to_string()),
+    });
+
+    Ok(ImageHostConfig {
         enabled: true,
         current,
-        ..Default::default()
-    };
-
-    // 解析各图床配置...
-    // 这里简化处理,实际需要根据具体图床类型解析
-
-    Ok(config)
+        smms,
+        github,
+        gitee,
+        aliyun_oss,
+    })
 }
 
-/// 测试图床连接
+// ── 连接测试 ─────────────────────────────────────────
+
 #[tauri::command]
 async fn test_image_host_connection(config: ImageHostConfig) -> Result<serde_json::Value, String> {
     log(&format!("test_image_host_connection: current={}", config.current));
@@ -647,12 +726,19 @@ async fn test_image_host_connection(config: ImageHostConfig) -> Result<serde_jso
     }
 }
 
-/// 测试 SM.MS 连接
+/// 测试 SM.MS/s.ee 连接
 async fn test_smms_connection(smms_config: SmmsConfig) -> Result<serde_json::Value, String> {
     let client = tauri_plugin_http::reqwest::Client::new();
+    let domain = smms_config.backup_domain.as_deref().unwrap_or("s.ee");
+    let profile_url = if domain == "s.ee" {
+        format!("https://{}/api/v1/profile", domain)
+    } else {
+        format!("https://{}/api/v2/profile", domain)
+    };
 
-    let response = client.get("https://sm.ms/api/v2/profile")
-        .header("Authorization", smms_config.token)
+    let response = client.get(&profile_url)
+        .header("Authorization", &smms_config.token)
+        .header("User-Agent", "PicGo")
         .send()
         .await
         .map_err(|e| format!("请求失败: {}", e))?;
@@ -668,12 +754,11 @@ async fn test_smms_connection(smms_config: SmmsConfig) -> Result<serde_json::Val
 /// 测试 GitHub 连接
 async fn test_github_connection(github_config: GithubConfig) -> Result<serde_json::Value, String> {
     let client = tauri_plugin_http::reqwest::Client::new();
-
     let url = format!("https://api.github.com/repos/{}/branches/{}", github_config.repo, github_config.branch);
 
     let response = client.get(&url)
         .header("Authorization", format!("token {}", github_config.token))
-        .header("User-Agent", "TauriMarkdown")
+        .header("User-Agent", "PicGo")
         .send()
         .await
         .map_err(|e| format!("请求失败: {}", e))?;
@@ -690,7 +775,12 @@ async fn test_github_connection(github_config: GithubConfig) -> Result<serde_jso
 async fn test_gitee_connection(gitee_config: GiteeConfig) -> Result<serde_json::Value, String> {
     let client = tauri_plugin_http::reqwest::Client::new();
 
-    let url = format!("https://gitee.com/api/v5/repos/{}/branches/{}", gitee_config.repo, gitee_config.branch);
+    // 支持 owner/repo 或 username/repo 格式
+    let repo_full = match &gitee_config.owner {
+        Some(owner) => format!("{}/{}", owner, gitee_config.repo),
+        None => gitee_config.repo.clone(),
+    };
+    let url = format!("https://gitee.com/api/v5/repos/{}/branches/{}", repo_full, gitee_config.branch);
 
     let response = client.get(&url)
         .query(&[("access_token", &gitee_config.token)])
@@ -706,17 +796,93 @@ async fn test_gitee_connection(gitee_config: GiteeConfig) -> Result<serde_json::
     }
 }
 
-/// 测试阿里云 OSS 连接
+/// 测试阿里云 OSS 连接 (验证配置并尝试列出 Bucket)
 async fn test_aliyun_oss_connection(oss_config: AliyunOssConfig) -> Result<serde_json::Value, String> {
-    // 简化测试:只验证配置格式
+    use hmac::{Hmac, Mac};
+    use sha1::Sha1;
+
     if oss_config.access_key_id.is_empty() || oss_config.access_key_secret.is_empty() || oss_config.bucket.is_empty() {
         return Err("配置不完整".to_string());
     }
 
-    Ok(serde_json::json!({ "success": true, "message": "配置格式正确" }))
+    let client = tauri_plugin_http::reqwest::Client::new();
+    let date = chrono_now_utc();
+    let host = format!("{}.{}.aliyuncs.com", oss_config.bucket, oss_config.area);
+    let sign_string = format!("GET\n\n\n{}\n/{}", date, oss_config.bucket);
+
+    type HmacSha1 = Hmac<Sha1>;
+    let mut mac = HmacSha1::new_from_slice(oss_config.access_key_secret.as_bytes())
+        .map_err(|e| format!("HMAC 初始化失败: {}", e))?;
+    mac.update(sign_string.as_bytes());
+    let signature = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
+    let authorization = format!("OSS {}:{}", oss_config.access_key_id, signature);
+
+    let url = format!("https://{}/?prefix=&max-keys=1", host);
+    let response = client.get(&url)
+        .header("Host", &host)
+        .header("Date", &date)
+        .header("Authorization", &authorization)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    let status = response.status();
+    if status.is_success() {
+        Ok(serde_json::json!({ "success": true, "message": "连接成功" }))
+    } else {
+        let body = response.text().await.unwrap_or_default();
+        Err(format!("连接失败: HTTP {} - {}", status, body))
+    }
 }
 
-/// 上传图片到图床
+fn chrono_now_utc() -> String {
+    // RFC 2616 date format: "Thu, 01 Jan 2026 00:00:00 GMT"
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    // 简单格式化,不引入 chrono 依赖
+    let days = secs / 86400;
+    let time_of_day = secs % 86400;
+    let h = time_of_day / 3600;
+    let m = (time_of_day % 3600) / 60;
+    let s = time_of_day % 60;
+
+    // 计算年月日 (从 1970-01-01 开始)
+    let (y, mo, d) = days_to_ymd(days);
+    let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let wday = ((days + 4) % 7) as usize; // 1970-01-01 是 Thursday
+    let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    format!("{}, {:02} {} {} {:02}:{:02}:{:02} GMT",
+        weekdays[wday], d, months[(mo - 1) as usize], y, h, m, s)
+}
+
+fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
+    let mut y = 1970u64;
+    loop {
+        let days_in_year = if is_leap(y) { 366 } else { 365 };
+        if days < days_in_year { break; }
+        days -= days_in_year;
+        y += 1;
+    }
+    let leap = is_leap(y);
+    let month_days: [u64; 12] = [
+        31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+    ];
+    let mut m = 1u64;
+    for &md in &month_days {
+        if days < md { break; }
+        days -= md;
+        m += 1;
+    }
+    (y, m, days + 1)
+}
+
+fn is_leap(y: u64) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
+}
+
+// ── 图片上传 ─────────────────────────────────────────
+
 #[tauri::command]
 async fn upload_to_image_host(
     file_path: String,
@@ -725,7 +891,7 @@ async fn upload_to_image_host(
     log(&format!("upload_to_image_host: file={}, host={}", file_path, config.current));
 
     match config.current.as_str() {
-        "smms" => Err("SM.MS 上传已在 JavaScript 端实现,不支持通过 Rust 调用".to_string()),
+        "smms" => upload_to_smms(file_path, config.smms.ok_or("SM.MS 配置缺失")?).await,
         "github" => upload_to_github(file_path, config.github.ok_or("GitHub 配置缺失")?).await,
         "gitee" => upload_to_gitee(file_path, config.gitee.ok_or("Gitee 配置缺失")?).await,
         "aliyun_oss" => upload_to_aliyun_oss(file_path, config.aliyun_oss.ok_or("阿里云 OSS 配置缺失")?).await,
@@ -733,43 +899,32 @@ async fn upload_to_image_host(
     }
 }
 
-/// 上传到 SM.MS (已移至 JavaScript 端实现)
-#[allow(dead_code)]
-async fn upload_to_smms(_file_path: String, _smms_config: SmmsConfig) -> Result<String, String> {
-    // SM.MS 上传已改为 JavaScript 端实现（支持 multipart FormData）
-    // 此函数保留仅供参考
-    Err("SM.MS 上传已在 JavaScript 端实现,请通过前端调用".to_string())
-}
-
-/// 上传到 GitHub
-async fn upload_to_github(file_path: String, github_config: GithubConfig) -> Result<String, String> {
+/// 上传到 SM.MS (兼容 s.ee 和 sm.ms)
+async fn upload_to_smms(file_path: String, smms_config: SmmsConfig) -> Result<String, String> {
     use tauri_plugin_http::reqwest;
 
     let client = reqwest::Client::new();
     let file_content = std::fs::read(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
-    let base64_content = base64::engine::general_purpose::STANDARD.encode(&file_content);
-
-    let path = github_config.path.unwrap_or_else(|| "images".to_string());
     let file_name = std::path::Path::new(&file_path)
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or("image.png");
+        .unwrap_or("image.png")
+        .to_string();
 
-    let file_path_in_repo = format!("{}/{}", path.trim_end_matches('/'), file_name);
+    let domain = smms_config.backup_domain.as_deref().unwrap_or("s.ee");
+    let api_path = if domain == "s.ee" { "/api/v1/file/upload" } else { "/api/v2/upload" };
+    let url = format!("https://{}{}", domain, api_path);
 
-    let url = format!("https://api.github.com/repos/{}/contents/{}", github_config.repo, file_path_in_repo);
+    // multipart/form-data
+    let part = reqwest::multipart::Part::bytes(file_content)
+        .file_name(file_name)
+        .mime_str("image/png").map_err(|e| e.to_string())?;
+    let form = reqwest::multipart::Form::new().part("smfile", part);
 
-    let body = serde_json::json!({
-        "message": "Upload image via Tauri Markdown",
-        "content": base64_content,
-        "branch": github_config.branch
-    });
-
-    let response = client.put(&url)
-        .header("Authorization", format!("token {}", github_config.token))
-        .header("User-Agent", "TauriMarkdown")
-        .header("Content-Type", "application/json")
-        .body(serde_json::to_string(&body).map_err(|e| e.to_string())?)
+    let response = client.post(&url)
+        .header("Authorization", &smms_config.token)
+        .header("User-Agent", "PicGo")
+        .multipart(form)
         .send()
         .await
         .map_err(|e| format!("上传请求失败: {}", e))?;
@@ -777,21 +932,86 @@ async fn upload_to_github(file_path: String, github_config: GithubConfig) -> Res
     let response_text = response.text().await.map_err(|e| format!("读取响应失败: {}", e))?;
     let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| format!("解析响应失败: {}", e))?;
 
-    let mut download_url = json["content"]["download_url"].as_str()
-        .ok_or("响应中缺少下载 URL")?
-        .to_string();
+    // s.ee: { code: 200, message: "success", data: { url: "..." } }
+    // sm.ms: { code: "success", data: { url: "..." } } 或 { code: 200, data: { url: "..." } }
+    let code = json.get("code");
+    let is_success = code.map(|c| {
+        c.as_i64() == Some(200) || c.as_str() == Some("success")
+    }).unwrap_or(false);
 
-    // 如果使用自定义域名,替换 URL
-    if let Some(custom_domain) = github_config.custom_domain {
-        if let Some(raw_part) = download_url.split("raw.githubusercontent.com/").nth(1) {
-            download_url = format!("{}/{}", custom_domain.trim_end_matches('/'), raw_part);
-        }
+    if is_success {
+        json["data"]["url"].as_str()
+            .map(|u| u.to_string())
+            .ok_or_else(|| "上传成功但未返回图片链接".to_string())
+    } else {
+        let msg = json["message"].as_str().or(json["msg"].as_str()).unwrap_or("未知错误");
+        Err(format!("上传失败: {}", msg))
     }
-
-    Ok(download_url)
 }
 
-/// 上传到 Gitee
+/// 上传到 GitHub (兼容 PicGo github uploader)
+async fn upload_to_github(file_path: String, github_config: GithubConfig) -> Result<String, String> {
+    use tauri_plugin_http::reqwest;
+
+    let client = reqwest::Client::new();
+    let file_content = std::fs::read(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
+    let base64_content = base64::engine::general_purpose::STANDARD.encode(&file_content);
+
+    let path = github_config.path.as_deref().unwrap_or("");
+    let file_name = std::path::Path::new(&file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("image.png");
+
+    let path_in_repo = format!("{}{}", path, file_name);
+    let url = format!("https://api.github.com/repos/{}/contents/{}", github_config.repo, path_in_repo);
+
+    let body = serde_json::json!({
+        "message": "Upload by PicGo",
+        "branch": github_config.branch,
+        "content": base64_content
+    });
+
+    let response = client.put(&url)
+        .header("Authorization", format!("token {}", github_config.token))
+        .header("User-Agent", "PicGo")
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(&body).map_err(|e| e.to_string())?)
+        .send()
+        .await
+        .map_err(|e| format!("上传请求失败: {}", e))?;
+
+    let status = response.status();
+
+    // 处理 422 (文件已存在) - 与 PicGo 行为一致
+    if status.as_u16() == 422 {
+        return build_github_url(&github_config, path, file_name);
+    }
+
+    let response_text = response.text().await.map_err(|e| format!("读取响应失败: {}", e))?;
+    let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| format!("解析响应失败: {}", e))?;
+
+    if let Some(download_url) = json["content"]["download_url"].as_str() {
+        if let Some(custom_url) = &github_config.custom_url {
+            Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name))
+        } else {
+            Ok(download_url.to_string())
+        }
+    } else {
+        Err(format!("上传失败: {}", response_text))
+    }
+}
+
+fn build_github_url(config: &GithubConfig, path: &str, file_name: &str) -> Result<String, String> {
+    if let Some(custom_url) = &config.custom_url {
+        Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name))
+    } else {
+        Ok(format!("https://raw.githubusercontent.com/{}/{}/{}{}",
+            config.repo, config.branch, path, file_name))
+    }
+}
+
+/// 上传到 Gitee (兼容 PicGo gitee 插件)
 async fn upload_to_gitee(file_path: String, gitee_config: GiteeConfig) -> Result<String, String> {
     use tauri_plugin_http::reqwest;
 
@@ -799,21 +1019,25 @@ async fn upload_to_gitee(file_path: String, gitee_config: GiteeConfig) -> Result
     let file_content = std::fs::read(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
     let base64_content = base64::engine::general_purpose::STANDARD.encode(&file_content);
 
-    let path = gitee_config.path.unwrap_or_else(|| "images".to_string());
+    let path = gitee_config.path.as_deref().unwrap_or("");
     let file_name = std::path::Path::new(&file_path)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("image.png");
 
-    let file_path_in_repo = format!("{}/{}", path.trim_end_matches('/'), file_name);
+    let repo_full = match &gitee_config.owner {
+        Some(owner) => format!("{}/{}", owner, gitee_config.repo),
+        None => gitee_config.repo.clone(),
+    };
+    let message = gitee_config.message.as_deref().unwrap_or("Upload by PicGo");
+    let path_in_repo = format!("{}{}", path, file_name);
 
-    let url = format!("https://gitee.com/api/v5/repos/{}/contents/{}", gitee_config.repo, file_path_in_repo);
+    let url = format!("https://gitee.com/api/v5/repos/{}/contents/{}", repo_full, path_in_repo);
 
     let body = serde_json::json!({
         "access_token": gitee_config.token,
         "content": base64_content,
-        "message": "Upload image via Tauri Markdown",
-        "branch": gitee_config.branch
+        "message": message
     });
 
     let response = client.post(&url)
@@ -823,25 +1047,79 @@ async fn upload_to_gitee(file_path: String, gitee_config: GiteeConfig) -> Result
         .await
         .map_err(|e| format!("上传请求失败: {}", e))?;
 
+    let status = response.status();
     let response_text = response.text().await.map_err(|e| format!("读取响应失败: {}", e))?;
-    let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| format!("解析响应失败: {}", e))?;
 
-    let mut download_url = json["content"]["download_url"].as_str()
-        .ok_or("响应中缺少下载 URL")?
-        .to_string();
-
-    // 如果使用自定义域名,替换 URL
-    if let Some(custom_domain) = gitee_config.custom_domain {
-        download_url = format!("{}/{}", custom_domain.trim_end_matches('/'),
-            download_url.split("gitee.com/").nth(1).unwrap_or(""));
+    if !status.is_success() {
+        return Err(format!("上传失败: HTTP {} - {}", status, response_text));
     }
 
-    Ok(download_url)
+    let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| format!("解析响应失败: {}", e))?;
+
+    if let Some(download_url) = json["content"]["download_url"].as_str() {
+        if let Some(custom_url) = &gitee_config.custom_url {
+            Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name))
+        } else {
+            Ok(download_url.to_string())
+        }
+    } else {
+        Err(format!("上传失败: 未返回下载 URL - {}", response_text))
+    }
 }
 
-/// 上传到阿里云 OSS
+/// 上传到阿里云 OSS (兼容 PicGo aliyun uploader)
 async fn upload_to_aliyun_oss(file_path: String, oss_config: AliyunOssConfig) -> Result<String, String> {
-    // 阿里云 OSS 上传需要签名,这里简化处理
-    // 实际项目中需要使用 hmac-sha1 进行签名
-    Err("阿里云 OSS 上传功能待实现".to_string())
+    use hmac::{Hmac, Mac};
+    use sha1::Sha1;
+    use tauri_plugin_http::reqwest;
+
+    type HmacSha1 = Hmac<Sha1>;
+
+    let file_content = std::fs::read(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
+    let file_name = std::path::Path::new(&file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("image.png");
+    let path = oss_config.path.as_deref().unwrap_or("");
+    let path_in_oss = format!("{}{}", path, file_name);
+
+    let content_type = mime_guess::from_path(file_name)
+        .first_or_octet_stream()
+        .to_string();
+
+    let date = chrono_now_utc();
+    let host = format!("{}.{}.aliyuncs.com", oss_config.bucket, oss_config.area);
+    // PicGo 签名格式: PUT\n\n{mime}\n{date}\n/{bucket}/{path}{filename}
+    let sign_string = format!("PUT\n\n{}\n{}\n/{}/{}", content_type, date, oss_config.bucket, path_in_oss);
+
+    let mut mac = HmacSha1::new_from_slice(oss_config.access_key_secret.as_bytes())
+        .map_err(|e| format!("HMAC 初始化失败: {}", e))?;
+    mac.update(sign_string.as_bytes());
+    let signature = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
+    let authorization = format!("OSS {}:{}", oss_config.access_key_id, signature);
+
+    let url = format!("https://{}/{}", host, path_in_oss);
+    let client = reqwest::Client::new();
+    let response = client.put(&url)
+        .header("Host", &host)
+        .header("Date", &date)
+        .header("Authorization", &authorization)
+        .header("Content-Type", &content_type)
+        .body(file_content)
+        .send()
+        .await
+        .map_err(|e| format!("上传请求失败: {}", e))?;
+
+    let status = response.status();
+    if status.as_u16() == 200 {
+        let option_url = oss_config.options.as_deref().unwrap_or("");
+        if let Some(custom_url) = &oss_config.custom_url {
+            Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path_in_oss, option_url))
+        } else {
+            Ok(format!("https://{}{}{}", host, path_in_oss, option_url))
+        }
+    } else {
+        let body = response.text().await.unwrap_or_default();
+        Err(format!("上传失败: HTTP {} - {}", status, body))
+    }
 }
