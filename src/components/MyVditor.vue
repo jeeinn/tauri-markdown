@@ -24,12 +24,12 @@ import vditorConf from '../config/vditor-config.js'
 import { getI18nConfig, getI18nText } from '../utils/i18n-helper.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile, writeFile, exists, mkdir } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, writeFile, exists, mkdir, remove } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath, clearLastFilePath, clearScrollPosition } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
-import { dirname, join, normalize } from '@tauri-apps/api/path'
+import { dirname, join, normalize, tempDir } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
@@ -39,6 +39,8 @@ import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useDragDrop } from '../composables/useDragDrop.js'
 // 导入工具函数
 import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
+// 导入图床配置
+import { getImageHostConfig, uploadToImageHost, uploadToSMMS } from '../utils/image-host-config.js'
 
 // 日志级别控制（生产环境可关闭）
 const DEBUG = import.meta.env.DEV;
@@ -801,7 +803,6 @@ export default {
 
       // 检查是否启用了图床上传
       try {
-        const { getImageHostConfig } = await import('../utils/image-host-config.js');
         const imageHostConfig = await getImageHostConfig();
         
         // 判断是否启用图床: enabled=true 且 current 有值
@@ -988,7 +989,6 @@ export default {
     
     // 图床上传
     async handleUploadToImageHost(files, config) {
-      const { uploadToImageHost, uploadToSMMS } = await import('../utils/image-host-config.js');
       const errFiles = [];
       const succMap = {};
 
@@ -1061,10 +1061,6 @@ export default {
     
     // 保存文件到临时目录
     async saveFileToTemp(file) {
-      const { join } = await import('@tauri-apps/api/path');
-      const { tempDir } = await import('@tauri-apps/api/path');
-      const { writeFile } = await import('@tauri-apps/plugin-fs');
-      
       const tempDirPath = await tempDir();
       const tempFileName = `upload_${Date.now()}_${file.name}`;
       const tempFilePath = await join(tempDirPath, tempFileName);
@@ -1079,7 +1075,6 @@ export default {
     // 清理临时文件
     async cleanupTempFile(filePath) {
       try {
-        const { remove } = await import('@tauri-apps/plugin-fs');
         await remove(filePath);
         console.log('[Upload] 临时文件已清理:', filePath);
       } catch (error) {

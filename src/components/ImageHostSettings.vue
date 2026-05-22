@@ -52,149 +52,149 @@
             >
               <!-- SM.MS 配置 -->
               <template v-if="config.current === 'smms'">
-                <el-form-item :label="'Token'" prop="token">
+                <el-form-item :label="t.labels.token" prop="token">
                   <el-input
                     v-model="currentConfig.token"
                     type="password"
                     show-password
-                    placeholder="请输入 SM.MS Token"
+                    :placeholder="t.placeholders.smmsToken"
                   />
                 </el-form-item>
-                <el-form-item :label="'备用域名'" prop="backupDomain">
+                <el-form-item :label="t.labels.backupDomain" prop="backupDomain">
                   <el-input
                     v-model="currentConfig.backupDomain"
-                    placeholder="例如: smms.app (可选)"
+                    :placeholder="t.placeholders.backupDomain"
                   />
                 </el-form-item>
               </template>
 
               <!-- GitHub 配置 -->
               <template v-if="config.current === 'github'">
-                <el-form-item :label="'仓库名'" prop="repo">
+                <el-form-item :label="t.labels.repo" prop="repo">
                   <el-input
                     v-model="currentConfig.repo"
-                    placeholder="格式: username/repo"
+                    :placeholder="t.placeholders.repo"
                   />
                 </el-form-item>
-                <el-form-item :label="'分支名'" prop="branch">
+                <el-form-item :label="t.labels.branch" prop="branch">
                   <el-input
                     v-model="currentConfig.branch"
-                    placeholder="默认: master"
+                    :placeholder="t.placeholders.branch"
                   />
                 </el-form-item>
-                <el-form-item :label="'Token'" prop="token">
+                <el-form-item :label="t.labels.token" prop="token">
                   <el-input
                     v-model="currentConfig.token"
                     type="password"
                     show-password
-                    placeholder="Personal Access Token"
+                    :placeholder="t.placeholders.token"
                   />
                 </el-form-item>
-                <el-form-item :label="'存储路径'" prop="path">
+                <el-form-item :label="t.labels.path" prop="path">
                   <el-input
                     v-model="currentConfig.path"
-                    placeholder="例如: images/ (可选)"
+                    :placeholder="t.placeholders.path"
                   />
                 </el-form-item>
-                <el-form-item :label="'自定义域名'" prop="customUrl">
+                <el-form-item :label="t.labels.customUrl" prop="customUrl">
                   <el-input
                     v-model="currentConfig.customUrl"
-                    placeholder="例如: https://cdn.jsdelivr.net/gh/... (可选)"
+                    :placeholder="t.placeholders.customUrl"
                   />
                 </el-form-item>
               </template>
 
               <!-- Gitee 配置 (兼容 PicGo gitee 插件) -->
               <template v-if="config.current === 'gitee'">
-                <el-form-item :label="'Owner'" prop="owner">
+                <el-form-item :label="t.labels.owner" prop="owner">
                   <el-input
                     v-model="currentConfig.owner"
-                    placeholder="仓库所属用户名或组织"
+                    :placeholder="t.placeholders.owner"
                   />
                 </el-form-item>
-                <el-form-item :label="'仓库名'" prop="repo">
+                <el-form-item :label="t.labels.repo" prop="repo">
                   <el-input
                     v-model="currentConfig.repo"
-                    placeholder="仓库名称"
+                    :placeholder="t.placeholders.ownerRepo"
                   />
                 </el-form-item>
-                <el-form-item :label="'分支名'" prop="branch">
+                <el-form-item :label="t.labels.branch" prop="branch">
                   <el-input
                     v-model="currentConfig.branch"
-                    placeholder="默认: master"
+                    :placeholder="t.placeholders.branch"
                   />
                 </el-form-item>
-                <el-form-item :label="'Token'" prop="token">
+                <el-form-item :label="t.labels.token" prop="token">
                   <el-input
                     v-model="currentConfig.token"
                     type="password"
                     show-password
-                    placeholder="私人令牌"
+                    :placeholder="t.placeholders.giteeToken"
                   />
                 </el-form-item>
-                <el-form-item :label="'存储路径'" prop="path">
+                <el-form-item :label="t.labels.path" prop="path">
                   <el-input
                     v-model="currentConfig.path"
-                    placeholder="例如: images/ (可选)"
+                    :placeholder="t.placeholders.path"
                   />
                 </el-form-item>
-                <el-form-item :label="'自定义域名'" prop="customUrl">
+                <el-form-item :label="t.labels.customUrl" prop="customUrl">
                   <el-input
                     v-model="currentConfig.customUrl"
-                    placeholder="例如: https://gitee.com/.../raw/... (可选)"
+                    :placeholder="t.placeholders.giteeCustomUrl"
                   />
                 </el-form-item>
               </template>
 
               <!-- 阿里云 OSS 配置 -->
               <template v-if="config.current === 'aliyun_oss'">
-                <el-form-item :label="'AccessKey ID'" prop="accessKeyId">
+                <el-form-item :label="t.labels.accessKeyId" prop="accessKeyId">
                   <el-input
                     v-model="currentConfig.accessKeyId"
                     type="password"
                     show-password
-                    placeholder="AccessKey ID"
+                    :placeholder="t.labels.accessKeyId"
                   />
                 </el-form-item>
-                <el-form-item :label="'AccessKey Secret'" prop="accessKeySecret">
+                <el-form-item :label="t.labels.accessKeySecret" prop="accessKeySecret">
                   <el-input
                     v-model="currentConfig.accessKeySecret"
                     type="password"
                     show-password
-                    placeholder="AccessKey Secret"
+                    :placeholder="t.labels.accessKeySecret"
                   />
                 </el-form-item>
-                <el-form-item :label="'Bucket 名称'" prop="bucket">
+                <el-form-item :label="t.labels.bucket" prop="bucket">
                   <el-input
                     v-model="currentConfig.bucket"
-                    placeholder="存储空间名称"
+                    :placeholder="t.placeholders.bucket"
                   />
                 </el-form-item>
-                <el-form-item :label="'存储区域'" prop="area">
-                  <el-select v-model="currentConfig.area" placeholder="请选择存储区域">
-                    <el-option label="华东 z0" value="z0" />
-                    <el-option label="华北 z1" value="z1" />
-                    <el-option label="华南 z2" value="z2" />
-                    <el-option label="北美 na0" value="na0" />
-                    <el-option label="东南亚 as0" value="as0" />
+                <el-form-item :label="t.labels.area" prop="area">
+                  <el-select v-model="currentConfig.area" :placeholder="t.placeholders.area">
+                    <el-option :label="t.areaOptions.z0" value="z0" />
+                    <el-option :label="t.areaOptions.z1" value="z1" />
+                    <el-option :label="t.areaOptions.z2" value="z2" />
+                    <el-option :label="t.areaOptions.na0" value="na0" />
+                    <el-option :label="t.areaOptions.as0" value="as0" />
                   </el-select>
                 </el-form-item>
-                <el-form-item :label="'存储路径'" prop="path">
+                <el-form-item :label="t.labels.path" prop="path">
                   <el-input
                     v-model="currentConfig.path"
-                    placeholder="例如: images/ (可选)"
+                    :placeholder="t.placeholders.path"
                   />
                 </el-form-item>
-                <el-form-item :label="'自定义域名'" prop="customUrl">
+                <el-form-item :label="t.labels.customUrl" prop="customUrl">
                   <el-input
                     v-model="currentConfig.customUrl"
-                    placeholder="例如: https://your-domain.com (可选)"
+                    :placeholder="t.placeholders.aliyunCustomUrl"
                   />
                 </el-form-item>
-                <el-form-item :label="'URL 后缀'" prop="options">
+                <el-form-item :label="t.labels.options" prop="options">
                   <el-input
                     v-model="currentConfig.options"
-                    placeholder="例如: ?imgslim (可选)"
+                    :placeholder="t.placeholders.options"
                   />
                 </el-form-item>
               </template>
@@ -224,7 +224,12 @@
           >
             {{ t.importConfig }}
           </el-button>
-          <span class="import-hint">{{ t.importHint }}</span>
+          <el-button
+            size="small"
+            @click="handleReset"
+          >
+            {{ t.resetConfig }}
+          </el-button>
         </div>
 
         <div class="action-buttons">
@@ -305,21 +310,22 @@ const currentConfig = computed(() => {
 // 表单验证规则
 const formRules = computed(() => {
   const rules = {}
+  const v = t.value.validationMessages
   
   if (config.value.current === 'smms') {
-    rules.token = [{ required: true, message: 'Token 不能为空', trigger: 'blur' }]
+    rules.token = [{ required: true, message: v.tokenRequired, trigger: 'blur' }]
   } else if (config.value.current === 'github') {
-    rules.repo = [{ required: true, message: '仓库名不能为空', trigger: 'blur' }]
-    rules.token = [{ required: true, message: 'Token 不能为空', trigger: 'blur' }]
+    rules.repo = [{ required: true, message: v.repoRequired, trigger: 'blur' }]
+    rules.token = [{ required: true, message: v.tokenRequired, trigger: 'blur' }]
   } else if (config.value.current === 'gitee') {
-    rules.owner = [{ required: true, message: 'Owner 不能为空', trigger: 'blur' }]
-    rules.repo = [{ required: true, message: '仓库名不能为空', trigger: 'blur' }]
-    rules.token = [{ required: true, message: 'Token 不能为空', trigger: 'blur' }]
+    rules.owner = [{ required: true, message: v.ownerRequired, trigger: 'blur' }]
+    rules.repo = [{ required: true, message: v.repoRequired, trigger: 'blur' }]
+    rules.token = [{ required: true, message: v.tokenRequired, trigger: 'blur' }]
   } else if (config.value.current === 'aliyun_oss') {
-    rules.accessKeyId = [{ required: true, message: 'AccessKey ID 不能为空', trigger: 'blur' }]
-    rules.accessKeySecret = [{ required: true, message: 'AccessKey Secret 不能为空', trigger: 'blur' }]
-    rules.bucket = [{ required: true, message: 'Bucket 名称不能为空', trigger: 'blur' }]
-    rules.area = [{ required: true, message: '存储区域不能为空', trigger: 'change' }]
+    rules.accessKeyId = [{ required: true, message: v.accessKeyIdRequired, trigger: 'blur' }]
+    rules.accessKeySecret = [{ required: true, message: v.accessKeySecretRequired, trigger: 'blur' }]
+    rules.bucket = [{ required: true, message: v.bucketRequired, trigger: 'blur' }]
+    rules.area = [{ required: true, message: v.areaRequired, trigger: 'change' }]
   }
   
   return rules
@@ -380,6 +386,16 @@ const handleImportPicgo = async () => {
     ElMessage.error(t.value.importFailed)
   } finally {
     importing.value = false
+  }
+}
+
+// 重置配置
+const handleReset = () => {
+  // 重置为默认配置，但不保存到 store.json
+  config.value = JSON.parse(JSON.stringify(defaultConfig))
+  // 清空表单验证状态
+  if (formRef.value) {
+    formRef.value.resetFields()
   }
 }
 
@@ -595,11 +611,6 @@ html.dark .host-type-item.active,
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.import-hint {
-  font-size: 12px;
-  color: #909399;
 }
 
 .action-buttons {
