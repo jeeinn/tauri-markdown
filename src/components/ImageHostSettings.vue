@@ -212,30 +212,19 @@
 
       <el-divider />
 
-      <!-- 底部:存储方式选择和操作按钮 -->
+      <!-- 底部:导入和操作按钮 -->
       <div class="settings-footer">
-        <div class="storage-type-section">
-          <span class="storage-type-label">{{ t.storageType.label }}</span>
-          <div class="storage-type-options">
-            <label class="storage-radio-row">
-              <input type="radio" v-model="storageType" value="tauri_store" class="storage-radio" />
-              <span>{{ t.storageType.tauriStore }}</span>
-            </label>
-            <label class="storage-radio-row">
-              <input type="radio" v-model="storageType" value="picgo_native" class="storage-radio" />
-              <span>{{ t.storageType.picgoNative }}</span>
-              <el-button
-                v-if="storageType === 'picgo_native'"
-                type="primary"
-                size="small"
-                :loading="importing"
-                @click.stop.prevent="handleImportPicgo"
-                class="import-btn"
-              >
-                {{ t.importConfig }}
-              </el-button>
-            </label>
-          </div>
+        <div class="import-section">
+          <el-button
+            type="primary"
+            size="small"
+            :loading="importing"
+            @click="handleImportPicgo"
+            plain
+          >
+            {{ t.importConfig }}
+          </el-button>
+          <span class="import-hint">{{ t.importHint }}</span>
         </div>
 
         <div class="action-buttons">
@@ -298,9 +287,6 @@ const config = ref({
   gitee: { owner: '', repo: '', branch: 'master', token: '', path: '', customUrl: '' },
   aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'z0', path: '', customUrl: '', options: '' }
 })
-
-// 存储方式
-const storageType = ref('tauri_store')
 
 // 表单引用
 const formRef = ref(null)
@@ -388,7 +374,6 @@ const handleImportPicgo = async () => {
   try {
     const picgoConfig = await importPicgoConfig()
     config.value = deepMergeConfig(defaultConfig, picgoConfig)
-    storageType.value = 'tauri_store'
     ElMessage.success(t.value.importSuccess)
   } catch (error) {
     console.error('[ImageHost] PicGo 导入失败:', error)
@@ -418,7 +403,7 @@ const handleSave = async () => {
 
   saving.value = true
   try {
-    await saveImageHostConfig(config.value, storageType.value)
+    await saveImageHostConfig(config.value, 'tauri_store')
     ElMessage.success(t.value.saveSuccess)
     dialogVisible.value = false
   } catch (error) {
@@ -531,10 +516,23 @@ onMounted(() => {
   background: #f5f7fa;
 }
 
+/* 暗色主题下的 hover 样式 */
+html.dark .host-type-item:hover,
+.dark .host-type-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .host-type-item.active {
   border-color: #409eff;
   background: #ecf5ff;
   color: #409eff;
+}
+
+/* 暗色主题下的选中项样式 */
+html.dark .host-type-item.active,
+.dark .host-type-item.active {
+  background: rgba(64, 158, 255, 0.15);
+  color: #66b1ff;
 }
 
 .host-type-item .el-icon {
@@ -559,6 +557,21 @@ onMounted(() => {
   line-height: 32px;
 }
 
+/* 增加表单项之间的间距,确保错误提示不被遮挡 */
+.config-form :deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+/* 验证失败时输入框显示红色边框 */
+.config-form :deep(.el-form-item.is-error .el-input__inner),
+.config-form :deep(.el-form-item.is-error .el-input__wrapper) {
+  border-color: #f56c6c !important;
+}
+
+.config-form :deep(.el-form-item.is-error .el-select .el-input__wrapper) {
+  border-color: #f56c6c !important;
+}
+
 .config-form :deep(.el-input__inner) {
   height: 32px;
   line-height: 32px;
@@ -578,40 +591,15 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.storage-type-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.storage-type-label {
-  font-size: 13px;
-  color: #606266;
-  white-space: nowrap;
-}
-
-.storage-type-options {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.storage-radio-row {
+.import-section {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+}
+
+.import-hint {
   font-size: 12px;
-  color: #606266;
-  cursor: pointer;
-}
-
-.storage-radio {
-  margin: 0;
-  cursor: pointer;
-}
-
-.import-btn {
-  margin-left: 8px;
+  color: #909399;
 }
 
 .action-buttons {
