@@ -212,6 +212,10 @@ export default {
       about: {
         title: '关于程序',
       },
+      uploading: {
+        title: '上传中',
+        message: '正在上传文件...',
+      },
       uploadSuccess: {
         title: '上传成功',
         message: '{count} 个文件上传成功',
@@ -514,6 +518,10 @@ export default {
           message: 'HTML export cancelled',
         },
         fileSaved: 'HTML file saved',
+      },
+      uploading: {
+        title: 'Uploading',
+        message: 'Uploading file...',
       },
       uploadSuccess: {
         title: 'Upload Successful',
@@ -818,6 +826,10 @@ export default {
         },
         fileSaved: 'HTMLファイルを保存しました',
       },
+      uploading: {
+        title: 'アップロード中',
+        message: 'ファイルをアップロード中...',
+      },
       uploadSuccess: {
         title: 'アップロード成功',
         message: '{count} ファイルを正常にアップロードしました',
@@ -1120,6 +1132,10 @@ export default {
           message: 'HTML 내보내기가 취소되었습니다',
         },
         fileSaved: 'HTML 파일이 저장되었습니다',
+      },
+      uploading: {
+        title: '업로드 중',
+        message: '파일 업로드 중...',
       },
       uploadSuccess: {
         title: '업로드 성공',

@@ -801,22 +801,34 @@ export default {
     async handleUpload(files) {
       console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
 
-      // 检查是否启用了图床上传
+      // 显示上传中通知
+      const uploadingNotification = ElNotification.info({
+        title: this.t.uploading?.title || '上传中',
+        message: this.t.uploading?.message || '正在上传文件...',
+        duration: 0,
+        showClose: false,
+      });
+
       try {
+        // 检查是否启用了图床上传
         const imageHostConfig = await getImageHostConfig();
-        
+
         // 判断是否启用图床: enabled=true 且 current 有值
         if (imageHostConfig && imageHostConfig.enabled && imageHostConfig.current) {
           console.log('[Upload] 使用图床上传');
           return await this.handleUploadToImageHost(files, imageHostConfig);
         }
+
+        // 使用本地存储(原有逻辑)
+        console.log('[Upload] 使用本地存储');
+        return await this.handleLocalUpload(files);
       } catch (error) {
-        console.warn('[Upload] 获取图床配置失败,使用本地存储:', error);
+        console.warn('[Upload] 上传过程异常,回退到本地存储:', error);
+        return await this.handleLocalUpload(files);
+      } finally {
+        // 关闭上传中通知
+        uploadingNotification.close();
       }
-      
-      // 使用本地存储(原有逻辑)
-      console.log('[Upload] 使用本地存储');
-      return await this.handleLocalUpload(files);
     },
     
     // 本地存储上传(原有逻辑提取)
