@@ -351,12 +351,18 @@ export default {
                 instance.confirmButtonText = updaterI18n.downloading || '正在下载...';
                 try {
                   let progressText = '';
+                  let downloaded = 0;
+                  let contentLength = 0;
                   await update.downloadAndInstall((event) => {
-                    if (event.event === 'Started' && event.data.contentLength) {
-                      instance.message = `${updaterI18n.downloading || '正在下载更新'}...`;
+                    if (event.event === 'Started') {
+                      contentLength = event.data.contentLength || 0;
+                      const totalMB = contentLength > 0 ? (contentLength / 1024 / 1024).toFixed(2) : '未知';
+                      instance.message = `${updaterI18n.downloading || '正在下载更新'} (总大小: ${totalMB} MB)...`;
                     } else if (event.event === 'Progress') {
-                      const percent = Math.round((event.data.chunkLength / (event.data.contentLength || 1)) * 100);
-                      const msg = (updaterI18n.downloadProgress || '下载进度: {progress}%').replace('{progress}', percent);
+                      downloaded += event.data.chunkLength || 0;
+                      const percent = contentLength > 0 ? Math.round((downloaded / contentLength) * 100) : 0;
+                      const downloadedMB = (downloaded / 1024 / 1024).toFixed(2);
+                      const msg = `${updaterI18n.downloadProgress || '下载进度: {progress}%'} (${downloadedMB} MB)`;
                       if (msg !== progressText) {
                         instance.message = msg;
                         progressText = msg;
