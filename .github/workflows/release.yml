@@ -99,11 +99,13 @@ jobs:
           releaseName: "Tauri Markdown ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: true
-          updaterJsonPreferNsis: true
 
       - name: Build portable version (Windows only)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # version 仅用于文件名，去掉前导 v
           $version = "${{ github.ref_name }}" -replace '^v', ''
