@@ -11,6 +11,7 @@
     "fs:allow-write",
     "fs:allow-read-file",
     "fs:allow-write-file",
+    "fs:allow-remove",
     "fs:allow-exists",
     "fs:allow-mkdir",
     {
@@ -22,6 +23,8 @@
     "core:path:allow-dirname",
     "core:path:allow-join",
     "core:path:allow-normalize",
+    "core:path:allow-resolve-directory",
+    "core:path:allow-basename",
     "core:window:allow-set-title",
     "core:window:allow-destroy",
     "store:default",

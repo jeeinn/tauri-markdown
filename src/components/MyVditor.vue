@@ -24,12 +24,12 @@ import vditorConf from '../config/vditor-config.js'
 import { getI18nConfig, getI18nText } from '../utils/i18n-helper.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, writeFile, exists, mkdir, remove } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath, clearLastFilePath, clearScrollPosition } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
-import { dirname, join, normalize } from '@tauri-apps/api/path'
+import { dirname, join, normalize, tempDir } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
@@ -39,6 +39,8 @@ import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useDragDrop } from '../composables/useDragDrop.js'
 // 导入工具函数
 import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
+// 导入图床配置
+import { getImageHostConfig, uploadToImageHost, uploadToSMMS } from '../utils/image-host-config.js'
 
 // 日志级别控制（生产环境可关闭）
 const DEBUG = import.meta.env.DEV;
@@ -799,6 +801,40 @@ export default {
     async handleUpload(files) {
       console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
 
+      // 显示上传中通知
+      const uploadingNotification = ElNotification.info({
+        title: this.t.uploading?.title || '上传中',
+        message: this.t.uploading?.message || '正在上传文件...',
+        duration: 0,
+        showClose: false,
+      });
+
+      try {
+        // 检查是否启用了图床上传
+        const imageHostConfig = await getImageHostConfig();
+
+        // 判断是否启用图床: enabled=true 且 current 有值
+        if (imageHostConfig && imageHostConfig.enabled && imageHostConfig.current) {
+          console.log('[Upload] 使用图床上传');
+          return await this.handleUploadToImageHost(files, imageHostConfig);
+        }
+
+        // 使用本地存储(原有逻辑)
+        console.log('[Upload] 使用本地存储');
+        return await this.handleLocalUpload(files);
+      } catch (error) {
+        console.warn('[Upload] 上传过程异常,回退到本地存储:', error);
+        return await this.handleLocalUpload(files);
+      } finally {
+        // 关闭上传中通知
+        uploadingNotification.close();
+      }
+    },
+    
+    // 本地存储上传(原有逻辑提取)
+    async handleLocalUpload(files) {
+      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
+
       const errFiles = [];
       const succMap = {};
 
@@ -961,6 +997,101 @@ export default {
           }
         }
       ];
+    },
+    
+    // 图床上传
+    async handleUploadToImageHost(files, config) {
+      const errFiles = [];
+      const succMap = {};
+
+      for (const file of files) {
+        try {
+          console.log('[Upload] 图床上传处理文件:', file.name);
+          
+          // 判断是否为图片
+          const isImage = isImageFile(file);
+          
+          // 只上传图片文件到图床,非图片文件仍使用本地存储
+          if (!isImage) {
+            console.log('[Upload] 非图片文件,使用本地存储');
+            errFiles.push(file.name);
+            continue;
+          }
+          
+          // 根据图床类型选择上传方式
+          let imageUrl;
+          if (config.current === 'smms') {
+            // SM.MS 使用 JavaScript 端上传（支持 multipart）
+            console.log('[Upload] 使用 JavaScript 端 SM.MS 上传');
+            imageUrl = await uploadToSMMS(file, config);
+          } else {
+            // GitHub/Gitee 使用 Rust 端上传（需要文件路径）
+            console.log('[Upload] 使用 Rust 端上传:', config.current);
+            const tempPath = await this.saveFileToTemp(file);
+            imageUrl = await uploadToImageHost(tempPath, config);
+            await this.cleanupTempFile(tempPath);
+          }
+          
+          console.log('[Upload] 图床返回 URL:', imageUrl);
+          succMap[file.name] = { url: imageUrl, isImage: true };
+        } catch (error) {
+          console.error('[Upload] 图床上传失败:', file.name, error);
+          errFiles.push(file.name);
+        }
+      }
+
+      console.log('[Upload] 图床上载完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
+
+      // 显示通知
+      if (errFiles.length > 0) {
+        ElNotification.error({
+          title: this.t.uploadFailed?.title || '上传失败',
+          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
+          duration: 5000
+        });
+      }
+
+      if (Object.keys(succMap).length > 0) {
+        ElNotification.success({
+          title: this.t.uploadSuccess?.title || '上传成功',
+          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
+          duration: 3000
+        });
+      }
+
+      return [
+        {
+          code: 0,
+          msg: '',
+          data: {
+            errFiles: errFiles,
+            succMap: succMap
+          }
+        }
+      ];
+    },
+    
+    // 保存文件到临时目录
+    async saveFileToTemp(file) {
+      const tempDirPath = await tempDir();
+      const tempFileName = `upload_${Date.now()}_${file.name}`;
+      const tempFilePath = await join(tempDirPath, tempFileName);
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      await writeFile(tempFilePath, uint8Array);
+      
+      return tempFilePath;
+    },
+    
+    // 清理临时文件
+    async cleanupTempFile(filePath) {
+      try {
+        await remove(filePath);
+        console.log('[Upload] 临时文件已清理:', filePath);
+      } catch (error) {
+        console.warn('[Upload] 清理临时文件失败:', error);
+      }
     },
 
     // ========== 滚动位置记忆 ==========
