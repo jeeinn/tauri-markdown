@@ -780,9 +780,15 @@ async fn test_gitee_connection(gitee_config: GiteeConfig) -> Result<serde_json::
         Some(owner) => format!("{}/{}", owner, gitee_config.repo),
         None => gitee_config.repo.clone(),
     };
-    let url = format!("https://gitee.com/api/v5/repos/{}/branches/{}", repo_full, gitee_config.branch);
-
-    let response = client.get(&url)
+    
+    // 使用 Gitee API v5 获取用户信息来验证 token 和仓库访问权限
+    // 直接测试分支接口可能会因为仓库不存在或权限问题返回 404
+    // 改为先获取用户信息验证 token，再尝试获取仓库信息
+    let user_url = "https://gitee.com/api/v5/user";
+    
+    log(&format!("[Gitee Test] Testing connection for repo: {}", repo_full));
+    
+    let response = client.get(user_url)
         .query(&[("access_token", &gitee_config.token)])
         .send()
         .await
@@ -790,9 +796,24 @@ async fn test_gitee_connection(gitee_config: GiteeConfig) -> Result<serde_json::
 
     let status = response.status();
     if status.is_success() {
-        Ok(serde_json::json!({ "success": true, "message": "连接成功" }))
+        // token 验证成功，再尝试验证仓库是否存在
+        let repo_url = format!("https://gitee.com/api/v5/repos/{}", repo_full);
+        let repo_response = client.get(&repo_url)
+            .query(&[("access_token", &gitee_config.token)])
+            .send()
+            .await
+            .map_err(|e| format!("验证仓库失败: {}", e))?;
+        
+        if repo_response.status().is_success() {
+            log("[Gitee Test] Connection test successful");
+            Ok(serde_json::json!({ "success": true, "message": "连接成功" }))
+        } else {
+            Err(format!("仓库不存在或无访问权限: HTTP {}", repo_response.status()))
+        }
     } else {
-        Err(format!("连接失败: HTTP {}", status))
+        let body = response.text().await.unwrap_or_default();
+        log(&format!("[Gitee Test] Token verification failed: HTTP {}", status));
+        Err(format!("Token 无效或已过期: HTTP {} {}", status, body))
     }
 }
 
@@ -963,7 +984,15 @@ async fn upload_to_github(file_path: String, github_config: GithubConfig) -> Res
         .and_then(|n| n.to_str())
         .unwrap_or("image.png");
 
-    let path_in_repo = format!("{}{}", path, file_name);
+    // 确保路径后有分隔符 /
+    let path_with_slash = if path.is_empty() {
+        String::new()
+    } else if path.ends_with('/') {
+        path.to_string()
+    } else {
+        format!("{}/", path)
+    };
+    let path_in_repo = format!("{}{}", path_with_slash, file_name);
     let url = format!("https://api.github.com/repos/{}/contents/{}", github_config.repo, path_in_repo);
 
     let body = serde_json::json!({
@@ -991,24 +1020,28 @@ async fn upload_to_github(file_path: String, github_config: GithubConfig) -> Res
     let response_text = response.text().await.map_err(|e| format!("读取响应失败: {}", e))?;
     let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| format!("解析响应失败: {}", e))?;
 
-    if let Some(download_url) = json["content"]["download_url"].as_str() {
-        if let Some(custom_url) = &github_config.custom_url {
-            Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name))
-        } else {
-            Ok(download_url.to_string())
-        }
-    } else {
-        Err(format!("上传失败: {}", response_text))
+    if json["content"]["sha"].is_null() {
+        return Err(format!("上传失败: {}", response_text));
     }
+
+    // 手动构建预览 URL（与 PicGo github uploader 对齐）
+    // 对文件路径部分进行 URL 编码，处理中文和空格等特殊字符
+    let file_path_str = format!("{}{}", path_with_slash, file_name);
+    let encoded_file_path = urlencoding::encode(&file_path_str);
+    
+    build_github_url(&github_config, "", &encoded_file_path)
 }
 
 fn build_github_url(config: &GithubConfig, path: &str, file_name: &str) -> Result<String, String> {
     if let Some(custom_url) = &config.custom_url {
-        Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name))
-    } else {
-        Ok(format!("https://raw.githubusercontent.com/{}/{}/{}{}",
-            config.repo, config.branch, path, file_name))
+        if !custom_url.is_empty() {
+            // 使用自定义域名（且非空）
+            return Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name));
+        }
     }
+    // 默认 GitHub URL（文件路径已编码）
+    Ok(format!("https://raw.githubusercontent.com/{}/{}/{}{}",
+        config.repo, config.branch, path, file_name))
 }
 
 /// 上传到 Gitee (兼容 PicGo gitee 插件)
@@ -1030,7 +1063,16 @@ async fn upload_to_gitee(file_path: String, gitee_config: GiteeConfig) -> Result
         None => gitee_config.repo.clone(),
     };
     let message = gitee_config.message.as_deref().unwrap_or("Upload by PicGo");
-    let path_in_repo = format!("{}{}", path, file_name);
+    
+    // 确保路径后有分隔符 /
+    let path_with_slash = if path.is_empty() {
+        String::new()
+    } else if path.ends_with('/') {
+        path.to_string()
+    } else {
+        format!("{}/", path)
+    };
+    let path_in_repo = format!("{}{}", path_with_slash, file_name);
 
     let url = format!("https://gitee.com/api/v5/repos/{}/contents/{}", repo_full, path_in_repo);
 
@@ -1054,17 +1096,48 @@ async fn upload_to_gitee(file_path: String, gitee_config: GiteeConfig) -> Result
         return Err(format!("上传失败: HTTP {} - {}", status, response_text));
     }
 
-    let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| format!("解析响应失败: {}", e))?;
+    // 调试日志：输出完整的响应内容（用于排查问题）
+    log(&format!("[Gitee Upload] API Response: {}", response_text));
 
-    if let Some(download_url) = json["content"]["download_url"].as_str() {
-        if let Some(custom_url) = &gitee_config.custom_url {
-            Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path, file_name))
+    // 解析 API 响应，确认上传成功
+    let json: serde_json::Value = serde_json::from_str(&response_text)
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    // 检查是否上传成功（PicGo 方式：手动构建预览 URL）
+    if json["content"]["sha"].is_null() {
+        return Err(format!("上传失败: {}", response_text));
+    }
+
+    log(&format!("[Gitee Upload] repo_full={}, branch={}, path={}, file_name={}", 
+        repo_full, gitee_config.branch, path, file_name));
+    
+    // 手动构建预览 URL（与 PicGo gitee 插件对齐）
+    // 对文件路径部分进行 URL 编码，处理中文和空格等特殊字符
+    let file_path_str = format!("{}{}", path_with_slash, file_name);
+    let encoded_file_path = urlencoding::encode(&file_path_str);
+    
+    let preview_url = if let Some(custom_url) = &gitee_config.custom_url {
+        if !custom_url.is_empty() {
+            // 使用自定义域名（且非空）
+            let custom_url = format!("{}/{}", custom_url.trim_end_matches('/'), encoded_file_path);
+            log(&format!("[Gitee Upload] 使用自定义域名: {}", custom_url));
+            custom_url
         } else {
-            Ok(download_url.to_string())
+            // 自定义域名为空，使用默认 Gitee URL
+            let default_url = format!("https://gitee.com/{}/raw/{}/{}", 
+                repo_full, gitee_config.branch, encoded_file_path);
+            log(&format!("[Gitee Upload] 自定义域名为空，使用默认 URL"));
+            default_url
         }
     } else {
-        Err(format!("上传失败: 未返回下载 URL - {}", response_text))
-    }
+        // 没有配置自定义域名，使用默认 Gitee URL
+        let default_url = format!("https://gitee.com/{}/raw/{}/{}", 
+            repo_full, gitee_config.branch, encoded_file_path);
+        log(&format!("[Gitee Upload] 使用默认 URL: {}", default_url));
+        default_url
+    };
+    
+    Ok(preview_url)
 }
 
 /// 上传到阿里云 OSS (兼容 PicGo aliyun uploader)
@@ -1081,7 +1154,16 @@ async fn upload_to_aliyun_oss(file_path: String, oss_config: AliyunOssConfig) ->
         .and_then(|n| n.to_str())
         .unwrap_or("image.png");
     let path = oss_config.path.as_deref().unwrap_or("");
-    let path_in_oss = format!("{}{}", path, file_name);
+    
+    // 确保路径后有分隔符 /
+    let path_with_slash = if path.is_empty() {
+        String::new()
+    } else if path.ends_with('/') {
+        path.to_string()
+    } else {
+        format!("{}/", path)
+    };
+    let path_in_oss = format!("{}{}", path_with_slash, file_name);
 
     let content_type = mime_guess::from_path(file_name)
         .first_or_octet_stream()
@@ -1112,12 +1194,19 @@ async fn upload_to_aliyun_oss(file_path: String, oss_config: AliyunOssConfig) ->
 
     let status = response.status();
     if status.as_u16() == 200 {
+        // 手动构建预览 URL（与 PicGo aliyun uploader 对齐）
+        // 对文件路径部分进行 URL 编码，处理中文和空格等特殊字符
+        let encoded_path_in_oss = urlencoding::encode(&path_in_oss);
         let option_url = oss_config.options.as_deref().unwrap_or("");
+        
         if let Some(custom_url) = &oss_config.custom_url {
-            Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), path_in_oss, option_url))
-        } else {
-            Ok(format!("https://{}{}{}", host, path_in_oss, option_url))
+            if !custom_url.is_empty() {
+                // 使用自定义域名（且非空）
+                return Ok(format!("{}/{}{}", custom_url.trim_end_matches('/'), encoded_path_in_oss, option_url));
+            }
         }
+        // 默认阿里云 OSS URL
+        Ok(format!("https://{}{}{}", host, encoded_path_in_oss, option_url))
     } else {
         let body = response.text().await.unwrap_or_default();
         Err(format!("上传失败: HTTP {} - {}", status, body))
