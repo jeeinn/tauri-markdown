@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-25
+
+### Added
+- **PicGo Image Host Integration**: Full PicGo-compatible image hosting support with multiple providers (SM.MS, GitHub, Gitee, Imgur, Qiniu, Aliyun OSS)
+- **Auto-Update Support**: Integrated tauri-plugin-updater for automatic update checking and installation
+- **Window State Persistence**: Added tauri-plugin-window-state to remember window size and position across sessions
+- **Upload Notifications**: Added uploading notification with i18n support for upload status feedback
+- **Image Host Settings Enhancement**: Full i18n support for image host settings with reset config feature
+
+### Fixed
+- **Aliyun OSS Signature**: Aligned Aliyun OSS area configuration with PicGo and fixed signature/URL generation bugs
+- **Local Upload**: Fixed local image upload functionality
+- **Config Compatibility**: Improved image host configuration compatibility with PicGo format
+
+### Changed
+- **Image Host UI Simplification**: Simplified image host settings UI for better user experience
+- **Upload Behavior Alignment**: Aligned upload behavior with PicGo standards and improved path handling
+- **HTTP Plugin Update**: Updated tauri-plugin-http dependencies with unsafe-headers and multipart features
+- **Main.rs Refactoring**: Refactored invoke_handler in main.rs for better code organization
+- **Image Host Type Sorting**: Reorganized pic-bed host type sorting in ImageHostSettings component
+
 ## [0.5.3] - 2026-05-20
 
 ### Added
@@ -138,7 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.0...v0.5.1
