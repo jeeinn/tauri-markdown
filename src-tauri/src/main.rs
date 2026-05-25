@@ -446,7 +446,7 @@ struct AliyunOssConfig {
 }
 
 fn default_area() -> String {
-    "z0".to_string()
+    "oss-cn-hangzhou".to_string()
 }
 
 /// 图床总配置 (兼容 PicGo picBed 结构)
@@ -695,7 +695,7 @@ fn convert_from_picgo_format(picgo_data: &serde_json::Value) -> Result<ImageHost
         access_key_id: v.get("accessKeyId").and_then(|k| k.as_str()).unwrap_or("").to_string(),
         access_key_secret: v.get("accessKeySecret").and_then(|k| k.as_str()).unwrap_or("").to_string(),
         bucket: v.get("bucket").and_then(|b| b.as_str()).unwrap_or("").to_string(),
-        area: v.get("area").and_then(|a| a.as_str()).unwrap_or("z0").to_string(),
+        area: v.get("area").and_then(|a| a.as_str()).unwrap_or("oss-cn-hangzhou").to_string(),
         path: v.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()),
         custom_url: v.get("customUrl").and_then(|u| u.as_str()).map(|s| s.to_string()),
         options: v.get("options").and_then(|o| o.as_str()).map(|s| s.to_string()),
@@ -829,7 +829,8 @@ async fn test_aliyun_oss_connection(oss_config: AliyunOssConfig) -> Result<serde
     let client = tauri_plugin_http::reqwest::Client::new();
     let date = chrono_now_utc();
     let host = format!("{}.{}.aliyuncs.com", oss_config.bucket, oss_config.area);
-    let sign_string = format!("GET\n\n\n{}\n/{}", date, oss_config.bucket);
+    // PicGo 签名格式: GET\n\n\n{date}\n/{bucket}/
+    let sign_string = format!("GET\n\n\n{}\n/{}/", date, oss_config.bucket);
 
     type HmacSha1 = Hmac<Sha1>;
     let mut mac = HmacSha1::new_from_slice(oss_config.access_key_secret.as_bytes())
@@ -838,9 +839,11 @@ async fn test_aliyun_oss_connection(oss_config: AliyunOssConfig) -> Result<serde
     let signature = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
     let authorization = format!("OSS {}:{}", oss_config.access_key_id, signature);
 
-    let url = format!("https://{}/?prefix=&max-keys=1", host);
+    log(&format!("[Aliyun Test] Host: {}, Date: {}", host, date));
+    log(&format!("[Aliyun Test] StringToSign: {:?}", sign_string));
+
+    let url = format!("https://{}/?max-keys=1", host);
     let response = client.get(&url)
-        .header("Host", &host)
         .header("Date", &date)
         .header("Authorization", &authorization)
         .send()
@@ -1206,7 +1209,7 @@ async fn upload_to_aliyun_oss(file_path: String, oss_config: AliyunOssConfig) ->
             }
         }
         // 默认阿里云 OSS URL
-        Ok(format!("https://{}{}{}", host, encoded_path_in_oss, option_url))
+        Ok(format!("https://{}/{}{}", host, encoded_path_in_oss, option_url))
     } else {
         let body = response.text().await.unwrap_or_default();
         Err(format!("上传失败: HTTP {} - {}", status, body))

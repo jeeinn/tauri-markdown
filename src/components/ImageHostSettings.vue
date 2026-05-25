@@ -171,13 +171,10 @@
                   />
                 </el-form-item>
                 <el-form-item :label="t.labels.area" prop="area">
-                  <el-select v-model="currentConfig.area" :placeholder="t.placeholders.area">
-                    <el-option :label="t.areaOptions.z0" value="z0" />
-                    <el-option :label="t.areaOptions.z1" value="z1" />
-                    <el-option :label="t.areaOptions.z2" value="z2" />
-                    <el-option :label="t.areaOptions.na0" value="na0" />
-                    <el-option :label="t.areaOptions.as0" value="as0" />
-                  </el-select>
+                  <el-input
+                    v-model="currentConfig.area"
+                    :placeholder="t.placeholders.area"
+                  />
                 </el-form-item>
                 <el-form-item :label="t.labels.path" prop="path">
                   <el-input
@@ -290,7 +287,7 @@ const config = ref({
   smms: { token: '', backupDomain: '' },
   github: { repo: '', branch: 'master', token: '', path: '', customUrl: '' },
   gitee: { owner: '', repo: '', branch: 'master', token: '', path: '', customUrl: '' },
-  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'z0', path: '', customUrl: '', options: '' }
+  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'oss-cn-hangzhou', path: '', customUrl: '', options: '' }
 })
 
 // 表单引用
@@ -325,7 +322,7 @@ const formRules = computed(() => {
     rules.accessKeyId = [{ required: true, message: v.accessKeyIdRequired, trigger: 'blur' }]
     rules.accessKeySecret = [{ required: true, message: v.accessKeySecretRequired, trigger: 'blur' }]
     rules.bucket = [{ required: true, message: v.bucketRequired, trigger: 'blur' }]
-    rules.area = [{ required: true, message: v.areaRequired, trigger: 'change' }]
+    rules.area = [{ required: true, message: v.areaRequired, trigger: 'blur' }]
   }
   
   return rules
@@ -357,7 +354,7 @@ const defaultConfig = {
   smms: { token: '', backupDomain: '' },
   github: { repo: '', branch: 'master', token: '', path: '', customUrl: '' },
   gitee: { owner: '', repo: '', branch: 'master', token: '', path: '', customUrl: '' },
-  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'z0', path: '', customUrl: '', options: '' }
+  aliyun_oss: { accessKeyId: '', accessKeySecret: '', bucket: '', area: 'oss-cn-hangzhou', path: '', customUrl: '', options: '' }
 }
 
 // 加载配置 (仅从 store.json)
