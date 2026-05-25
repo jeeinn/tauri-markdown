@@ -274,10 +274,10 @@ const dialogVisible = computed({
 
 // 图床类型列表
 const hostTypes = [
-  { value: 'smms', label: 'SM.MS', icon: Picture },
   { value: 'github', label: 'GitHub', icon: Connection },
   { value: 'gitee', label: 'Gitee', icon: Upload },
-  { value: 'aliyun_oss', label: '阿里云 OSS', icon: Cloudy }
+  { value: 'aliyun_oss', label: '阿里云 OSS', icon: Cloudy },
+  { value: 'smms', label: 'SM.MS', icon: Picture }
 ]
 
 // 配置数据
