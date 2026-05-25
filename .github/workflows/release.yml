@@ -99,7 +99,6 @@ jobs:
           releaseName: "Tauri Markdown ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: true
-          updaterJsonPreferNsis: true
 
       - name: Build portable version (Windows only)
         if: matrix.platform == 'windows-latest'
