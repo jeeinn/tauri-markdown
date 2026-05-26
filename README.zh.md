@@ -15,43 +15,9 @@
 ### 深色主题
 ![深色主题](imgs/tmd_theme_dark.png)
 
-## 📥 下载
+## 下载
 
 从 [GitHub Releases](https://github.com/jeeinn/tauri-markdown/releases) 获取最新版本。
-
-### Windows
-
-| 版本 | 说明 |
-|------|------|
-| **便携版 ZIP** ⭐推荐 | 完整便携包，配置文件存储在同目录。适合 U 盘携带！ |
-| 独立 EXE 版 | 最小化包，仅含可执行文件。手动创建 `.portable` 文件可启用便携模式。 |
-| NSIS 安装程序 | 标准 Windows 安装程序，创建开始菜单快捷方式 |
-| MSI 安装包 | Windows Installer 包，适合企业部署 |
-
-> 💡 **便携版 ZIP vs 独立 EXE 版：**
-> - **便携版 ZIP**：包含 `.portable` 标记文件、README 和资源文件。配置自动保存在同目录。
-> - **独立 EXE 版**：仅有可执行文件。如需便携行为，请手动添加 `.portable` 文件。
-
-### macOS
-
-| 架构 | 格式 |
-|------|------|
-| Apple Silicon (M1/M2/M3) | DMG |
-| Intel | DMG |
-
-### Linux
-
-| 发行版 | 格式 |
-|--------|------|
-| Debian/Ubuntu | DEB |
-| Fedora/RHEL | RPM |
-| 任意发行版 | AppImage |
-
-> 💡 **为什么选择便携版？**
-> - ✅ 所有配置文件与可执行文件存储在同目录
-> - ✅ 可放在 U 盘中随身携带
-> - ✅ 不在系统中留下任何痕迹
-> - ✅ 删除文件夹 = 完全卸载
 
 ## 更新日志
 
