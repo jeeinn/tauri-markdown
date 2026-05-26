@@ -22,6 +22,7 @@
       }
     ],
     "security": {
+      "dangerousDisableAssetCspModification": ["script-src"],
       "csp": {
         "default-src": "'self' ipc: http://ipc.localhost",
         "img-src": "'self' asset: http://asset.localhost http://tmd.localhost https: http: blob: data:",
