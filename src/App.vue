@@ -109,6 +109,13 @@
 
       <!-- 语言切换器 -->
       <div class="menubar-right">
+        <!-- 查找按钮 -->
+        <button class="find-btn" @click="showFindReplace" title="查找/替换 (Ctrl+F)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
         <span class="language-label">{{ menuLanguage.label }}:</span>
         <el-select v-model="currentLang" @change="switchLanguage" size="small" style="width: 120px;">
           <el-option label="中文" value="zh_CN" />
@@ -121,6 +128,12 @@
 
     <!-- Vditor 编辑器 -->
     <MyVditor ref="vditor" />
+
+    <!-- 查找/替换组件 -->
+    <FindReplace
+      ref="findReplace"
+      :lang="currentLang"
+    />
 
     <!-- Zen 模式提示框 -->
     <transition name="fade">
@@ -139,6 +152,7 @@
 
 <script>
 import MyVditor from './components/MyVditor.vue'
+import FindReplace from './components/FindReplace.vue'
 import ImageHostSettings from './components/ImageHostSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
@@ -149,6 +163,7 @@ export default {
   name: 'App',
   components: {
     MyVditor,
+    FindReplace,
     ImageHostSettings,
     ArrowDown,
   },
@@ -207,6 +222,16 @@ export default {
   },
   
   methods: {
+    // 显示查找/替换面板
+    showFindReplace() {
+      // 传递 vditor ref 给 FindReplace 组件
+      const findReplace = this.$refs.findReplace
+      if (findReplace) {
+        findReplace.vditorRef = this.$refs.vditor
+        findReplace.show()
+      }
+    },
+
     // 处理键盘快捷键
     handleKeyboardShortcut(event) {
       // F11: 切换 Zen 模式
@@ -587,6 +612,25 @@ export default {
   color: #909399;
   margin-right: 4px;
   white-space: nowrap;
+}
+
+/* 查找按钮 */
+.find-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.find-btn:hover {
+  background: #e4e7ed;
+  color: #409eff;
 }
 
 /* Zen 模式提示框 */
