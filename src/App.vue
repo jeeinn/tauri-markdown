@@ -109,6 +109,13 @@
 
       <!-- 语言切换器 -->
       <div class="menubar-right">
+        <!-- 查找按钮 -->
+        <button class="find-btn" @click="showFindReplace" :title="findReplaceI18n.tooltip">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10.5" cy="10.5" r="7"></circle>
+            <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
+          </svg>
+        </button>
         <span class="language-label">{{ menuLanguage.label }}:</span>
         <el-select v-model="currentLang" @change="switchLanguage" size="small" style="width: 120px;">
           <el-option label="中文" value="zh_CN" />
@@ -121,6 +128,12 @@
 
     <!-- Vditor 编辑器 -->
     <MyVditor ref="vditor" />
+
+    <!-- 查找/替换组件 -->
+    <FindReplace
+      ref="findReplace"
+      :lang="currentLang"
+    />
 
     <!-- Zen 模式提示框 -->
     <transition name="fade">
@@ -139,6 +152,7 @@
 
 <script>
 import MyVditor from './components/MyVditor.vue'
+import FindReplace from './components/FindReplace.vue'
 import ImageHostSettings from './components/ImageHostSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
@@ -149,6 +163,7 @@ export default {
   name: 'App',
   components: {
     MyVditor,
+    FindReplace,
     ImageHostSettings,
     ArrowDown,
   },
@@ -180,6 +195,10 @@ export default {
     menuLanguage() {
       return getI18nConfig(this.currentLang).language;
     },
+    // 查找/替换的 I18n 文本
+    findReplaceI18n() {
+      return getI18nConfig(this.currentLang).findReplace;
+    },
     // Zen 模式提示文本
     zenTipText() {
       const i18n = getI18nConfig(this.currentLang);
@@ -207,6 +226,16 @@ export default {
   },
   
   methods: {
+    // 显示查找/替换面板
+    showFindReplace() {
+      // 传递 vditor ref 给 FindReplace 组件
+      const findReplace = this.$refs.findReplace
+      if (findReplace) {
+        findReplace.vditorRef = this.$refs.vditor
+        findReplace.show()
+      }
+    },
+
     // 处理键盘快捷键
     handleKeyboardShortcut(event) {
       // F11: 切换 Zen 模式
@@ -587,6 +616,35 @@ export default {
   color: #909399;
   margin-right: 4px;
   white-space: nowrap;
+}
+
+/* 查找按钮 - 样式与 menu-item 保持一致 */
+.find-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.find-btn:hover {
+  background: #e4e7ed;
+  color: #409eff;
+}
+
+/* 暗色主题下查找按钮样式 */
+html.dark .find-btn {
+  color: #cfd3dc;
+}
+
+html.dark .find-btn:hover {
+  background: #363637;
+  color: #409eff;
 }
 
 /* Zen 模式提示框 */
