@@ -110,10 +110,10 @@
       <!-- 语言切换器 -->
       <div class="menubar-right">
         <!-- 查找按钮 -->
-        <button class="find-btn" @click="showFindReplace" title="查找/替换 (Ctrl+F)">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <button class="find-btn" @click="showFindReplace" :title="findReplaceI18n.tooltip">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10.5" cy="10.5" r="7"></circle>
+            <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
           </svg>
         </button>
         <span class="language-label">{{ menuLanguage.label }}:</span>
@@ -194,6 +194,10 @@ export default {
     // 当前语言的语言菜单文本
     menuLanguage() {
       return getI18nConfig(this.currentLang).language;
+    },
+    // 查找/替换的 I18n 文本
+    findReplaceI18n() {
+      return getI18nConfig(this.currentLang).findReplace;
     },
     // Zen 模式提示文本
     zenTipText() {
@@ -614,12 +618,12 @@ export default {
   white-space: nowrap;
 }
 
-/* 查找按钮 */
+/* 查找按钮 - 样式与 menu-item 保持一致 */
 .find-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px;
+  padding: 5px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -630,6 +634,16 @@ export default {
 
 .find-btn:hover {
   background: #e4e7ed;
+  color: #409eff;
+}
+
+/* 暗色主题下查找按钮样式 */
+html.dark .find-btn {
+  color: #cfd3dc;
+}
+
+html.dark .find-btn:hover {
+  background: #363637;
   color: #409eff;
 }
 
