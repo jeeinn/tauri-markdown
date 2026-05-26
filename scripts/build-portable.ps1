@@ -31,7 +31,14 @@ Write-Host "🚀 Starting portable build process..." -ForegroundColor Cyan
 
 # 1. Build Tauri app (only MSI to save time, skip NSIS)
 Write-Host "📦 Building Tauri application..." -ForegroundColor Yellow
-npm run tauri build -- --bundles msi
+# Check if signing key is available
+if ([string]::IsNullOrEmpty($env:TAURI_SIGNING_PRIVATE_KEY)) {
+    Write-Host "⚠️  No signing key found, building without updater artifacts..." -ForegroundColor Yellow
+    npm run tauri build -- --bundles msi --config '{"bundle":{"createUpdaterArtifacts":false}}'
+} else {
+    Write-Host "✅ Signing key found, building with updater artifacts..." -ForegroundColor Green
+    npm run tauri build -- --bundles msi
+}
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Build failed!" -ForegroundColor Red
