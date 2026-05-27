@@ -55,7 +55,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-13 # Intel Mac runner for x86_64
+          - platform: macos-15-intel # Intel Mac runner for x86_64 (macos-13 deprecated)
             rust_targets: x86_64-apple-darwin
           - platform: macos-latest # Apple Silicon Mac runner for aarch64
             rust_targets: aarch64-apple-darwin
