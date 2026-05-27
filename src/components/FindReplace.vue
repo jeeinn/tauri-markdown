@@ -412,6 +412,9 @@ export default {
         // 设置新内容
         this.vditorInstance.setValue(newText)
 
+        // 通知父组件内容已修改
+        this.$emit('content-changed')
+
         // 重新搜索
         this.$nextTick(() => {
           this.performSearch()
@@ -434,6 +437,9 @@ export default {
         const newText = text.replace(searchRegex, this.replaceText)
 
         this.vditorInstance.setValue(newText)
+
+        // 通知父组件内容已修改
+        this.$emit('content-changed')
 
         // 重新搜索
         this.$nextTick(() => {
