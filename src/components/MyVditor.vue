@@ -19,7 +19,7 @@
 import Vditor from 'vditor'
 import 'vditor/dist/index.css'
 import '../assets/vditor-custom.css'
-import {ElMessageBox, ElNotification} from "element-plus"
+import {ElMessageBox, ElNotification, ElMessage} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import { getI18nConfig, getI18nText } from '../utils/i18n-helper.js'
 // 导入系统组件
@@ -440,7 +440,7 @@ export default {
         if (!fileExists) {
           console.log('[DEBUG] 文件不存在,清除记录')
           await this.clearCurrentFile()
-          ElNotification.warning({
+          ElNotification.info({
             title: this.t.autoLoad.fileNotExist.title,
             message: this.t.autoLoad.fileNotExist.message,
             duration: 3000
@@ -450,13 +450,13 @@ export default {
 
         await this.loadFileByPath(lastFilePath)
 
-        // 显示加载成功提示
-        const fileName = lastFilePath.split('\\').pop() || lastFilePath.split('/').pop()
-        ElNotification.success({
-          title: this.t.autoLoad.success.title,
-          message: fileName,
-          duration: 2000
-        })
+        // 窗口标题已显示文件名，无需额外通知
+        // const fileName = lastFilePath.split('\\').pop() || lastFilePath.split('/').pop()
+        // ElNotification.success({
+        //   title: this.t.autoLoad.success.title,
+        //   message: fileName,
+        //   duration: 2000
+        // })
       } catch (error) {
         console.error('[ERROR] 自动加载上次文件失败:', error)
         console.error('[ERROR] 错误详情:', {
@@ -550,10 +550,10 @@ export default {
         if (!success) return false
 
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElNotification.success({
+        ElNotification.info({
           title: this.t.openFile.success.title,
           message: fileName,
-          duration: 2000
+          duration: 1000
         })
       } catch (error) {
         console.error('文件读取失败:', error)
@@ -596,10 +596,9 @@ export default {
         if (!this.isContentModified && this.originalContent !== '') {
           // 内容未修改,提示用户
           this.isSaving = false
-          ElNotification.info({
-            title: this.t.saveFile.notModified.title,
+          ElMessage.info({
             message: this.t.saveFile.notModified.message,
-            duration: 2000
+            duration: 1500
           })
           return true
         }
@@ -640,10 +639,9 @@ export default {
         await this.updateWindowTitle()
 
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElNotification.success({
-          title: this.t.saveFile.success.title,
-          message: fileName,
-          duration: 2000
+        ElMessage.success({
+          message: `${this.t.saveFile.success.title}: ${fileName}`,
+          duration: 1500
         })
         return true
       } catch (error) {
@@ -693,9 +691,8 @@ export default {
         await writeTextFile(filePath, content)
 
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElNotification.success({
-          title: this.t.exportFile.success.title,
-          message: fileName,
+        ElMessage.success({
+          message: `${this.t.exportFile.success.title}: ${fileName}`,
           duration: 2000
         })
         return true
