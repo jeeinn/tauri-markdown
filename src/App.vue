@@ -133,6 +133,7 @@
     <FindReplace
       ref="findReplace"
       :lang="currentLang"
+      @content-changed="handleContentChanged"
     />
 
     <!-- Zen 模式提示框 -->
@@ -233,6 +234,14 @@ export default {
       if (findReplace) {
         findReplace.vditorRef = this.$refs.vditor
         findReplace.show()
+      }
+    },
+
+    // 处理内容更改事件（来自查找/替换组件）
+    handleContentChanged() {
+      // 通知 MyVditor 组件检查内容修改状态
+      if (this.$refs.vditor) {
+        this.$refs.vditor.checkContentModified();
       }
     },
 
