@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-05-27
+
+### Fixed
+- **Find/Replace Content Detection**: Added content change detection for find/replace operations to properly track modifications
+- **Updater Progress Display**: Replaced progress placeholder in updater download progress display for accurate percentage showing
+
+### Changed
+- **Notification Types Optimization**: Refactored and optimized notification types for better code organization
+
 ## [0.6.1] - 2026-05-26
 
 ### Added
@@ -169,7 +178,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.2...v0.5.3
