@@ -391,7 +391,7 @@ export default {
                       downloaded += event.data.chunkLength || 0;
                       const percent = contentLength > 0 ? Math.round((downloaded / contentLength) * 100) : 0;
                       const downloadedMB = (downloaded / 1024 / 1024).toFixed(2);
-                      const msg = `${updaterI18n.downloadProgress || '下载进度: {progress}%'} (${downloadedMB} MB)`;
+                      const msg = `${(updaterI18n.downloadProgress || '下载进度: {progress}%').replace('{progress}', percent)} (${downloadedMB} MB)`;
                       if (msg !== progressText) {
                         instance.message = msg;
                         progressText = msg;
