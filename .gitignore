@@ -28,6 +28,8 @@ nul
 #Agents
 .claude
 .lingma
+.codegraph/daemon.pid
+
 
 # Vitest
 coverage
