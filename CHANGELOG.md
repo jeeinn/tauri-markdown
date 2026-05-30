@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-05-30
+
+### Added
+- **Open Links in System Browser**: Added tauri-plugin-opener to intercept link clicks in the Vditor editor and open http/https URLs in the system default browser instead of navigating within the webview
+
+### Changed
+- **CodeGraph Config**: Added .codegraph/daemon.pid to .gitignore
+
 ## [0.6.2] - 2026-05-27
 
 ### Fixed
@@ -178,7 +186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.5.3...v0.6.0
