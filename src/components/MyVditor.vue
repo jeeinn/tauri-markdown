@@ -61,6 +61,7 @@ export default {
       originalContent: '', // 原始文件内容,用于对比
       isSaving: false, // 是否正在保存(防止保存过程中触发修改检测)
       _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
+      _handleLinkClick: null, // 链接点击拦截处理函数
       // 滚动位置记忆管理器
       scrollMemory: null,
       // 主题状态跟踪
@@ -122,6 +123,15 @@ export default {
     if (this._unlistenCloseRequest) {
       this._unlistenCloseRequest();
       this._unlistenCloseRequest = null;
+    }
+
+    // 清理链接点击拦截监听
+    if (this._handleLinkClick) {
+      const vditorEle = document.getElementById('vditorEle');
+      if (vditorEle) {
+        vditorEle.removeEventListener('click', this._handleLinkClick);
+      }
+      this._handleLinkClick = null;
     }
 
     // 清理拖拽文件管理器
@@ -187,6 +197,68 @@ export default {
       } catch (error) {
         console.error('[WindowClose] 初始化窗口关闭拦截失败:', error);
       }
+    },
+
+    // ========== 链接拦截 ==========
+
+    // 拦截文档内 http/https 链接点击，用系统默认浏览器打开
+    async setupLinkClickHandler() {
+      // 先清理旧监听器（语言切换会重建 Vditor 实例）
+      if (this._handleLinkClick) {
+        const oldEl = document.getElementById('vditorEle');
+        if (oldEl) {
+          oldEl.removeEventListener('click', this._handleLinkClick);
+        }
+        this._handleLinkClick = null;
+      }
+
+      // 动态导入 opener 插件
+      let openUrl;
+      try {
+        const opener = await import('@tauri-apps/plugin-opener');
+        openUrl = opener.openUrl;
+      } catch (err) {
+        console.error('[Link] 导入 opener 插件失败:', err);
+        return;
+      }
+
+      const vditorEle = document.getElementById('vditorEle');
+      if (!vditorEle) return;
+
+      this._handleLinkClick = (e) => {
+        let href = null;
+
+        // 方式1: 标准 a 标签（预览模式、WYSIWYG 模式）
+        const aTag = e.target.closest('a[href]');
+        if (aTag) {
+          href = aTag.getAttribute('href');
+        }
+
+        // 方式2: Vditor IR 模式 — 链接 URL 存在 .vditor-ir__marker--link 中
+        if (!href) {
+          const irNode = e.target.closest('[data-type="a"]');
+          if (irNode) {
+            const urlSpan = irNode.querySelector('.vditor-ir__marker--link');
+            if (urlSpan) {
+              href = urlSpan.textContent.trim();
+            }
+          }
+        }
+
+        if (href && /^https?:\/\//i.test(href)) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (DEBUG) console.log('[Link] 打开链接:', href);
+          openUrl(href).then(() => {
+            if (DEBUG) console.log('[Link] 链接已打开:', href);
+          }).catch((err) => {
+            console.error('[Link] 打开链接失败:', err);
+          });
+        }
+      };
+
+      vditorEle.addEventListener('click', this._handleLinkClick);
+      console.log('[Link] 链接点击拦截已初始化');
     },
 
     // ========== 主题管理 ==========
@@ -291,6 +363,8 @@ export default {
         this.autoLoadLastFile();
         // 初始化窗口标题
         this.updateWindowTitle();
+        // 设置链接点击拦截（用系统默认浏览器打开 http/https 链接）
+        this.setupLinkClickHandler();
       };
 
       // 创建新实例
