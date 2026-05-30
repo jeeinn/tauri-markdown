@@ -37,6 +37,7 @@
     "core:app:allow-version",
     "core:webview:allow-print",
     "updater:default",
-    "process:default"
+    "process:default",
+    "opener:default"
   ]
 }
