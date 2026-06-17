@@ -29,15 +29,15 @@
           @click.stop="$emit('close-tab', tab.id)"
         >×</button>
       </div>
-    </div>
 
-    <!-- 新建标签按钮 -->
-    <button
-      class="tab-new"
-      :aria-label="newTabLabel"
-      :title="newTabLabel"
-      @click="$emit('new-tab')"
-    >+</button>
+      <!-- 新建标签按钮（sticky：无滚动时紧跟最后一个标签，滚动时固定右侧） -->
+      <button
+        class="tab-new"
+        :aria-label="newTabLabel"
+        :title="newTabLabel"
+        @click="$emit('new-tab')"
+      >+</button>
+    </div>
   </div>
 </template>
 
@@ -195,6 +195,10 @@ function handleDrop(event) {
   border-bottom-color: #409eff;
 }
 
+.tab-bar.drag-over .tab-new {
+  background: #e8f4fd;
+}
+
 /* 标签列表区域（可水平滚动） */
 .tab-list {
   display: flex;
@@ -284,7 +288,7 @@ function handleDrop(event) {
   color: #f56c6c;
 }
 
-/* 新建标签按钮 */
+/* 新建标签按钮（sticky：无滚动时紧跟标签，滚动时固定右侧） */
 .tab-new {
   display: flex;
   align-items: center;
@@ -292,14 +296,16 @@ function handleDrop(event) {
   width: 40px;
   height: 100%;
   border: none;
-  background: none;
+  background: #f0f2f5;
   cursor: pointer;
   color: #909399;
   font-size: 20px;
   line-height: 1;
   padding: 0;
   flex-shrink: 0;
-  border-left: 1px solid #e4e7ed;
+  position: sticky;
+  right: 0;
+  z-index: 1;
   transition: background 0.2s, color 0.2s;
 }
 
@@ -350,7 +356,7 @@ html.dark .tab-close:hover {
 
 html.dark .tab-new {
   color: #606266;
-  border-left-color: #363637;
+  background: #1a1b1c;
 }
 
 html.dark .tab-new:hover {
