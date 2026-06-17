@@ -131,7 +131,7 @@
       :tabs="tabStore.tabs"
       :active-tab-id="tabStore.activeTabId"
       :lang="currentLang"
-      @switch-tab="tabStore.switchTab"
+      @switch-tab="handleSwitchTab"
       @close-tab="handleCloseTab"
       @new-tab="handleNewTab"
       @open-file="handleOpenFile"
@@ -341,6 +341,17 @@ export default {
     },
 
     /**
+     * 切换标签页并更新窗口标题
+     */
+    handleSwitchTab(tabId) {
+      this.tabStore.switchTab(tabId)
+      // 切换后更新窗口标题为新激活标签的文件名
+      this.$nextTick(() => {
+        this.getActiveVditor()?.updateWindowTitle()
+      })
+    },
+
+    /**
      * 初始化拖拽文件管理器
      */
     initDragDrop() {
@@ -490,7 +501,7 @@ export default {
         if (tabs.length > 1) {
           const idx = tabs.findIndex(t => t.id === this.tabStore.activeTabId);
           const nextIdx = (idx + 1) % tabs.length;
-          this.tabStore.switchTab(tabs[nextIdx].id);
+          this.handleSwitchTab(tabs[nextIdx].id);
         }
         return;
       }
