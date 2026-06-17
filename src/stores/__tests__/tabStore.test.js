@@ -264,6 +264,63 @@ describe('useTabStore', () => {
     })
   })
 
+  // ── reorderTab ──────────────────────────────────────────────────────────────
+
+  describe('reorderTab', () => {
+    it('将标签从前面移到后面', async () => {
+      const store = await getStore()
+      const tab1 = store.addTab('/a.md')
+      const tab2 = store.addTab('/b.md')
+      const tab3 = store.addTab('/c.md')
+
+      store.reorderTab(tab1.id, tab3.id)
+
+      expect(store.tabs.map(t => t.filePath)).toEqual(['/b.md', '/c.md', '/a.md'])
+    })
+
+    it('将标签从后面移到前面', async () => {
+      const store = await getStore()
+      const tab1 = store.addTab('/a.md')
+      const tab2 = store.addTab('/b.md')
+      const tab3 = store.addTab('/c.md')
+
+      store.reorderTab(tab3.id, tab1.id)
+
+      expect(store.tabs.map(t => t.filePath)).toEqual(['/c.md', '/a.md', '/b.md'])
+    })
+
+    it('相同位置移动时不变', async () => {
+      const store = await getStore()
+      const tab1 = store.addTab('/a.md')
+      const tab2 = store.addTab('/b.md')
+
+      store.reorderTab(tab1.id, tab1.id)
+
+      expect(store.tabs.map(t => t.filePath)).toEqual(['/a.md', '/b.md'])
+    })
+
+    it('移动不存在的标签时无副作用', async () => {
+      const store = await getStore()
+      const tab1 = store.addTab('/a.md')
+      const tab2 = store.addTab('/b.md')
+
+      expect(() => store.reorderTab('non-existent', tab1.id)).not.toThrow()
+      expect(store.tabs.map(t => t.filePath)).toEqual(['/a.md', '/b.md'])
+    })
+
+    it('移动后 activeTabId 不变', async () => {
+      const store = await getStore()
+      const tab1 = store.addTab('/a.md')
+      const tab2 = store.addTab('/b.md')
+      const tab3 = store.addTab('/c.md')
+
+      const activeBefore = store.activeTabId
+      store.reorderTab(tab1.id, tab3.id)
+
+      expect(store.activeTabId).toBe(activeBefore)
+    })
+  })
+
   // ── hasUnsavedChanges ────────────────────────────────────────────────────────
 
   describe('hasUnsavedChanges', () => {

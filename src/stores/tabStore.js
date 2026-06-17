@@ -155,6 +155,23 @@ export const useTabStore = defineStore('tab', () => {
   }
 
   /**
+   * 将标签从当前位置移动到目标位置（拖拽排序）
+   *
+   * @param {string} fromId - 被拖动的标签 ID
+   * @param {string} toId - 目标位置的标签 ID（在其前面插入）
+   */
+  function reorderTab(fromId, toId) {
+    if (fromId === toId) return
+
+    const fromIndex = tabs.value.findIndex(t => t.id === fromId)
+    const toIndex = tabs.value.findIndex(t => t.id === toId)
+    if (fromIndex === -1 || toIndex === -1) return
+
+    const [moved] = tabs.value.splice(fromIndex, 1)
+    tabs.value.splice(toIndex, 0, moved)
+  }
+
+  /**
    * 将当前 tabs 和 activeTabId 持久化到 store.js
    */
   async function saveTabs() {
@@ -222,6 +239,7 @@ export const useTabStore = defineStore('tab', () => {
     addTab,
     switchTab,
     closeTab,
+    reorderTab,
     updateTab,
     saveTabs,
     loadTabs,

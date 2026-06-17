@@ -4,20 +4,27 @@
     @dragover.prevent="handleDragOver"
     @drop.prevent="handleDrop"
     @dragleave="handleDragLeave"
-    :class="{ 'drag-over': isDragOver }"
+    @mousemove="handleTabMouseMove"
+    @mouseup="handleTabMouseUp"
+    :class="{ 'drag-over': isDragOver, 'tab-dragging': isDragging }"
   >
     <!-- 标签列表 -->
-    <div class="tab-list">
+    <div class="tab-list" ref="tabListRef">
       <div
         v-for="tab in tabs"
         :key="tab.id"
         class="tab-item"
-        :class="{ 'tab-active': tab.id === activeTabId }"
+        :data-tab-id="tab.id"
+        :class="{
+          'tab-active': tab.id === activeTabId,
+          'tab-drag-over': dragOverTabId === tab.id && dragOverTabId !== draggingTabId
+        }"
         :title="tab.filePath || getTabTitle(tab, lang)"
         :aria-label="getTabTitle(tab, lang)"
         :aria-selected="tab.id === activeTabId"
         role="tab"
-        @click="$emit('switch-tab', tab.id)"
+        @click="handleTabClick($event, tab.id)"
+        @mousedown="handleTabMouseDown($event, tab.id)"
       >
         <!-- 标签标题 -->
         <span class="tab-title">{{ getTabTitle(tab, lang) }}</span>
@@ -61,10 +68,19 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['switch-tab', 'close-tab', 'new-tab', 'open-file'])
+const emit = defineEmits(['switch-tab', 'close-tab', 'new-tab', 'open-file', 'reorder-tab', 'tab-drag-start', 'tab-drag-end'])
 
-// 拖拽状态
+// 文件拖拽状态
 const isDragOver = ref(false)
+const tabListRef = ref(null)
+
+// 标签拖拽排序状态（基于鼠标事件）
+const draggingTabId = ref(null)
+const dragOverTabId = ref(null)
+let dragStartX = 0
+let dragStartY = 0
+const DRAG_THRESHOLD = 5 // 拖拽启动阈值（像素）
+let isDragging = false
 
 // 国际化标签
 const closeLabel = computed(() => {
@@ -91,8 +107,13 @@ const newTabLabel = computed(() => {
  * 处理拖拽悬停事件
  */
 function handleDragOver(event) {
+  if (draggingTabId.value) {
+    // 标签拖动排序：允许放置 + 设置 dropEffect（防止禁止图标）
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    return
+  }
   isDragOver.value = true
-  // 允许文件拖放
   event.dataTransfer.dropEffect = 'copy'
 }
 
@@ -112,6 +133,8 @@ function handleDragLeave(event) {
  */
 function handleDrop(event) {
   isDragOver.value = false
+  // 标签拖动排序时不处理文件拖放
+  if (draggingTabId.value) return
   // 阻止事件冒泡到全局 useDragDrop 处理器，避免 handleOpenFile 被调用两次
   event.stopPropagation()
 
@@ -174,6 +197,88 @@ function handleDrop(event) {
     emit('open-file', filePath)
   }
 }
+
+// ─── 标签拖拽排序（基于鼠标事件，兼容 Tauri WebView）───────────────────────
+
+/**
+ * 鼠标按下：记录起始位置和待拖动的标签 ID
+ */
+function handleTabMouseDown(event, tabId) {
+  // 只响应左键
+  if (event.button !== 0) return
+  dragStartX = event.clientX
+  dragStartY = event.clientY
+  draggingTabId.value = tabId
+  isDragging = false
+  console.log('[TabDrag] mousedown:', tabId)
+}
+
+/**
+ * 鼠标移动：超过阈值后开始拖拽，实时计算目标标签
+ */
+function handleTabMouseMove(event) {
+  if (!draggingTabId.value) return
+
+  const dx = event.clientX - dragStartX
+  const dy = event.clientY - dragStartY
+
+  // 未超过阈值，不算拖拽
+  if (!isDragging) {
+    if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return
+    isDragging = true
+    console.log('[TabDrag] drag started')
+    emit('tab-drag-start')
+  }
+
+  // 通过鼠标位置找到目标标签元素
+  const tabList = tabListRef.value
+  if (!tabList) return
+
+  // 临时隐藏被拖动的元素，用 elementFromPoint 找到下面的真实目标
+  const draggedEl = tabList.querySelector(`[data-tab-id="${draggingTabId.value}"]`)
+  if (draggedEl) draggedEl.style.pointerEvents = 'none'
+  const targetEl = document.elementFromPoint(event.clientX, event.clientY)
+  if (draggedEl) draggedEl.style.pointerEvents = ''
+
+  const tabEl = targetEl?.closest('.tab-item')
+  const targetId = tabEl?.dataset?.tabId || null
+  if (targetId && dragOverTabId.value !== targetId) {
+    console.log('[TabDrag] over:', targetId)
+  }
+  dragOverTabId.value = targetId
+}
+
+/**
+ * 鼠标抬起：完成拖拽，发出 reorder 事件
+ */
+function handleTabMouseUp(event) {
+  if (!draggingTabId.value) return
+
+  if (isDragging && dragOverTabId.value && dragOverTabId.value !== draggingTabId.value) {
+    console.log('[TabDrag] reorder:', draggingTabId.value, '->', dragOverTabId.value)
+    emit('reorder-tab', draggingTabId.value, dragOverTabId.value)
+  }
+
+  // 清理状态
+  const wasDragging = isDragging
+  draggingTabId.value = null
+  dragOverTabId.value = null
+  isDragging = false
+  if (wasDragging) {
+    emit('tab-drag-end')
+  }
+}
+
+/**
+ * 标签点击：仅在非拖拽状态下触发切换
+ */
+function handleTabClick(event, tabId) {
+  if (isDragging) {
+    event.preventDefault()
+    return
+  }
+  emit('switch-tab', tabId)
+}
 </script>
 
 <style scoped>
@@ -189,7 +294,7 @@ function handleDrop(event) {
   transition: background 0.2s;
 }
 
-/* 拖拽悬停高亮 */
+/* 文件拖拽悬停高亮 */
 .tab-bar.drag-over {
   background: #e8f4fd;
   border-bottom-color: #409eff;
@@ -197,6 +302,21 @@ function handleDrop(event) {
 
 .tab-bar.drag-over .tab-new {
   background: #e8f4fd;
+}
+
+/* 标签拖拽排序：目标标签左侧显示蓝色插入线 */
+.tab-item.tab-drag-over {
+  box-shadow: inset 3px 0 0 #409eff;
+}
+
+/* 拖拽中：防止文字选中 */
+.tab-bar.tab-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.tab-bar.tab-dragging .tab-item {
+  cursor: grabbing;
 }
 
 /* 标签列表区域（可水平滚动） */

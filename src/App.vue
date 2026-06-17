@@ -140,6 +140,9 @@
         @close-tab="handleCloseTab"
         @new-tab="handleNewTab"
         @open-file="handleOpenFile"
+        @reorder-tab="handleReorderTab"
+        @tab-drag-start="dragDropManager?.suppressOverlay?.()"
+        @tab-drag-end="dragDropManager?.restoreOverlay?.()"
       />
       <div class="tab-contents">
         <TabContent
@@ -361,6 +364,14 @@ export default {
         const newTabId = this.tabStore.activeTabId
         this._loadFileInNewTab(path, newTabId)
       }
+    },
+
+    /**
+     * 标签拖拽排序
+     */
+    handleReorderTab(fromId, toId) {
+      this.tabStore.reorderTab(fromId, toId)
+      this.persistTabs()
     },
 
     /**
