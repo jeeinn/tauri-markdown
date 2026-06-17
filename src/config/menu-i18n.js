@@ -30,7 +30,8 @@ export default {
     windowTitle: {
       appName: 'Tauri Markdown',
       untitled: '未命名',
-      modifiedMarker: '●',
+      modifiedMarker: '*',
+      tabSeparator: ' - ',
     },
     shortcuts: {
       new: 'Ctrl+N',
@@ -76,6 +77,39 @@ export default {
     zenTipEnter: '已进入 Zen 模式，按 ESC 退出',
     zenTipExit: '已退出 Zen 模式',
     notifications: {
+      // 标签页操作
+      tabs: {
+        // 新建标签页
+        newTab: {
+          unsavedChanges: {
+            title: '提示',
+            message: '当前标签页有未保存的修改，是否继续新建？',
+            confirmButtonText: '继续',
+            cancelButtonText: '取消',
+            thirdButtonText: '不保存并继续',
+          },
+        },
+        // 关闭标签页
+        closeTab: {
+          unsavedChanges: {
+            title: '提示',
+            message: '标签页 "{fileName}" 有未保存的修改，是否保存？',
+            confirmButtonText: '保存并关闭',
+            cancelButtonText: '取消',
+            thirdButtonText: '丢弃',
+          },
+        },
+        // 关闭全部标签页
+        closeAllTabs: {
+          unsavedChanges: {
+            title: '提示',
+            message: '有 {count} 个标签页有未保存的修改，是否保存？',
+            confirmButtonText: '全部保存',
+            cancelButtonText: '全部丢弃',
+            thirdButtonText: '取消',
+          },
+        },
+      },
       // 新建文件
       newFile: {
         unsavedChanges: {
@@ -353,7 +387,8 @@ export default {
     windowTitle: {
       appName: 'Tauri Markdown',
       untitled: 'Untitled',
-      modifiedMarker: '●',
+      modifiedMarker: '*',
+      tabSeparator: ' - ',
     },
     shortcuts: {
       new: 'Ctrl+N',
@@ -399,6 +434,39 @@ export default {
     zenTipEnter: 'Entered Zen Mode, press ESC to exit',
     zenTipExit: 'Exited Zen Mode',
     notifications: {
+      // Tab operations
+      tabs: {
+        // New tab
+        newTab: {
+          unsavedChanges: {
+            title: 'Notice',
+            message: 'Current tab has unsaved changes. Continue to create a new tab?',
+            confirmButtonText: 'Continue',
+            cancelButtonText: 'Cancel',
+            thirdButtonText: 'Discard & Continue',
+          },
+        },
+        // Close tab
+        closeTab: {
+          unsavedChanges: {
+            title: 'Notice',
+            message: 'Tab "{fileName}" has unsaved changes. Save before closing?',
+            confirmButtonText: 'Save & Close',
+            cancelButtonText: 'Cancel',
+            thirdButtonText: 'Discard',
+          },
+        },
+        // Close all tabs
+        closeAllTabs: {
+          unsavedChanges: {
+            title: 'Notice',
+            message: '{count} tab(s) have unsaved changes. Save them?',
+            confirmButtonText: 'Save All',
+            cancelButtonText: 'Discard All',
+            thirdButtonText: 'Cancel',
+          },
+        },
+      },
       newFile: {
         unsavedChanges: {
           title: 'Notice',
@@ -667,7 +735,8 @@ export default {
     windowTitle: {
       appName: 'Tauri Markdown',
       untitled: '無題',
-      modifiedMarker: '●',
+      modifiedMarker: '*',
+      tabSeparator: ' - ',
     },
     shortcuts: {
       new: 'Ctrl+N',
@@ -713,6 +782,39 @@ export default {
     zenTipEnter: 'Zen モードに入りました。ESC キーを押して終了します',
     zenTipExit: 'Zen モードを終了しました',
     notifications: {
+      // タブ操作
+      tabs: {
+        // 新しいタブ
+        newTab: {
+          unsavedChanges: {
+            title: 'お知らせ',
+            message: '現在のタブには未保存の変更があります。新しいタブを続けて作成しますか？',
+            confirmButtonText: '続行',
+            cancelButtonText: 'キャンセル',
+            thirdButtonText: '保存せずに続行',
+          },
+        },
+        // タブを閉じる
+        closeTab: {
+          unsavedChanges: {
+            title: 'お知らせ',
+            message: 'タブ "{fileName}" には未保存の変更があります。保存して閉じますか？',
+            confirmButtonText: '保存して閉じる',
+            cancelButtonText: 'キャンセル',
+            thirdButtonText: '破棄',
+          },
+        },
+        // すべてのタブを閉じる
+        closeAllTabs: {
+          unsavedChanges: {
+            title: 'お知らせ',
+            message: '{count} 個のタブに未保存の変更があります。保存しますか？',
+            confirmButtonText: 'すべて保存',
+            cancelButtonText: 'すべて破棄',
+            thirdButtonText: 'キャンセル',
+          },
+        },
+      },
       newFile: {
         unsavedChanges: {
           title: 'お知らせ',
@@ -981,7 +1083,8 @@ export default {
     windowTitle: {
       appName: 'Tauri Markdown',
       untitled: '제목 없음',
-      modifiedMarker: '●',
+      modifiedMarker: '*',
+      tabSeparator: ' - ',
     },
     shortcuts: {
       new: 'Ctrl+N',
@@ -1027,6 +1130,39 @@ export default {
     zenTipEnter: 'Zen 모드로 진입했습니다. ESC 키를 눌러 종료하세요',
     zenTipExit: 'Zen 모드를 종료했습니다',
     notifications: {
+      // 탭 작업
+      tabs: {
+        // 새 탭
+        newTab: {
+          unsavedChanges: {
+            title: '알림',
+            message: '현재 탭에 저장되지 않은 변경 사항이 있습니다. 새 탭을 계속 만드시겠습니까?',
+            confirmButtonText: '계속',
+            cancelButtonText: '취소',
+            thirdButtonText: '저장하지 않고 계속',
+          },
+        },
+        // 탭 닫기
+        closeTab: {
+          unsavedChanges: {
+            title: '알림',
+            message: '탭 "{fileName}"에 저장되지 않은 변경 사항이 있습니다. 저장 후 닫으시겠습니까?',
+            confirmButtonText: '저장 후 닫기',
+            cancelButtonText: '취소',
+            thirdButtonText: '버리기',
+          },
+        },
+        // 모든 탭 닫기
+        closeAllTabs: {
+          unsavedChanges: {
+            title: '알림',
+            message: '{count}개의 탭에 저장되지 않은 변경 사항이 있습니다. 저장하시겠습니까?',
+            confirmButtonText: '모두 저장',
+            cancelButtonText: '모두 버리기',
+            thirdButtonText: '취소',
+          },
+        },
+      },
       newFile: {
         unsavedChanges: {
           title: '알림',

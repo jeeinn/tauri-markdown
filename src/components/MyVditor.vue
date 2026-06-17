@@ -1,6 +1,6 @@
 <template>
   <div class="vditor-container">
-    <div id="vditorEle" class="vditor"></div>
+    <div :id="`vditor-${tabId}`" class="vditor"></div>
     <!-- 拖拽文件高亮遮罩层 -->
     <div v-if="dragDropManager?.showDropOverlay" class="drop-overlay">
       <div class="drop-overlay-content">
@@ -35,6 +35,7 @@ import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
+import { useTabStore } from '../stores/tabStore.js'
 // 导入 composables
 import { useDragDrop } from '../composables/useDragDrop.js'
 // 导入工具函数
@@ -47,6 +48,10 @@ const DEBUG = import.meta.env.DEV;
 
 export default {
   name: "MyVditor.vue",
+  props: {
+    tabId: { type: String, required: true },
+    initialFile: { type: String, default: null },
+  },
   data() {
     return {
       vditor: '',
@@ -90,9 +95,10 @@ export default {
     this.initVditor();
 
     // beforeunload 仅用于保存滚动位置(Tauri 窗口关闭由 onCloseRequested 处理)
-    window.addEventListener('beforeunload', () => {
+    this._handleBeforeUnload = () => {
       this.scrollMemory?.flushScrollPosition()
-    })
+    }
+    window.addEventListener('beforeunload', this._handleBeforeUnload)
 
     // 初始化 Tauri 窗口关闭拦截
     this.setupWindowCloseHandler();
@@ -106,9 +112,21 @@ export default {
     this.dragDropManager.setupDragDrop();
   },
   beforeUnmount() {
+    // 销毁 Vditor 实例释放内存
+    if (this.vditor) {
+      this.vditor.destroy()
+      this.vditor = ''
+    }
+
+    // 移除 beforeunload 监听器
+    if (this._handleBeforeUnload) {
+      window.removeEventListener('beforeunload', this._handleBeforeUnload)
+      this._handleBeforeUnload = null
+    }
+
     // 清理滚动记忆管理器
     this.scrollMemory?.destroy()
-    
+
     // 取消模式切换监听器订阅
     if (this._unsubscribeModeSwitch) {
       this._unsubscribeModeSwitch()
@@ -127,7 +145,7 @@ export default {
 
     // 清理链接点击拦截监听
     if (this._handleLinkClick) {
-      const vditorEle = document.getElementById('vditorEle');
+      const vditorEle = document.getElementById(`vditor-${this.tabId}`);
       if (vditorEle) {
         vditorEle.removeEventListener('click', this._handleLinkClick);
       }
@@ -146,9 +164,28 @@ export default {
     switchLanguage(lang) {
       if (this.lang === lang) return;
 
+      // 保存当前内容，防止 initVditor 重建后从磁盘加载丢失未保存编辑
+      const savedContent = this.vditor ? this.vditor.getValue() : null
+      const savedFilePath = this.currentFilePath
+      const savedOriginal = this.originalContent
+      const savedModified = this.isContentModified
+
       this.lang = lang;
       // 重新初始化 Vditor 以应用新的语言配置
       this.initVditor();
+
+      // 重建后恢复内容（等待 after 回调完成后再恢复）
+      if (savedContent !== null) {
+        setTimeout(() => {
+          if (this.vditor) {
+            this.vditor.setValue(savedContent)
+            this.currentFilePath = savedFilePath
+            this.originalContent = savedOriginal
+            this.isContentModified = savedModified
+            this.updateWindowTitle()
+          }
+        }, 100)
+      }
     },
 
     // ========== 窗口管理 ==========
@@ -205,7 +242,7 @@ export default {
     async setupLinkClickHandler() {
       // 先清理旧监听器（语言切换会重建 Vditor 实例）
       if (this._handleLinkClick) {
-        const oldEl = document.getElementById('vditorEle');
+        const oldEl = document.getElementById(`vditor-${this.tabId}`);
         if (oldEl) {
           oldEl.removeEventListener('click', this._handleLinkClick);
         }
@@ -222,7 +259,7 @@ export default {
         return;
       }
 
-      const vditorEle = document.getElementById('vditorEle');
+      const vditorEle = document.getElementById(`vditor-${this.tabId}`);
       if (!vditorEle) return;
 
       this._handleLinkClick = (e) => {
@@ -281,7 +318,7 @@ export default {
     toggleZenMode(isZen) {
       if (!this.vditor) return;
 
-      const vditorEl = document.getElementById('vditorEle');
+      const vditorEl = document.getElementById(`vditor-${this.tabId}`);
       if (!vditorEl) return;
 
       if (isZen) {
@@ -299,6 +336,9 @@ export default {
       if (this.vditor) {
         this.vditor.destroy();
       }
+
+      // 快照当前 initialFile，防止 after 回调闭包读到 Vue 更新后的响应式值
+      const snapshotInitialFile = this.initialFile;
 
       // 创建配置(注意:不使用 JSON 深拷贝,避免丢失函数类型配置)
       const vditorConfCopy = {
@@ -358,9 +398,17 @@ export default {
         this.setupThemeModeSwitchListener();
         
         // 语言切换后重新应用主题（因为 Vditor 实例被重建）
-        this.setVditorTheme(this.isDarkTheme);
-        
-        this.autoLoadLastFile();
+        // 从 DOM 检测当前实际主题状态，避免因 isDarkTheme 默认值错误导致主题不一致
+        const actuallyDark = document.documentElement.classList.contains('dark')
+        this.isDarkTheme = actuallyDark
+        this.setVditorTheme(actuallyDark);
+
+        // 初始化后加载文件：如果有 initialFile 则加载指定文件
+        // 空白标签（initialFile=null）不自动加载任何文件，保持空白
+        // 使用 initVditor 时的快照值，而非响应式 prop，避免 Vue 更新时误触发
+        if (snapshotInitialFile) {
+          this.loadFileByPath(snapshotInitialFile);
+        }
         // 初始化窗口标题
         this.updateWindowTitle();
         // 设置链接点击拦截（用系统默认浏览器打开 http/https 链接）
@@ -368,7 +416,7 @@ export default {
       };
 
       // 创建新实例
-      this.vditor = new Vditor('vditorEle', vditorConfCopy.options);
+      this.vditor = new Vditor(`vditor-${this.tabId}`, vditorConfCopy.options);
     },
 
     // ========== 内容监听 ==========
@@ -388,10 +436,35 @@ export default {
             this.checkContentModified()
           })
         }
+        // WYSIWYG 模式
+        if (this.vditor.vditor.wysiwyg && this.vditor.vditor.wysiwyg.element) {
+          this.vditor.vditor.wysiwyg.element.addEventListener('input', () => {
+            this.checkContentModified()
+          })
+        }
       }
     },
 
     // ========== 文件管理 ==========
+
+    /**
+     * 同步当前文件路径到 Pinia tab store
+     * 使 TabBar 中的标签标题能动态显示文件名
+     * @param {string|null} filePath
+     * @param {boolean} [contentModified] - 如传入则同时同步修改状态
+     */
+    syncFilePathToTab(filePath, contentModified) {
+      try {
+        const tabStore = useTabStore()
+        const patch = { filePath }
+        if (contentModified !== undefined) {
+          patch.contentModified = contentModified
+        }
+        tabStore.updateTab(this.tabId, patch)
+      } catch {
+        // store 未初始化时忽略
+      }
+    },
 
     // 检查内容是否被修改
     checkContentModified() {
@@ -406,6 +479,14 @@ export default {
       const currentContent = this.vditor.getValue()
       const wasModified = this.isContentModified
       this.isContentModified = currentContent !== this.originalContent
+
+      // 同步修改状态到 Pinia tab store
+      try {
+        const tabStore = useTabStore()
+        tabStore.updateTab(this.tabId, { contentModified: this.isContentModified })
+      } catch {
+        // store 未初始化时忽略（如测试环境）
+      }
 
       // 调试日志:只在状态变化时输出
       if (wasModified !== this.isContentModified) {
@@ -445,6 +526,9 @@ export default {
       this.currentFilePath = null
       this.originalContent = ''
       this.isContentModified = false
+
+      // 同步文件路径到 tab store（清空）
+      this.syncFilePathToTab(null)
 
       // 清除 store 中的记录
       await clearLastFilePath()
@@ -577,6 +661,9 @@ export default {
       this.originalContent = data
       this.isContentModified = false
 
+      // 同步文件路径和修改状态到 tab store
+      this.syncFilePathToTab(filePath, false)
+
       await saveLastFilePath(filePath)
       await this.updateWindowTitle()
 
@@ -701,6 +788,9 @@ export default {
         this.currentFilePath = filePath
         this.originalContent = currentContent
         this.isContentModified = false
+
+        // 同步文件路径和修改状态到 tab store，使标签标题动态更新并移除 * 标记
+        this.syncFilePathToTab(filePath, false)
 
         // 保存到 store
         await saveLastFilePath(filePath)

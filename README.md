@@ -15,6 +15,24 @@ Maybe we can call it `TMD` ? 🤔
 ### Dark Theme
 ![Dark Theme](imgs/tmd_theme_dark.png)
 
+## Multi-Tab Editor
+
+TMD supports opening multiple files at the same time, each in its own tab.
+
+**Features:**
+- Open multiple Markdown files simultaneously, each in an independent tab
+- Unsaved changes are indicated by a `●` marker on the tab title
+- Tab state (open files, active tab) is automatically saved and restored on app restart
+- Drag and drop files onto the tab bar to open them in new tabs
+
+**Keyboard Shortcuts:**
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+T` | Open a new empty tab |
+| `Ctrl+W` | Close the current tab |
+| `Ctrl+Tab` | Switch to the next tab |
+
 ## Download
 
 Get the latest version from [GitHub Releases](https://github.com/jeeinn/tauri-markdown/releases).
