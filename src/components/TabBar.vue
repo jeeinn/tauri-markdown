@@ -112,6 +112,8 @@ function handleDragLeave(event) {
  */
 function handleDrop(event) {
   isDragOver.value = false
+  // 阻止事件冒泡到全局 useDragDrop 处理器，避免 handleOpenFile 被调用两次
+  event.stopPropagation()
 
   let filePath = null
 

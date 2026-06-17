@@ -1,17 +1,6 @@
 <template>
   <div class="vditor-container">
     <div :id="`vditor-${tabId}`" class="vditor"></div>
-    <!-- 拖拽文件高亮遮罩层 -->
-    <div v-if="dragDropManager?.showDropOverlay" class="drop-overlay">
-      <div class="drop-overlay-content">
-        <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <p class="drop-text">{{ dropHintText }}</p>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -36,8 +25,6 @@ import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useTabStore } from '../stores/tabStore.js'
-// 导入 composables
-import { useDragDrop } from '../composables/useDragDrop.js'
 // 导入工具函数
 import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
 // 导入图床配置
@@ -73,8 +60,6 @@ export default {
       isDarkTheme: false,
       // 模式切换监听器取消订阅函数
       _unsubscribeModeSwitch: null,
-      // 拖拽文件管理器（在 mounted 中初始化）
-      dragDropManager: null,
     };
   },
   computed: {
@@ -86,10 +71,6 @@ export default {
     wt() {
       return getI18nConfig(this.lang).windowTitle;
     },
-    // 拖拽提示文本
-    dropHintText() {
-      return getI18nText(this.lang, 'dragDrop.hint');
-    }
   },
   mounted() {
     this.initVditor();
@@ -102,14 +83,6 @@ export default {
 
     // 初始化 Tauri 窗口关闭拦截
     this.setupWindowCloseHandler();
-
-    // 初始化拖拽文件管理器
-    this.dragDropManager = useDragDrop(
-      (filePath) => this.loadFileByPath(filePath),
-      () => this.lang  // 传入 getter 函数，确保语言切换时获取最新值
-    );
-    
-    this.dragDropManager.setupDragDrop();
   },
   beforeUnmount() {
     // 销毁 Vditor 实例释放内存
@@ -150,11 +123,6 @@ export default {
         vditorEle.removeEventListener('click', this._handleLinkClick);
       }
       this._handleLinkClick = null;
-    }
-
-    // 清理拖拽文件管理器
-    if (this.dragDropManager) {
-      this.dragDropManager.cleanup();
     }
   },
   methods: {
@@ -658,7 +626,8 @@ export default {
       this.vditor.setValue(convertedContent)
 
       this.currentFilePath = filePath
-      this.originalContent = data
+      // 保存转换后的内容作为基准，确保 checkContentModified 比较的是同一种格式
+      this.originalContent = convertedContent
       this.isContentModified = false
 
       // 同步文件路径和修改状态到 tab store
@@ -786,7 +755,8 @@ export default {
 
         // 立即更新状态(在显示通知之前)
         this.currentFilePath = filePath
-        this.originalContent = currentContent
+        // 用编辑器当前内容（convertToAssetUrl 格式）作为基准，确保后续比较格式一致
+        this.originalContent = this.vditor.getValue()
         this.isContentModified = false
 
         // 同步文件路径和修改状态到 tab store，使标签标题动态更新并移除 * 标记

@@ -124,3 +124,59 @@ html.dark .language-label {
   flex: 1;
 }
 
+/* 拖拽文件高亮遮罩层 */
+.drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(64, 158, 255, 0.15);
+  border: 2px dashed #409eff;
+  border-radius: 8px;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: drop-overlay-fade 0.2s ease;
+}
+
+@keyframes drop-overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.drop-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+}
+
+html.dark .drop-overlay-content {
+  background: rgba(30, 30, 30, 0.95);
+}
+
+.drop-icon {
+  color: #409eff;
+}
+
+.drop-text {
+  font-size: 16px;
+  color: #606266;
+  margin: 0;
+}
+
+html.dark .drop-text {
+  color: #cfd3dc;
+}
+

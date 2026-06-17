@@ -167,6 +167,18 @@
       v-model="showImageHostSettings"
       :lang="currentLang"
     />
+
+    <!-- 拖拽文件高亮遮罩层 -->
+    <div v-if="dragDropManager?.showDropOverlay" class="drop-overlay">
+      <div class="drop-overlay-content">
+        <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="drop-text">{{ dropHintText }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -182,6 +194,7 @@ import { ElNotification, ElMessageBox } from 'element-plus'
 import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage } from './utils/store.js'
 import { useTabStore } from './stores/tabStore.js'
 import { checkUnsavedChanges } from './utils/unsaved-check.js'
+import { useDragDrop } from './composables/useDragDrop.js'
 
 export default {
   name: 'App',
@@ -208,6 +221,9 @@ export default {
       showImageHostSettings: false,
       // Map<tabId, TabContent component ref>
       tabContentRefs: new Map(),
+      // 拖拽文件管理器
+      dragDropManager: null,
+      showDropOverlay: false,
     }
   },
   computed: {
@@ -226,6 +242,9 @@ export default {
     findReplaceI18n() {
       return getI18nConfig(this.currentLang).findReplace;
     },
+    dropHintText() {
+      return getI18nConfig(this.currentLang).dragDrop?.hint || 'Drop to open Markdown file';
+    },
     zenTipText() {
       const i18n = getI18nConfig(this.currentLang);
       return this.isZenMode ? i18n.zenTipEnter : i18n.zenTipExit;
@@ -236,6 +255,9 @@ export default {
     this.initTheme();
     this.initViewSettings();
     setTimeout(() => this.checkForUpdate(false), 10000);
+    
+    // 初始化拖拽文件管理器
+    this.initDragDrop();
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeyboardShortcut);
@@ -245,6 +267,11 @@ export default {
     // 最佳努力保存：beforeUnmount 不能是 async，但 Tauri store IPC 通常在进程退出前完成
     // 已在每次标签操作后调用 persistTabs()，此处为兜底
     this.tabStore.saveTabs().catch(() => {})
+    
+    // 清理拖拽文件管理器
+    if (this.dragDropManager) {
+      this.dragDropManager.cleanup();
+    }
   },
   methods: {
     // ─── Tab 引用管理 ─────────────────────────────────────────────────────────
@@ -281,12 +308,71 @@ export default {
     },
 
     /**
-     * 打开文件到新标签页（来自 TabBar 拖放事件）
+     * 拖放文件打开处理
+     *
+     * 策略：
+     * 1. 当前标签页为空且无修改 → 直接在当前标签页打开文件
+     * 2. 当前标签页有内容或有修改 → 新建标签页打开文件
      */
-    handleOpenFile(path) {
+    async handleOpenFile(path) {
       if (!path) return
-      this.tabStore.addTab(path)
-      this.persistTabs()
+
+      const activeTab = this.tabStore.activeTab
+      const vditor = this.getActiveVditor()
+
+      // 判断当前标签页是否为"空"：无文件路径且无内容修改
+      const isCurrentTabEmpty = activeTab
+        && !activeTab.filePath
+        && !activeTab.contentModified
+        && vditor
+        && !vditor.isContentModified
+
+      if (isCurrentTabEmpty) {
+        // 场景 1：当前标签页为空，直接在其中打开文件
+        await vditor.loadFileByPath(path)
+      } else {
+        // 场景 2：当前标签页有内容或有修改，新建标签页打开
+        this.tabStore.addTab()  // 先创建空标签页（不传 path，避免 initialFile 问题）
+        this.persistTabs()
+        // 在调用时捕获目标 tab ID，防止重试期间用户切换标签导致文件加载到错误标签
+        const newTabId = this.tabStore.activeTabId
+        this._loadFileInNewTab(path, newTabId)
+      }
+    },
+
+    /**
+     * 初始化拖拽文件管理器
+     */
+    initDragDrop() {
+      this.dragDropManager = useDragDrop(
+        (filePath) => this.handleOpenFile(filePath),
+        () => this.currentLang
+      )
+      this.dragDropManager.setupDragDrop()
+    },
+
+    /**
+     * 等待新标签页的 Vditor 挂载完成，然后加载文件
+     * @param {string} path - 文件路径
+     * @param {string} targetTabId - 目标标签 ID（在调用时捕获，防止重试期间切换标签）
+     * @param {number} retryCount - 当前重试次数
+     */
+    _loadFileInNewTab(path, targetTabId, retryCount = 0) {
+      const MAX_RETRIES = 10
+      if (!targetTabId) return
+
+      const tabContent = this.tabContentRefs.get(targetTabId)
+      const vditor = tabContent?.vditorRef
+
+      if (vditor && vditor.vditor) {
+        // Vditor 已初始化，直接加载文件
+        vditor.loadFileByPath(path)
+        return
+      }
+
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => this._loadFileInNewTab(path, targetTabId, retryCount + 1), 200)
+      }
     },
 
     /**
