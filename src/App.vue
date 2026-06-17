@@ -611,6 +611,11 @@ export default {
       if (command === 'multi-tab-mode') {
         this.multiTabMode = !this.multiTabMode
         await saveMultiTabMode(this.multiTabMode)
+        // 切换到多标签模式时，如果没有标签则新建一个，避免空白页面
+        if (this.multiTabMode && this.tabStore.tabs.length === 0) {
+          this.tabStore.addTab()
+          this.persistTabs()
+        }
       } else if (command === 'scroll-remember') {
         this.scrollRememberEnabled = !this.scrollRememberEnabled
         await saveScrollRememberEnabled(this.scrollRememberEnabled)

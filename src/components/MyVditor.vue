@@ -371,12 +371,15 @@ export default {
         this.isDarkTheme = actuallyDark
         this.setVditorTheme(actuallyDark);
 
-        // 初始化后加载文件：如果有 initialFile 则加载指定文件
-        // 空白标签（initialFile=null）不自动加载任何文件，保持空白
+        // 初始化后加载文件
         // 使用 initVditor 时的快照值，而非响应式 prop，避免 Vue 更新时误触发
         if (snapshotInitialFile) {
           this.loadFileByPath(snapshotInitialFile);
+        } else if (this.tabId === 'default') {
+          // 单文档模式（tabId 为默认值）：自动加载上次打开的文件
+          this.autoLoadLastFile();
         }
+        // 多标签模式的空白标签（initialFile=null, tabId=uuid）：保持空白
         // 初始化窗口标题
         this.updateWindowTitle();
         // 设置链接点击拦截（用系统默认浏览器打开 http/https 链接）
