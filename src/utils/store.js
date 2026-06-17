@@ -7,6 +7,7 @@ const LAST_FILE_KEY = 'last_opened_file'
 const THEME_KEY = 'app_theme'
 const ZEN_MODE_KEY = 'is_zen_mode'
 const LANGUAGE_KEY = 'app_language'
+const MULTI_TAB_MODE_KEY = 'multi_tab_mode'
 
 let storeInstance = null
 let isPortableMode = null
@@ -325,5 +326,34 @@ export async function clearAllTabs() {
     await store.save()
   } catch (error) {
     console.error('[Store] 清除标签页数据失败:', error)
+  }
+}
+
+/**
+ * 保存多标签模式开关状态
+ * @param {boolean} enabled - 是否启用多标签模式
+ */
+export async function saveMultiTabMode(enabled) {
+  try {
+    const store = await getStore()
+    await store.set(MULTI_TAB_MODE_KEY, enabled)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存多标签模式设置失败:', error)
+  }
+}
+
+/**
+ * 读取多标签模式开关状态；默认为 true（启用）
+ * @returns {Promise<boolean>}
+ */
+export async function getMultiTabMode() {
+  try {
+    const store = await getStore()
+    const value = await store.get(MULTI_TAB_MODE_KEY)
+    return value !== false
+  } catch (error) {
+    console.error('[Store] 读取多标签模式设置失败:', error)
+    return true
   }
 }

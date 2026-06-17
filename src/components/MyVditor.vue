@@ -36,7 +36,7 @@ const DEBUG = import.meta.env.DEV;
 export default {
   name: "MyVditor.vue",
   props: {
-    tabId: { type: String, required: true },
+    tabId: { type: String, default: 'default' },
     initialFile: { type: String, default: null },
   },
   data() {

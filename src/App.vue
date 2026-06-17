@@ -83,6 +83,10 @@
                 {{ menuI18n.scrollRemember }}
                 <span v-if="scrollRememberEnabled" class="theme-check">✓</span>
               </el-dropdown-item>
+              <el-dropdown-item command="multi-tab-mode">
+                {{ menuI18n.multiTabMode }}
+                <span v-if="multiTabMode" class="theme-check">✓</span>
+              </el-dropdown-item>
               <el-dropdown-item divided command="image-host-settings">
                 {{ menuI18n.imageHostSettings }}
               </el-dropdown-item>
@@ -126,27 +130,30 @@
       </div>
     </div>
 
-    <!-- 标签栏 -->
-    <TabBar
-      :tabs="tabStore.tabs"
-      :active-tab-id="tabStore.activeTabId"
-      :lang="currentLang"
-      @switch-tab="handleSwitchTab"
-      @close-tab="handleCloseTab"
-      @new-tab="handleNewTab"
-      @open-file="handleOpenFile"
-    />
-
-    <!-- 标签内容区域 -->
-    <div class="tab-contents">
-      <TabContent
-        v-for="tab in tabStore.tabs"
-        :key="tab.id"
-        :tab="tab"
-        :is-active="tab.id === tabStore.activeTabId"
-        :ref="el => setTabContentRef(tab.id, el)"
+    <!-- 多标签模式：标签栏 + 标签内容区域 -->
+    <template v-if="multiTabMode">
+      <TabBar
+        :tabs="tabStore.tabs"
+        :active-tab-id="tabStore.activeTabId"
+        :lang="currentLang"
+        @switch-tab="handleSwitchTab"
+        @close-tab="handleCloseTab"
+        @new-tab="handleNewTab"
+        @open-file="handleOpenFile"
       />
-    </div>
+      <div class="tab-contents">
+        <TabContent
+          v-for="tab in tabStore.tabs"
+          :key="tab.id"
+          :tab="tab"
+          :is-active="tab.id === tabStore.activeTabId"
+          :ref="el => setTabContentRef(tab.id, el)"
+        />
+      </div>
+    </template>
+
+    <!-- 单文档模式 -->
+    <MyVditor v-else ref="vditor" />
 
     <!-- 查找/替换组件 -->
     <FindReplace
@@ -191,7 +198,7 @@ import ImageHostSettings from './components/ImageHostSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { ElNotification, ElMessageBox } from 'element-plus'
-import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage } from './utils/store.js'
+import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage, getMultiTabMode, saveMultiTabMode } from './utils/store.js'
 import { useTabStore } from './stores/tabStore.js'
 import { checkUnsavedChanges } from './utils/unsaved-check.js'
 import { useDragDrop } from './composables/useDragDrop.js'
@@ -219,6 +226,7 @@ export default {
       showZenTip: false,
       zenTipTimer: null,
       showImageHostSettings: false,
+      multiTabMode: true,
       // Map<tabId, TabContent component ref>
       tabContentRefs: new Map(),
       // 拖拽文件管理器
@@ -289,8 +297,12 @@ export default {
 
     /**
      * 获取当前活跃标签页的 MyVditor ref
+     * 单文档模式下直接返回 this.$refs.vditor
      */
     getActiveVditor() {
+      if (!this.multiTabMode) {
+        return this.$refs.vditor ?? null
+      }
       const activeId = this.tabStore.activeTabId
       if (!activeId) return null
       const tabContent = this.tabContentRefs.get(activeId)
@@ -311,14 +323,25 @@ export default {
      * 拖放文件打开处理
      *
      * 策略：
-     * 1. 当前标签页为空且无修改 → 直接在当前标签页打开文件
-     * 2. 当前标签页有内容或有修改 → 新建标签页打开文件
+     * - 单文档模式：直接在当前 vditor 打开文件
+     * - 多标签模式 + 当前标签为空：在当前标签打开
+     * - 多标签模式 + 当前标签有内容：新建标签页打开
      */
     async handleOpenFile(path) {
       if (!path) return
 
-      const activeTab = this.tabStore.activeTab
       const vditor = this.getActiveVditor()
+
+      // 单文档模式：直接在当前编辑器打开文件
+      if (!this.multiTabMode) {
+        if (vditor) {
+          await vditor.loadFileByPath(path)
+        }
+        return
+      }
+
+      // 多标签模式
+      const activeTab = this.tabStore.activeTab
 
       // 判断当前标签页是否为"空"：无文件路径且无内容修改
       const isCurrentTabEmpty = activeTab
@@ -477,16 +500,18 @@ export default {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
 
-      // Ctrl+T: 新建标签页
+      // Ctrl+T: 新建标签页（仅多标签模式）
       if (ctrlOrCmd && event.key === 't' && !event.shiftKey) {
+        if (!this.multiTabMode) return;
         event.preventDefault();
         this.tabStore.addTab();
         this.persistTabs();
         return;
       }
 
-      // Ctrl+W: 关闭当前标签页
+      // Ctrl+W: 关闭当前标签页（仅多标签模式）
       if (ctrlOrCmd && event.key === 'w' && !event.shiftKey) {
+        if (!this.multiTabMode) return;
         event.preventDefault();
         if (this.tabStore.activeTabId) {
           this.handleCloseTab(this.tabStore.activeTabId);
@@ -494,8 +519,9 @@ export default {
         return;
       }
 
-      // Ctrl+Tab: 切换到下一个标签页
+      // Ctrl+Tab: 切换到下一个标签页（仅多标签模式）
       if (ctrlOrCmd && event.key === 'Tab' && !event.shiftKey) {
+        if (!this.multiTabMode) return;
         event.preventDefault();
         const tabs = this.tabStore.tabs;
         if (tabs.length > 1) {
@@ -582,7 +608,10 @@ export default {
     },
 
     async handleSettingsMenu(command) {
-      if (command === 'scroll-remember') {
+      if (command === 'multi-tab-mode') {
+        this.multiTabMode = !this.multiTabMode
+        await saveMultiTabMode(this.multiTabMode)
+      } else if (command === 'scroll-remember') {
         this.scrollRememberEnabled = !this.scrollRememberEnabled
         await saveScrollRememberEnabled(this.scrollRememberEnabled)
         // 通知所有标签页的 vditor 组件更新状态
@@ -735,12 +764,15 @@ export default {
     // ─── 初始化视图设置 ───────────────────────────────────────────────────────
 
     async initViewSettings() {
-      // 先加载标签页状态（来自持久化存储）
-      await this.tabStore.loadTabs()
+      // 加载多标签模式设置
+      this.multiTabMode = await getMultiTabMode()
 
-      // 如果没有恢复到任何标签，新建一个空白标签
-      if (this.tabStore.tabs.length === 0) {
-        this.tabStore.addTab()
+      // 多标签模式下加载标签页状态
+      if (this.multiTabMode) {
+        await this.tabStore.loadTabs()
+        if (this.tabStore.tabs.length === 0) {
+          this.tabStore.addTab()
+        }
       }
 
       this.scrollRememberEnabled = await getScrollRememberEnabled()
@@ -751,9 +783,21 @@ export default {
         this.currentLang = savedLang
       }
 
-      // 等待 TabContent 子组件 mount 并初始化 vditor，然后应用设置
+      // 等待子组件 mount 并初始化 vditor，然后应用设置
       this.$nextTick(() => {
-        this._applySettingsToAllTabs(savedLang)
+        if (this.multiTabMode) {
+          this._applySettingsToAllTabs(savedLang)
+        } else {
+          // 单文档模式：直接应用到唯一的 vditor
+          const vditor = this.$refs.vditor
+          if (vditor) {
+            vditor.setScrollRememberEnabled(this.scrollRememberEnabled)
+            if (savedLang && savedLang !== 'zh_CN') {
+              vditor.switchLanguage(savedLang)
+            }
+          }
+          this.applyZenMode(this.isZenMode)
+        }
       })
     },
 
