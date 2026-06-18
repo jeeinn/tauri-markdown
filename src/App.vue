@@ -543,10 +543,15 @@ export default {
         return;
       }
 
-      // Ctrl+N: 新建文件（在当前标签页）
+      // Ctrl+N: 单文档模式 → 新建空白文档，多标签模式 → 新建标签页
       if (ctrlOrCmd && event.key === 'n' && !event.shiftKey) {
         event.preventDefault();
-        this.getActiveVditor()?.newFile();
+        if (this.multiTabMode) {
+          this.tabStore.addTab();
+          this.persistTabs();
+        } else {
+          this.getActiveVditor()?.newFile();
+        }
         return;
       }
 
