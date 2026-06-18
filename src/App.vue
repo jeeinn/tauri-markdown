@@ -591,6 +591,11 @@ export default {
 
       // 持久化标签页状态
       this.persistTabs()
+
+      // 更新窗口标题为新激活标签的文件名
+      this.$nextTick(() => {
+        this.getActiveVditor()?.updateWindowTitle()
+      })
     },
 
     // ─── 查找/替换 ────────────────────────────────────────────────────────────
