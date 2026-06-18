@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-18
+
+### Added
+- **Multi-Tab Editor**: Full multi-tab editing support with persistent state across sessions
+- **Tab Drag-to-Reorder**: Drag tabs to reorder them via mouse events
+- **Sticky New-Tab Button**: New-tab button stays inline when tab list has no scroll, fixed when overflowing
+- **Multi-Tab Mode Toggle**: Settings option to enable/disable multi-tab mode with single-doc fallback
+- **Per-Tab Scroll Position**: Scroll position is now restored per-tab on switch, not all at startup
+- **Tab Auto-Scroll**: Tab list auto-scrolls to show newly opened tab
+
+### Fixed
+- **Window Title Update**: Window title updates correctly when switching tabs or closing active tab
+- **Menu Behavior Alignment**: Aligned 'Open' and 'New' menu with drag-drop and Ctrl+N behavior in multi-tab mode
+- **Dialog Close Handler**: Centralized window close handler and fixed discard button selector
+- **Find/Replace in Multi-Tab**: Re-trigger search when switching tabs with Find/Replace open, restore highlighting
+- **Single-Doc Mode**: Restored autoLoadLastFile for single-doc mode and empty tab on mode switch
+- **Drag-Drop File Open**: Rewrote drag-drop to load into correct tab only
+- **Scroll Position**: Restored scroll position in single-doc mode
+
+### Changed
+- **Notification Optimization**: Removed '打开成功' notification for file open to avoid frequent interruptions
+- **Export Progress**: Added loading indicator when exporting PDF/HTML for user feedback
+- **Export Notifications**: Unified export success notifications to use ElNotification for consistency
+- **Code Refactoring**: Extracted composables and utils to reduce component file sizes
+- **Debug Logging**: Guarded debug console.log with DEV flag in TabBar
+
 ## [0.6.3] - 2026-05-30
 
 ### Added
