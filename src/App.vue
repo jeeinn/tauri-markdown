@@ -384,6 +384,35 @@ export default {
     },
 
     /**
+     * 多标签模式下打开文件：弹出文件选择框，根据当前标签状态决定在哪个标签打开
+     */
+    async openFileInTab() {
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const filePath = await open({
+        filters: [{ name: 'OpenFile', extensions: ['md', 'txt'] }]
+      })
+      if (!filePath) return
+
+      const activeTab = this.tabStore.activeTab
+      const vditor = this.getActiveVditor()
+      const isCurrentTabEmpty = activeTab
+        && !activeTab.filePath
+        && !activeTab.contentModified
+        && vditor
+        && !vditor.isContentModified
+
+      if (isCurrentTabEmpty) {
+        await vditor.loadFileByPath(filePath)
+      } else {
+        this.tabStore.addTab()
+        this.persistTabs()
+        this.$nextTick(() => this.scrollTabListToEnd())
+        const newTabId = this.tabStore.activeTabId
+        this._loadFileInNewTab(filePath, newTabId)
+      }
+    },
+
+    /**
      * 标签拖拽排序
      */
     handleReorderTab(fromId, toId) {
@@ -646,7 +675,11 @@ export default {
       // Ctrl+O: 打开文件
       if (ctrlOrCmd && event.key === 'o' && !event.shiftKey) {
         event.preventDefault();
-        this.getActiveVditor()?.openMdFile();
+        if (this.multiTabMode) {
+          this.openFileInTab()
+        } else {
+          this.getActiveVditor()?.openMdFile()
+        }
         return;
       }
 
@@ -678,10 +711,20 @@ export default {
       const vditor = this.getActiveVditor()
       switch (command) {
         case 'new':
-          vditor?.newFile();
+          if (this.multiTabMode) {
+            this.tabStore.addTab()
+            this.persistTabs()
+            this.$nextTick(() => this.scrollTabListToEnd())
+          } else {
+            vditor?.newFile()
+          }
           break;
         case 'open':
-          vditor?.openMdFile();
+          if (this.multiTabMode) {
+            this.openFileInTab()
+          } else {
+            vditor?.openMdFile()
+          }
           break;
         case 'save':
           vditor?.saveMdFile();
