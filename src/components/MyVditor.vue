@@ -1268,6 +1268,18 @@ export default {
       }
     },
 
+    /**
+     * 获取当前 Vditor 的编辑区域 DOM 元素（供 FindReplace 使用）
+     * @returns {HTMLElement|null}
+     */
+    getEditorElement() {
+      const vditorEle = document.getElementById(`vditor-${this.tabId}`)
+      if (!vditorEle) return null
+      return vditorEle.querySelector('.vditor-ir')
+        || vditorEle.querySelector('.vditor-sv')
+        || vditorEle.querySelector('.vditor-wysiwyg')
+    },
+
     // ========== 主题管理 ==========
 
     /**

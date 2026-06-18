@@ -170,16 +170,11 @@ export default {
     // 获取编辑器元素
     getEditorElement() {
       try {
-        // 获取 vditor 编辑区域元素
-        const vditorEle = document.getElementById('vditorEle')
-        if (!vditorEle) return null
-
-        // 根据当前模式获取编辑区域
-        const irElement = vditorEle.querySelector('.vditor-ir')
-        const svElement = vditorEle.querySelector('.vditor-sv')
-        const wysiwygElement = vditorEle.querySelector('.vditor-wysiwyg')
-
-        return irElement || svElement || wysiwygElement
+        // 通过 MyVditor 实例获取编辑区域元素（兼容多标签模式的动态 DOM ID）
+        if (this.vditorRef?.getEditorElement) {
+          return this.vditorRef.getEditorElement()
+        }
+        return null
       } catch (e) {
         console.error('获取编辑器元素失败:', e)
         return null
