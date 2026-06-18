@@ -635,13 +635,7 @@ export default {
       try {
         const success = await this.loadFileByPath(filePath)
         if (!success) return false
-
-        const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElNotification.info({
-          title: this.t.openFile.success.title,
-          message: fileName,
-          duration: 1000
-        })
+        // 打开成功不再提示，避免频繁打扰用户
       } catch (error) {
         console.error('文件读取失败:', error)
         ElNotification.error(this.t.openFile.readError)
@@ -769,7 +763,7 @@ export default {
 
         await writeTextFile(filePath, content)
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElMessage.success({ message: `${this.t.exportFile.success.title}: ${fileName}`, duration: 2000 })
+        ElNotification.success({ title: this.t.exportFile.success.title, message: fileName, duration: 2000 })
         return true
       } catch (error) {
         ElNotification.error(this.t.exportFile.exportError)
@@ -787,8 +781,13 @@ export default {
 
       const config = this.t[type === 'pdf' ? 'exportPdf' : 'exportHtml']
       const exportResult = await exportTo(type, this, {
+        onStart: () => {
+          // 导出开始时显示加载提示，让用户有感知
+          ElNotification.info({ title: config.converting.title, message: config.converting.message, duration: 0 })
+        },
         onProgress: (current, total) => {
           if (current === 0) {
+            ElNotification.closeAll()
             ElNotification.info({ title: config.processingImages.title, message: config.processingImages.message.replace('{count}', total), duration: 0 })
           } else if (current < total) {
             ElNotification.closeAll()
