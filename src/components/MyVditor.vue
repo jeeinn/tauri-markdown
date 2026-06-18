@@ -354,7 +354,13 @@ export default {
             () => this.vditor,
             {
               getCurrentFilePath: () => this.currentFilePath,
-              // 注意：不再使用 onAfterModeChange，改为直接使用 modeSwitchListener
+              onScrollChange: (pct) => {
+                // 同步滚动位置到 tab store，使 persistTabs 能保存正确的 scrollPosition
+                try {
+                  const tabStore = useTabStore()
+                  tabStore.updateTab(this.tabId, { scrollPosition: pct })
+                } catch { /* store 未初始化时忽略 */ }
+              },
             }
           )
         }
@@ -639,8 +645,16 @@ export default {
       await saveLastFilePath(filePath)
       await this.updateWindowTitle()
 
-      // 加载新文件后恢复滚动位置
-      this.scrollMemory?.restoreScrollPosition(filePath)
+      // 恢复滚动位置：仅当前激活标签立即恢复，其他标签切换时再恢复
+      try {
+        const tabStore = useTabStore()
+        if (tabStore.activeTabId === this.tabId) {
+          this.scrollMemory?.restoreScrollPosition(filePath)
+        }
+      } catch {
+        // 单文档模式或 store 未初始化时直接恢复
+        this.scrollMemory?.restoreScrollPosition(filePath)
+      }
 
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
       return true
@@ -1237,6 +1251,15 @@ export default {
     setScrollRememberEnabled(enabled) {
       if (this.scrollMemory) {
         this.scrollMemory.setEnabled(enabled)
+      }
+    },
+
+    /**
+     * 恢复当前文件的滚动位置（由父组件在切换标签时调用）
+     */
+    restoreScrollPosition() {
+      if (this.scrollMemory && this.currentFilePath) {
+        this.scrollMemory.restoreScrollPosition(this.currentFilePath)
       }
     },
 

@@ -379,9 +379,13 @@ export default {
      */
     handleSwitchTab(tabId) {
       this.tabStore.switchTab(tabId)
-      // 切换后更新窗口标题为新激活标签的文件名
       this.$nextTick(() => {
-        this.getActiveVditor()?.updateWindowTitle()
+        const vditor = this.getActiveVditor()
+        if (vditor) {
+          vditor.updateWindowTitle()
+          // 切换到新标签时恢复该标签的滚动位置
+          vditor.restoreScrollPosition?.()
+        }
       })
     },
 
