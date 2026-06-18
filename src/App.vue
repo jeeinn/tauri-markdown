@@ -320,6 +320,15 @@ export default {
     handleNewTab() {
       this.tabStore.addTab()
       this.persistTabs()
+      this.$nextTick(() => this.scrollTabListToEnd())
+    },
+
+    /**
+     * 将标签栏滚动到最右侧，使新建的标签可见
+     */
+    scrollTabListToEnd() {
+      const tabList = document.querySelector('.tab-list')
+      if (tabList) tabList.scrollLeft = tabList.scrollWidth
     },
 
     /**
@@ -360,6 +369,7 @@ export default {
         // 场景 2：当前标签页有内容或有修改，新建标签页打开
         this.tabStore.addTab()  // 先创建空标签页（不传 path，避免 initialFile 问题）
         this.persistTabs()
+        this.$nextTick(() => this.scrollTabListToEnd())
         // 在调用时捕获目标 tab ID，防止重试期间用户切换标签导致文件加载到错误标签
         const newTabId = this.tabStore.activeTabId
         this._loadFileInNewTab(path, newTabId)

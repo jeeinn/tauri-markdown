@@ -9,7 +9,7 @@
     :class="{ 'drag-over': isDragOver, 'tab-dragging': isDragging }"
   >
     <!-- 标签列表 -->
-    <div class="tab-list" ref="tabListRef">
+    <div class="tab-list" ref="tabListRef" @wheel.prevent="handleTabListWheel">
       <div
         v-for="tab in tabs"
         :key="tab.id"
@@ -270,6 +270,16 @@ function handleTabMouseUp(event) {
 }
 
 /**
+ * 鼠标滚轮/触控板横向滚动标签栏
+ * - 鼠标滚轮：deltaY → 横向滚动
+ * - macOS 触控板横滑：deltaX → 直接使用
+ */
+function handleTabListWheel(event) {
+  const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY
+  tabListRef.value.scrollLeft += delta
+}
+
+/**
  * 标签点击：仅在非拖拽状态下触发切换
  */
 function handleTabClick(event, tabId) {
@@ -329,9 +339,9 @@ function handleTabClick(event, tabId) {
   min-width: 0;
 }
 
-/* 隐藏滚动条但保留滚动功能 */
+/* 隐藏滚动条但保留滚动功能（通过滚轮/触控板横向滚动） */
 .tab-list::-webkit-scrollbar {
-  height: 3px;
+  height: 1px;
 }
 
 .tab-list::-webkit-scrollbar-track {
