@@ -1,0 +1,46 @@
+/* Element Plus 全局样式覆盖 */
+
+/* 统一所有下拉菜单宽度 */
+.el-dropdown-menu {
+  min-width: 200px !important;
+}
+
+.el-dropdown-menu .el-dropdown-menu {
+  min-width: 200px !important;
+}
+
+.el-dropdown-menu .el-dropdown-menu__item {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: left !important;
+  padding: 0 20px !important;
+  line-height: 36px !important;
+}
+
+.el-dropdown-menu .el-dropdown-menu__item > span,
+.el-dropdown-menu .el-dropdown-menu__item > div {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+.nested-dropdown-popper .el-dropdown-menu__item {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: left !important;
+  padding: 0 20px !important;
+  line-height: 36px !important;
+}
+
+.nested-dropdown-popper .el-dropdown-menu__item > span,
+.nested-dropdown-popper .el-dropdown-menu__item > div {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: left !important;
+}

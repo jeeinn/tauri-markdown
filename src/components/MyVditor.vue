@@ -13,12 +13,12 @@ import vditorConf from '../config/vditor-config.js'
 import { getI18nConfig, getI18nText } from '../utils/i18n-helper.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile, writeFile, exists, mkdir, remove } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath, clearLastFilePath, clearScrollPosition } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
-import { dirname, join, normalize, tempDir } from '@tauri-apps/api/path'
+import { dirname } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
@@ -26,9 +26,7 @@ import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useTabStore } from '../stores/tabStore.js'
 // 导入工具函数
-import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
-// 导入图床配置
-import { getImageHostConfig, uploadToImageHost, uploadToSMMS } from '../utils/image-host-config.js'
+import { uploadFiles } from '../utils/file-upload.js'
 
 // 日志级别控制（生产环境可关闭）
 const DEBUG = import.meta.env.DEV;
@@ -265,22 +263,17 @@ export default {
 
       // 设置自定义上传 handler
       vditorConfCopy.options.upload.handler = async (files) => {
-        const result = await this.handleUpload(files);
+        const result = await uploadFiles(files, {
+          currentFilePath: this.currentFilePath,
+          i18n: this.t
+        });
 
         // 根据文件类型插入不同的 Markdown 语法
-        if (result && result[0] && result[0].data && result[0].data.succMap) {
-          const succMap = result[0].data.succMap;
-          for (const [originalName, entry] of Object.entries(succMap)) {
-            let markdown;
-            if (entry.isImage) {
-              markdown = `![${originalName}](${entry.url})`;
-            } else {
-              markdown = `[${originalName}](${entry.url})`;
-            }
-            this.vditor.insertValue(markdown + '\n');
-            console.log('[Upload] 插入 Markdown:', markdown);
+        if (result?.[0]?.data?.succMap) {
+          for (const [name, entry] of Object.entries(result[0].data.succMap)) {
+            const md = entry.isImage ? `![${name}](${entry.url})` : `[${name}](${entry.url})`;
+            this.vditor.insertValue(md + '\n');
           }
-          // insertValue 不会触发 input 事件,需要手动检查内容修改状态
           this.checkContentModified();
         }
 
@@ -751,14 +744,11 @@ export default {
       }
     },
     async exportFile() {
-      // 如果当前有未保存的修改,提示用户
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
       try {
         let content = this.vditor.getValue()
-
-        // 检查内容是否为空
         if (!content.trim()) {
           ElNotification.warning({
             title: this.t.exportFile.emptyContent.title,
@@ -768,88 +758,57 @@ export default {
           return false
         }
 
-        // 使用工具模块将 tmd URL 转换为相对路径（导出前处理）
-        content = imagePathMapper.convertToRelative(content);
-        console.log('[Export] 已转换 tmd URL 为相对路径');
-
-        // 打开保存对话框
+        content = imagePathMapper.convertToRelative(content)
         const filePath = await save({
-          filters: [{
-            name: 'MarkDownFile',
-            extensions: ['md']
-          }]
+          filters: [{ name: 'MarkDownFile', extensions: ['md'] }]
         })
-
         if (!filePath) {
           ElNotification.error(this.t.exportFile.pathError)
           return false
         }
 
-        console.log('[DEBUG] 开始导出文件到:', filePath)
         await writeTextFile(filePath, content)
-
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElMessage.success({
-          message: `${this.t.exportFile.success.title}: ${fileName}`,
-          duration: 2000
-        })
+        ElMessage.success({ message: `${this.t.exportFile.success.title}: ${fileName}`, duration: 2000 })
         return true
       } catch (error) {
-        console.error('[ERROR] 文件导出失败:', error)
         ElNotification.error(this.t.exportFile.exportError)
         return false
       }
     },
 
-    async exportPdf() {
+    /**
+     * 通用导出处理（PDF / HTML）
+     * @param {'pdf'|'html'} type - 导出类型
+     */
+    async _handleExport(type) {
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
-      const pdfConfig = this.t.exportPdf
-      const exportResult = await exportTo('pdf', this, {
+      const config = this.t[type === 'pdf' ? 'exportPdf' : 'exportHtml']
+      const exportResult = await exportTo(type, this, {
         onProgress: (current, total) => {
           if (current === 0) {
-            ElNotification.info({ title: pdfConfig.processingImages.title, message: pdfConfig.processingImages.message.replace('{count}', total), duration: 0 })
+            ElNotification.info({ title: config.processingImages.title, message: config.processingImages.message.replace('{count}', total), duration: 0 })
           } else if (current < total) {
             ElNotification.closeAll()
-            ElNotification.info({ title: pdfConfig.processingImages.title, message: pdfConfig.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
+            ElNotification.info({ title: config.processingImages.title, message: config.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
           }
         },
       })
 
       ElNotification.closeAll()
       if (exportResult.success) {
-        ElNotification.success({ title: pdfConfig.success.title, message: pdfConfig.fileSaved, duration: 3000 })
+        ElNotification.success({ title: config.success.title, message: config.fileSaved, duration: 3000 })
       } else if (exportResult.error) {
-        ElNotification.error({ title: pdfConfig.exportError?.title, message: exportResult.error.message, duration: 3000 })
+        ElNotification.error({ title: config.exportError?.title, message: exportResult.error.message, duration: 3000 })
       }
       return exportResult.success
     },
 
-    async exportHtml() {
-      const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
-      if (result === 'cancel') return false
+    async exportPdf() { return this._handleExport('pdf') },
 
-      const htmlConfig = this.t.exportHtml
-      const exportResult = await exportTo('html', this, {
-        onProgress: (current, total) => {
-          if (current === 0) {
-            ElNotification.info({ title: htmlConfig.processingImages.title, message: htmlConfig.processingImages.message.replace('{count}', total), duration: 0 })
-          } else if (current < total) {
-            ElNotification.closeAll()
-            ElNotification.info({ title: htmlConfig.processingImages.title, message: htmlConfig.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
-          }
-        },
-      })
-
-      ElNotification.closeAll()
-      if (exportResult.success) {
-        ElNotification.success({ title: htmlConfig.success.title, message: htmlConfig.fileSaved, duration: 3000 })
-      } else if (exportResult.error) {
-        ElNotification.error({ title: htmlConfig.exportError?.title, message: exportResult.error.message, duration: 3000 })
-      }
-      return exportResult.success
-    },
+    async exportHtml() { return this._handleExport('html') },
     async printPage() {
       const result = await exportTo('print', this)
       return result.success
@@ -888,305 +847,6 @@ export default {
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
-    },
-
-    // ========== 文件上传 ==========
-
-    // 处理文件上传(图片和非图片分离处理)
-    async handleUpload(files) {
-      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
-
-      // 显示上传中通知
-      const uploadingNotification = ElNotification.info({
-        title: this.t.uploading?.title || '上传中',
-        message: this.t.uploading?.message || '正在上传文件...',
-        duration: 0,
-        showClose: false,
-      });
-
-      try {
-        // 检查是否启用了图床上传
-        const imageHostConfig = await getImageHostConfig();
-
-        // 判断是否启用图床: enabled=true 且 current 有值
-        if (imageHostConfig && imageHostConfig.enabled && imageHostConfig.current) {
-          console.log('[Upload] 使用图床上传');
-          return await this.handleUploadToImageHost(files, imageHostConfig);
-        }
-
-        // 使用本地存储(原有逻辑)
-        console.log('[Upload] 使用本地存储');
-        return await this.handleLocalUpload(files);
-      } catch (error) {
-        console.warn('[Upload] 上传过程异常,回退到本地存储:', error);
-        return await this.handleLocalUpload(files);
-      } finally {
-        // 关闭上传中通知
-        uploadingNotification.close();
-      }
-    },
-    
-    // 本地存储上传(原有逻辑提取)
-    async handleLocalUpload(files) {
-      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
-
-      const errFiles = [];
-      const succMap = {};
-
-      for (const file of files) {
-        try {
-          console.log('[Upload] 处理文件:', file.name);
-
-          // 判断是否为图片
-          const isImage = isImageFile(file);
-          const maxImageSize = 10 * 1024 * 1024; // 10MB
-          const maxFileSize = 50 * 1024 * 1024;  // 50MB
-
-          // 检查文件大小限制
-          if (isImage && file.size > maxImageSize) {
-            console.warn('[Upload] 图片超过 10MB 限制:', file.name);
-            errFiles.push(file.name);
-            continue;
-          }
-          if (!isImage && file.size > maxFileSize) {
-            console.warn('[Upload] 文件超过 50MB 限制:', file.name);
-            errFiles.push(file.name);
-            continue;
-          }
-
-          // 获取当前 md 文件所在目录
-          if (!this.currentFilePath) {
-            console.warn('[Upload] 未打开文件,无法确定保存位置');
-            const noFileTip = this.t.uploadNoFile || {};
-            ElMessageBox.alert(
-              noFileTip.message || '当前文档尚未保存到本地,无法确定存储位置。请先保存文件(Ctrl+S)后再上传。',
-              noFileTip.title || '请先保存文件',
-              { confirmButtonText: noFileTip.confirmButtonText || '我知道了', type: 'warning' }
-            );
-            return [{ code: 1, msg: 'File not saved', data: { errFiles: files.map(f => f.name), succMap: {} } }];
-          }
-
-          // 根据文件类型选择存储目录
-          const subDir = isImage ? 'assets/images' : 'assets/files';
-
-          // 使用 path 模块处理路径,确保跨平台兼容
-          const currentDir = await dirname(this.currentFilePath);
-          console.log('[Upload] 当前文件目录:', currentDir);
-
-          // 创建存储目录(图片 → assets/images,文件 → assets/files)
-          const assetsDirPath = subDir;
-          console.log('[Upload] 存储目录:', assetsDirPath);
-
-          // 检查目录是否存在(相对于 md 文件所在目录)
-          const fullAssetsPath = await normalize(await join(currentDir, assetsDirPath));
-          const assetsDirExists = await exists(fullAssetsPath);
-          console.log('[Upload] 完整路径:', fullAssetsPath);
-          console.log('[Upload] 目录是否存在:', assetsDirExists);
-
-          // 如果目录不存在,创建它
-          if (!assetsDirExists) {
-            console.log('[Upload] 开始创建目录...');
-
-            try {
-              // 方法1: 尝试直接使用完整路径创建(使用 parents 参数)
-              await mkdir(fullAssetsPath, { parents: true });
-              console.log('[Upload] 目录创建成功');
-            } catch (mkdirError) {
-              console.error('[Upload] mkdir 失败:', mkdirError);
-
-              // 方法2: 如果失败,尝试逐级创建
-              try {
-                console.log('[Upload] 尝试逐级创建目录...');
-                const assetsPath = await normalize(await join(currentDir, 'assets'));
-                const assetsExists = await exists(assetsPath);
-
-                if (!assetsExists) {
-                  await mkdir(assetsPath, { parents: true });
-                  console.log('[Upload] assets 目录创建成功');
-                }
-
-                await mkdir(fullAssetsPath, { parents: true });
-                console.log('[Upload] 目录创建成功:', subDir);
-              } catch (secondError) {
-                console.error('[Upload] 逐级创建也失败:', secondError);
-                throw new Error(`创建目录失败: ${secondError.message || '未知错误'}`);
-              }
-            }
-          }
-
-          // 读取文件内容并计算 Hash
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          // 计算文件的 SHA256 Hash
-          const fileHash = await calculateFileHash(file);
-          console.log('[Upload] 文件 Hash:', fileHash.substring(0, 16) + '...');
-
-          // 使用 Hash 作为文件名(避免重复)
-          const ext = file.name.split('.').pop();
-          const hashFileName = `${fileHash}.${ext}`;
-          const destPath = await normalize(await join(fullAssetsPath, hashFileName));
-
-          console.log('[Upload] 目标路径:', destPath);
-
-          // 检查文件是否已存在(去重)
-          const fileExists = await exists(destPath);
-          if (fileExists) {
-            console.log('[Upload] 文件已存在,跳过写入(去重)');
-          } else {
-            // 写入文件(使用 writeFile 进行二进制写入)
-            await writeFile(destPath, uint8Array);
-            console.log('[Upload] 文件写入成功');
-          }
-
-          // 生成相对路径和 tmd URL
-          const relativePath = `./${subDir}/${hashFileName}`;
-          const fileUrl = `http://tmd.localhost/${subDir}/${hashFileName}`;
-          console.log('[Upload] 相对路径:', relativePath);
-          console.log('[Upload] 生成的 URL:', fileUrl);
-
-          // succMap 中存储 { url, isImage } 供调用方区分插入语法
-          succMap[file.name] = { url: fileUrl, isImage };
-
-          // 添加映射关系到工具模块
-          imagePathMapper.addMapping(fileUrl, relativePath);
-          console.log('[Upload] 已添加映射关系');
-        } catch (error) {
-          console.error('[Upload] 文件上传失败:', file.name, error);
-          console.error('[Upload] 错误详情:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack
-          });
-          errFiles.push(file.name);
-        }
-      }
-
-      console.log('[Upload] 上传完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
-
-      // 如果有失败的文件,显示用户提示
-      if (errFiles.length > 0) {
-        ElNotification.error({
-          title: this.t.uploadFailed?.title || '上传失败',
-          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
-          duration: 5000
-        });
-      }
-
-      // 如果有成功的文件,显示成功提示
-      if (Object.keys(succMap).length > 0) {
-        ElNotification.success({
-          title: this.t.uploadSuccess?.title || '上传成功',
-          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
-          duration: 3000
-        });
-      }
-
-      return [
-        {
-          code: 0,
-          msg: '',
-          data: {
-            errFiles: errFiles,
-            succMap: succMap
-          }
-        }
-      ];
-    },
-    
-    // 图床上传
-    async handleUploadToImageHost(files, config) {
-      const errFiles = [];
-      const succMap = {};
-
-      for (const file of files) {
-        try {
-          console.log('[Upload] 图床上传处理文件:', file.name);
-          
-          // 判断是否为图片
-          const isImage = isImageFile(file);
-          
-          // 只上传图片文件到图床,非图片文件仍使用本地存储
-          if (!isImage) {
-            console.log('[Upload] 非图片文件,使用本地存储');
-            errFiles.push(file.name);
-            continue;
-          }
-          
-          // 根据图床类型选择上传方式
-          let imageUrl;
-          if (config.current === 'smms') {
-            // SM.MS 使用 JavaScript 端上传（支持 multipart）
-            console.log('[Upload] 使用 JavaScript 端 SM.MS 上传');
-            imageUrl = await uploadToSMMS(file, config);
-          } else {
-            // GitHub/Gitee 使用 Rust 端上传（需要文件路径）
-            console.log('[Upload] 使用 Rust 端上传:', config.current);
-            const tempPath = await this.saveFileToTemp(file);
-            imageUrl = await uploadToImageHost(tempPath, config);
-            await this.cleanupTempFile(tempPath);
-          }
-          
-          console.log('[Upload] 图床返回 URL:', imageUrl);
-          succMap[file.name] = { url: imageUrl, isImage: true };
-        } catch (error) {
-          console.error('[Upload] 图床上传失败:', file.name, error);
-          errFiles.push(file.name);
-        }
-      }
-
-      console.log('[Upload] 图床上载完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
-
-      // 显示通知
-      if (errFiles.length > 0) {
-        ElNotification.error({
-          title: this.t.uploadFailed?.title || '上传失败',
-          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
-          duration: 5000
-        });
-      }
-
-      if (Object.keys(succMap).length > 0) {
-        ElNotification.success({
-          title: this.t.uploadSuccess?.title || '上传成功',
-          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
-          duration: 3000
-        });
-      }
-
-      return [
-        {
-          code: 0,
-          msg: '',
-          data: {
-            errFiles: errFiles,
-            succMap: succMap
-          }
-        }
-      ];
-    },
-    
-    // 保存文件到临时目录
-    async saveFileToTemp(file) {
-      const tempDirPath = await tempDir();
-      const tempFileName = `upload_${Date.now()}_${file.name}`;
-      const tempFilePath = await join(tempDirPath, tempFileName);
-      
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await writeFile(tempFilePath, uint8Array);
-      
-      return tempFilePath;
-    },
-    
-    // 清理临时文件
-    async cleanupTempFile(filePath) {
-      try {
-        await remove(filePath);
-        console.log('[Upload] 临时文件已清理:', filePath);
-      } catch (error) {
-        console.warn('[Upload] 清理临时文件失败:', error);
-      }
     },
 
     // ========== 滚动位置记忆 ==========

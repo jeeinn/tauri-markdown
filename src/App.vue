@@ -200,12 +200,14 @@ import FindReplace from './components/FindReplace.vue'
 import ImageHostSettings from './components/ImageHostSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { ElNotification, ElMessageBox } from 'element-plus'
+// element-plus 组件在 utils 模块中直接导入
 import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage, getMultiTabMode, saveMultiTabMode } from './utils/store.js'
 import { useTabStore } from './stores/tabStore.js'
-import { checkUnsavedChanges } from './utils/unsaved-check.js'
 import { useDragDrop } from './composables/useDragDrop.js'
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { checkUnsavedChanges } from './utils/unsaved-check.js'
+import { checkForUpdate as _checkForUpdate } from './utils/update-checker.js'
+import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
+import { setupWindowCloseHandler } from './composables/useWindowCloseHandler.js'
 
 export default {
   name: 'App',
@@ -263,7 +265,20 @@ export default {
     },
   },
   mounted() {
-    window.addEventListener('keydown', this.handleKeyboardShortcut);
+    // 初始化键盘快捷键
+    const { handleKeyboardShortcut, cleanup: cleanupShortcuts } = useKeyboardShortcuts({
+      getMultiTabMode: () => this.multiTabMode,
+      getActiveVditor: () => this.getActiveVditor(),
+      tabStore: this.tabStore,
+      persistTabs: () => this.persistTabs(),
+      openFileInTab: () => this.openFileInTab(),
+      handleCloseTab: (id) => this.handleCloseTab(id),
+      handleSwitchTab: (id) => this.handleSwitchTab(id),
+      toggleZenMode: (force) => this.toggleZenMode(force),
+    })
+    this._cleanupShortcuts = cleanupShortcuts
+    window.addEventListener('keydown', handleKeyboardShortcut)
+
     this.initTheme();
     this.initViewSettings();
     setTimeout(() => this.checkForUpdate(false), 10000);
@@ -274,7 +289,7 @@ export default {
     this.setupWindowCloseHandler();
   },
   beforeUnmount() {
-    window.removeEventListener('keydown', this.handleKeyboardShortcut);
+    this._cleanupShortcuts?.()
     if (this._systemThemeMedia) {
       this._systemThemeMedia.removeEventListener('change', this._systemThemeHandler);
     }
@@ -287,9 +302,7 @@ export default {
       this.dragDropManager.cleanup();
     }
     // 清理窗口关闭拦截
-    if (this._unlistenCloseRequest) {
-      this._unlistenCloseRequest();
-    }
+    this._cleanupWindowClose?.()
   },
   methods: {
     // ─── Tab 引用管理 ─────────────────────────────────────────────────────────
@@ -453,64 +466,15 @@ export default {
 
     /**
      * 窗口关闭拦截：统一检查所有标签的未保存修改
-     *
-     * 无修改 → 直接退出
-     * 有修改 → 弹窗 → 保存并关闭 / 丢弃(退出) / 取消(不退出)
      */
     async setupWindowCloseHandler() {
-      try {
-        const appWindow = getCurrentWindow()
-        this._unlistenCloseRequest = await appWindow.onCloseRequested(async (event) => {
-          event.preventDefault()
-
-          // 收集有未保存修改的标签/编辑器
-          const modifiedItems = []
-          if (this.multiTabMode) {
-            for (const tab of this.tabStore.tabs) {
-              const tc = this.tabContentRefs.get(tab.id)
-              const vd = tc?.vditorRef
-              if (vd ? vd.isContentModified : tab.contentModified) {
-                modifiedItems.push(vd)
-              }
-            }
-          } else {
-            const vd = this.$refs.vditor
-            if (vd?.isContentModified) modifiedItems.push(vd)
-          }
-
-          // 无修改，直接退出
-          if (modifiedItems.length === 0) {
-            await appWindow.destroy()
-            return
-          }
-
-          // 有修改，弹窗提示
-          const i18nNotif = getI18nConfig(this.currentLang).notifications
-          const msgConfig = i18nNotif.closeWindow?.unsavedChanges || {
-            title: '提示', message: '有未保存的修改，是否保存？',
-            confirmButtonText: '保存并关闭', cancelButtonText: '取消', thirdButtonText: '丢弃'
-          }
-          const result = await checkUnsavedChanges(true, msgConfig, true)
-
-          if (result === 'discard') {
-            // 丢弃修改，退出软件
-            await appWindow.destroy()
-          } else if (result === 'save') {
-            // 保存所有有修改的编辑器，然后退出
-            let allSaved = true
-            for (const vd of modifiedItems) {
-              if (vd) {
-                const saved = await vd.saveMdFile()
-                if (!saved) { allSaved = false; break }
-              }
-            }
-            if (allSaved) await appWindow.destroy()
-          }
-          // cancel → 窗口保持打开
-        })
-      } catch (error) {
-        console.error('[WindowClose] 初始化窗口关闭拦截失败:', error)
-      }
+      this._cleanupWindowClose = await setupWindowCloseHandler({
+        getMultiTabMode: () => this.multiTabMode,
+        getTabStore: () => this.tabStore,
+        getTabContentRefs: () => this.tabContentRefs,
+        getVditorRef: () => this.$refs.vditor,
+        getCurrentLang: () => this.currentLang,
+      })
     },
 
     /**
@@ -615,101 +579,6 @@ export default {
       }
     },
 
-    // ─── 键盘快捷键 ───────────────────────────────────────────────────────────
-
-    handleKeyboardShortcut(event) {
-      if (event.key === 'F11') {
-        event.preventDefault();
-        this.toggleZenMode();
-        return;
-      }
-
-      if (event.key === 'Escape' && this.isZenMode) {
-        event.preventDefault();
-        this.toggleZenMode(false);
-        return;
-      }
-
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
-
-      // Ctrl+T: 新建标签页（仅多标签模式）
-      if (ctrlOrCmd && event.key === 't' && !event.shiftKey) {
-        if (!this.multiTabMode) return;
-        event.preventDefault();
-        this.tabStore.addTab();
-        this.persistTabs();
-        return;
-      }
-
-      // Ctrl+W: 关闭当前标签页（仅多标签模式）
-      if (ctrlOrCmd && event.key === 'w' && !event.shiftKey) {
-        if (!this.multiTabMode) return;
-        event.preventDefault();
-        if (this.tabStore.activeTabId) {
-          this.handleCloseTab(this.tabStore.activeTabId);
-        }
-        return;
-      }
-
-      // Ctrl+Tab: 切换到下一个标签页（仅多标签模式）
-      if (ctrlOrCmd && event.key === 'Tab' && !event.shiftKey) {
-        if (!this.multiTabMode) return;
-        event.preventDefault();
-        const tabs = this.tabStore.tabs;
-        if (tabs.length > 1) {
-          const idx = tabs.findIndex(t => t.id === this.tabStore.activeTabId);
-          const nextIdx = (idx + 1) % tabs.length;
-          this.handleSwitchTab(tabs[nextIdx].id);
-        }
-        return;
-      }
-
-      // Ctrl+N: 单文档模式 → 新建空白文档，多标签模式 → 新建标签页
-      if (ctrlOrCmd && event.key === 'n' && !event.shiftKey) {
-        event.preventDefault();
-        if (this.multiTabMode) {
-          this.tabStore.addTab();
-          this.persistTabs();
-        } else {
-          this.getActiveVditor()?.newFile();
-        }
-        return;
-      }
-
-      // Ctrl+O: 打开文件
-      if (ctrlOrCmd && event.key === 'o' && !event.shiftKey) {
-        event.preventDefault();
-        if (this.multiTabMode) {
-          this.openFileInTab()
-        } else {
-          this.getActiveVditor()?.openMdFile()
-        }
-        return;
-      }
-
-      // Ctrl+S: 保存文件
-      if (ctrlOrCmd && event.key === 's' && !event.shiftKey) {
-        event.preventDefault();
-        this.getActiveVditor()?.saveMdFile();
-        return;
-      }
-
-      // Ctrl+Shift+S: 导出文件
-      if (ctrlOrCmd && event.shiftKey && event.key === 'S') {
-        event.preventDefault();
-        this.getActiveVditor()?.exportFile();
-        return;
-      }
-
-      // Ctrl+P: 打印
-      if (ctrlOrCmd && event.key === 'p' && !event.shiftKey) {
-        event.preventDefault();
-        this.getActiveVditor()?.printPage();
-        return;
-      }
-    },
-
     // ─── 菜单处理 ─────────────────────────────────────────────────────────────
 
     handleFileMenu(command) {
@@ -797,74 +666,7 @@ export default {
     // ─── 更新检查 ─────────────────────────────────────────────────────────────
 
     async checkForUpdate(manual = false) {
-      try {
-        const { check } = await import('@tauri-apps/plugin-updater');
-        const { relaunch } = await import('@tauri-apps/plugin-process');
-        const updaterI18n = this.menuI18n.updater || {};
-
-        console.log('[updater] checking for update...');
-        const update = await check();
-        console.log('[updater] check result:', update);
-        if (update) {
-          ElMessageBox({
-            title: updaterI18n.available || '发现新版本',
-            message: (updaterI18n.availableMsg || '新版本 {version} 已发布，是否立即更新？').replace('{version}', update.version),
-            showCancelButton: true,
-            confirmButtonText: '更新',
-            cancelButtonText: '取消',
-            beforeClose: async (action, instance, done) => {
-              if (action === 'confirm') {
-                instance.confirmButtonLoading = true;
-                instance.confirmButtonText = updaterI18n.downloading || '正在下载...';
-                try {
-                  let progressText = '';
-                  let downloaded = 0;
-                  let contentLength = 0;
-                  await update.downloadAndInstall((event) => {
-                    if (event.event === 'Started') {
-                      contentLength = event.data.contentLength || 0;
-                      const totalMB = contentLength > 0 ? (contentLength / 1024 / 1024).toFixed(2) : '未知';
-                      instance.message = `${updaterI18n.downloading || '正在下载更新'} (总大小: ${totalMB} MB)...`;
-                    } else if (event.event === 'Progress') {
-                      downloaded += event.data.chunkLength || 0;
-                      const percent = contentLength > 0 ? Math.round((downloaded / contentLength) * 100) : 0;
-                      const downloadedMB = (downloaded / 1024 / 1024).toFixed(2);
-                      const msg = `${(updaterI18n.downloadProgress || '下载进度: {progress}%').replace('{progress}', percent)} (${downloadedMB} MB)`;
-                      if (msg !== progressText) {
-                        instance.message = msg;
-                        progressText = msg;
-                      }
-                    } else if (event.event === 'Finished') {
-                      instance.message = updaterI18n.downloadComplete || '下载完成，准备安装...';
-                    }
-                  });
-                  done();
-                  ElMessageBox({
-                    title: updaterI18n.available || '更新就绪',
-                    message: updaterI18n.installConfirm || '更新已下载完成，是否立即重启应用以完成安装？',
-                    showCancelButton: true,
-                    confirmButtonText: '重启',
-                    cancelButtonText: '稍后',
-                  }).then(() => relaunch()).catch(() => {});
-                } catch (err) {
-                  done();
-                  ElNotification.error({ title: updaterI18n.error || '更新失败', message: (updaterI18n.errorMsg || '更新失败: {error}').replace('{error}', String(err)) });
-                }
-              } else {
-                done();
-              }
-            },
-          }).catch(() => {});
-        } else if (manual) {
-          ElNotification.info({ title: updaterI18n.noUpdate || '检查更新', message: updaterI18n.noUpdateMsg || '当前版本已是最新' });
-        }
-      } catch (err) {
-        console.error('[updater] check error:', err);
-        if (manual) {
-          const updaterI18n = this.menuI18n.updater || {};
-          ElNotification.error({ title: updaterI18n.error || '更新失败', message: (updaterI18n.errorMsg || '检查更新时发生错误: {error}').replace('{error}', String(err)) });
-        }
-      }
+      await _checkForUpdate({ i18n: this.menuI18n.updater || {}, manual })
     },
 
     // ─── 语言切换 ─────────────────────────────────────────────────────────────
@@ -1196,52 +998,5 @@ html.dark .find-btn:hover {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-</style>
-
-<style>
-/* 全局样式：统一所有下拉菜单宽度 */
-.el-dropdown-menu {
-  min-width: 200px !important;
-}
-
-.el-dropdown-menu .el-dropdown-menu {
-  min-width: 200px !important;
-}
-
-.el-dropdown-menu .el-dropdown-menu__item {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  text-align: left !important;
-  padding: 0 20px !important;
-  line-height: 36px !important;
-}
-
-.el-dropdown-menu .el-dropdown-menu__item > span,
-.el-dropdown-menu .el-dropdown-menu__item > div {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  width: 100% !important;
-  text-align: left !important;
-}
-
-.nested-dropdown-popper .el-dropdown-menu__item {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  text-align: left !important;
-  padding: 0 20px !important;
-  line-height: 36px !important;
-}
-
-.nested-dropdown-popper .el-dropdown-menu__item > span,
-.nested-dropdown-popper .el-dropdown-menu__item > div {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  width: 100% !important;
-  text-align: left !important;
 }
 </style>
