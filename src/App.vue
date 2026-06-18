@@ -393,8 +393,13 @@ export default {
         const vditor = this.getActiveVditor()
         if (vditor) {
           vditor.updateWindowTitle()
-          // 切换到新标签时恢复该标签的滚动位置
           vditor.restoreScrollPosition?.()
+        }
+        // 切换标签后更新 FindReplace 的 vditor 引用并重新搜索
+        const findReplace = this.$refs.findReplace
+        if (findReplace?.visible) {
+          findReplace.vditorRef = vditor
+          findReplace.performSearch()
         }
       })
     },
