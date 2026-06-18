@@ -1,17 +1,6 @@
 <template>
   <div class="vditor-container">
-    <div id="vditorEle" class="vditor"></div>
-    <!-- 拖拽文件高亮遮罩层 -->
-    <div v-if="dragDropManager?.showDropOverlay" class="drop-overlay">
-      <div class="drop-overlay-content">
-        <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <p class="drop-text">{{ dropHintText }}</p>
-      </div>
-    </div>
+    <div :id="`vditor-${tabId}`" class="vditor"></div>
   </div>
 </template>
 
@@ -24,29 +13,30 @@ import vditorConf from '../config/vditor-config.js'
 import { getI18nConfig, getI18nText } from '../utils/i18n-helper.js'
 // 导入系统组件
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile, writeFile, exists, mkdir, remove } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getLastFilePath, saveLastFilePath, clearLastFilePath, clearScrollPosition } from '../utils/store.js'
 import imagePathMapper from '../utils/image-path-mapper.js'
-import { dirname, join, normalize, tempDir } from '@tauri-apps/api/path'
+import { dirname } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
-// 导入 composables
-import { useDragDrop } from '../composables/useDragDrop.js'
+import { useTabStore } from '../stores/tabStore.js'
 // 导入工具函数
-import { calculateFileHash, isImageFile } from '../utils/file-utils.js'
-// 导入图床配置
-import { getImageHostConfig, uploadToImageHost, uploadToSMMS } from '../utils/image-host-config.js'
+import { uploadFiles } from '../utils/file-upload.js'
 
 // 日志级别控制（生产环境可关闭）
 const DEBUG = import.meta.env.DEV;
 
 export default {
   name: "MyVditor.vue",
+  props: {
+    tabId: { type: String, default: 'default' },
+    initialFile: { type: String, default: null },
+  },
   data() {
     return {
       vditor: '',
@@ -60,7 +50,6 @@ export default {
       isContentModified: false, // 内容是否被修改
       originalContent: '', // 原始文件内容,用于对比
       isSaving: false, // 是否正在保存(防止保存过程中触发修改检测)
-      _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
       _handleLinkClick: null, // 链接点击拦截处理函数
       // 滚动位置记忆管理器
       scrollMemory: null,
@@ -68,8 +57,6 @@ export default {
       isDarkTheme: false,
       // 模式切换监听器取消订阅函数
       _unsubscribeModeSwitch: null,
-      // 拖拽文件管理器（在 mounted 中初始化）
-      dragDropManager: null,
     };
   },
   computed: {
@@ -81,34 +68,32 @@ export default {
     wt() {
       return getI18nConfig(this.lang).windowTitle;
     },
-    // 拖拽提示文本
-    dropHintText() {
-      return getI18nText(this.lang, 'dragDrop.hint');
-    }
   },
   mounted() {
     this.initVditor();
 
     // beforeunload 仅用于保存滚动位置(Tauri 窗口关闭由 onCloseRequested 处理)
-    window.addEventListener('beforeunload', () => {
+    this._handleBeforeUnload = () => {
       this.scrollMemory?.flushScrollPosition()
-    })
-
-    // 初始化 Tauri 窗口关闭拦截
-    this.setupWindowCloseHandler();
-
-    // 初始化拖拽文件管理器
-    this.dragDropManager = useDragDrop(
-      (filePath) => this.loadFileByPath(filePath),
-      () => this.lang  // 传入 getter 函数，确保语言切换时获取最新值
-    );
-    
-    this.dragDropManager.setupDragDrop();
+    }
+    window.addEventListener('beforeunload', this._handleBeforeUnload)
   },
   beforeUnmount() {
+    // 销毁 Vditor 实例释放内存
+    if (this.vditor) {
+      this.vditor.destroy()
+      this.vditor = ''
+    }
+
+    // 移除 beforeunload 监听器
+    if (this._handleBeforeUnload) {
+      window.removeEventListener('beforeunload', this._handleBeforeUnload)
+      this._handleBeforeUnload = null
+    }
+
     // 清理滚动记忆管理器
     this.scrollMemory?.destroy()
-    
+
     // 取消模式切换监听器订阅
     if (this._unsubscribeModeSwitch) {
       this._unsubscribeModeSwitch()
@@ -119,24 +104,13 @@ export default {
       }
     }
     
-    // 清理窗口关闭事件监听
-    if (this._unlistenCloseRequest) {
-      this._unlistenCloseRequest();
-      this._unlistenCloseRequest = null;
-    }
-
     // 清理链接点击拦截监听
     if (this._handleLinkClick) {
-      const vditorEle = document.getElementById('vditorEle');
+      const vditorEle = document.getElementById(`vditor-${this.tabId}`);
       if (vditorEle) {
         vditorEle.removeEventListener('click', this._handleLinkClick);
       }
       this._handleLinkClick = null;
-    }
-
-    // 清理拖拽文件管理器
-    if (this.dragDropManager) {
-      this.dragDropManager.cleanup();
     }
   },
   methods: {
@@ -146,56 +120,27 @@ export default {
     switchLanguage(lang) {
       if (this.lang === lang) return;
 
+      // 保存当前内容，防止 initVditor 重建后从磁盘加载丢失未保存编辑
+      const savedContent = this.vditor ? this.vditor.getValue() : null
+      const savedFilePath = this.currentFilePath
+      const savedOriginal = this.originalContent
+      const savedModified = this.isContentModified
+
       this.lang = lang;
       // 重新初始化 Vditor 以应用新的语言配置
       this.initVditor();
-    },
 
-    // ========== 窗口管理 ==========
-
-    // 初始化窗口关闭拦截
-    async setupWindowCloseHandler() {
-      try {
-        const appWindow = getCurrentWindow();
-        this._unlistenCloseRequest = await appWindow.onCloseRequested(async (event) => {
-          // 检查是否有未保存的修改
-          if (this.isContentModified) {
-            // 阻止默认关闭行为
-            event.preventDefault();
-
-            try {
-              // 显示保存提示对话框，使用三按钮模式
-              const result = await checkUnsavedChanges(
-                this.isContentModified,
-                this.t.closeWindow.unsavedChanges,
-                true // 显示三个按钮
-              );
-
-              // 根据用户选择执行不同操作
-              if (result === 'discard') {
-                // 用户选择"不保存"，直接关闭窗口
-                await appWindow.destroy();
-              } else if (result === 'save') {
-                // 用户点击"保存并关闭",执行保存
-                const saved = await this.saveMdFile();
-                if (saved) {
-                  // 保存成功,关闭窗口
-                  await appWindow.destroy();
-                }
-                // 如果保存失败,窗口保持打开
-              }
-              // 如果用户点击"取消"或关闭对话框，窗口保持打开(不做任何操作)
-            } catch {
-              // 用户点击"取消"或关闭对话框，窗口保持打开(不做任何操作)
-            }
-          } else {
-            // 没有未保存的修改,关闭前保存滚动位置
-            this.scrollMemory?.flushScrollPosition();
+      // 重建后恢复内容（等待 after 回调完成后再恢复）
+      if (savedContent !== null) {
+        setTimeout(() => {
+          if (this.vditor) {
+            this.vditor.setValue(savedContent)
+            this.currentFilePath = savedFilePath
+            this.originalContent = savedOriginal
+            this.isContentModified = savedModified
+            this.updateWindowTitle()
           }
-        });
-        console.log('[WindowClose] 窗口关闭拦截已初始化');
-      } catch (error) {
-        console.error('[WindowClose] 初始化窗口关闭拦截失败:', error);
+        }, 100)
       }
     },
 
@@ -205,7 +150,7 @@ export default {
     async setupLinkClickHandler() {
       // 先清理旧监听器（语言切换会重建 Vditor 实例）
       if (this._handleLinkClick) {
-        const oldEl = document.getElementById('vditorEle');
+        const oldEl = document.getElementById(`vditor-${this.tabId}`);
         if (oldEl) {
           oldEl.removeEventListener('click', this._handleLinkClick);
         }
@@ -222,7 +167,7 @@ export default {
         return;
       }
 
-      const vditorEle = document.getElementById('vditorEle');
+      const vditorEle = document.getElementById(`vditor-${this.tabId}`);
       if (!vditorEle) return;
 
       this._handleLinkClick = (e) => {
@@ -281,7 +226,7 @@ export default {
     toggleZenMode(isZen) {
       if (!this.vditor) return;
 
-      const vditorEl = document.getElementById('vditorEle');
+      const vditorEl = document.getElementById(`vditor-${this.tabId}`);
       if (!vditorEl) return;
 
       if (isZen) {
@@ -300,6 +245,9 @@ export default {
         this.vditor.destroy();
       }
 
+      // 快照当前 initialFile，防止 after 回调闭包读到 Vue 更新后的响应式值
+      const snapshotInitialFile = this.initialFile;
+
       // 创建配置(注意:不使用 JSON 深拷贝,避免丢失函数类型配置)
       const vditorConfCopy = {
         options: {
@@ -315,22 +263,17 @@ export default {
 
       // 设置自定义上传 handler
       vditorConfCopy.options.upload.handler = async (files) => {
-        const result = await this.handleUpload(files);
+        const result = await uploadFiles(files, {
+          currentFilePath: this.currentFilePath,
+          i18n: this.t
+        });
 
         // 根据文件类型插入不同的 Markdown 语法
-        if (result && result[0] && result[0].data && result[0].data.succMap) {
-          const succMap = result[0].data.succMap;
-          for (const [originalName, entry] of Object.entries(succMap)) {
-            let markdown;
-            if (entry.isImage) {
-              markdown = `![${originalName}](${entry.url})`;
-            } else {
-              markdown = `[${originalName}](${entry.url})`;
-            }
-            this.vditor.insertValue(markdown + '\n');
-            console.log('[Upload] 插入 Markdown:', markdown);
+        if (result?.[0]?.data?.succMap) {
+          for (const [name, entry] of Object.entries(result[0].data.succMap)) {
+            const md = entry.isImage ? `![${name}](${entry.url})` : `[${name}](${entry.url})`;
+            this.vditor.insertValue(md + '\n');
           }
-          // insertValue 不会触发 input 事件,需要手动检查内容修改状态
           this.checkContentModified();
         }
 
@@ -346,7 +289,13 @@ export default {
             () => this.vditor,
             {
               getCurrentFilePath: () => this.currentFilePath,
-              // 注意：不再使用 onAfterModeChange，改为直接使用 modeSwitchListener
+              onScrollChange: (pct) => {
+                // 同步滚动位置到 tab store，使 persistTabs 能保存正确的 scrollPosition
+                try {
+                  const tabStore = useTabStore()
+                  tabStore.updateTab(this.tabId, { scrollPosition: pct })
+                } catch { /* store 未初始化时忽略 */ }
+              },
             }
           )
         }
@@ -358,9 +307,20 @@ export default {
         this.setupThemeModeSwitchListener();
         
         // 语言切换后重新应用主题（因为 Vditor 实例被重建）
-        this.setVditorTheme(this.isDarkTheme);
-        
-        this.autoLoadLastFile();
+        // 从 DOM 检测当前实际主题状态，避免因 isDarkTheme 默认值错误导致主题不一致
+        const actuallyDark = document.documentElement.classList.contains('dark')
+        this.isDarkTheme = actuallyDark
+        this.setVditorTheme(actuallyDark);
+
+        // 初始化后加载文件
+        // 使用 initVditor 时的快照值，而非响应式 prop，避免 Vue 更新时误触发
+        if (snapshotInitialFile) {
+          this.loadFileByPath(snapshotInitialFile);
+        } else if (this.tabId === 'default') {
+          // 单文档模式（tabId 为默认值）：自动加载上次打开的文件
+          this.autoLoadLastFile();
+        }
+        // 多标签模式的空白标签（initialFile=null, tabId=uuid）：保持空白
         // 初始化窗口标题
         this.updateWindowTitle();
         // 设置链接点击拦截（用系统默认浏览器打开 http/https 链接）
@@ -368,7 +328,7 @@ export default {
       };
 
       // 创建新实例
-      this.vditor = new Vditor('vditorEle', vditorConfCopy.options);
+      this.vditor = new Vditor(`vditor-${this.tabId}`, vditorConfCopy.options);
     },
 
     // ========== 内容监听 ==========
@@ -388,10 +348,35 @@ export default {
             this.checkContentModified()
           })
         }
+        // WYSIWYG 模式
+        if (this.vditor.vditor.wysiwyg && this.vditor.vditor.wysiwyg.element) {
+          this.vditor.vditor.wysiwyg.element.addEventListener('input', () => {
+            this.checkContentModified()
+          })
+        }
       }
     },
 
     // ========== 文件管理 ==========
+
+    /**
+     * 同步当前文件路径到 Pinia tab store
+     * 使 TabBar 中的标签标题能动态显示文件名
+     * @param {string|null} filePath
+     * @param {boolean} [contentModified] - 如传入则同时同步修改状态
+     */
+    syncFilePathToTab(filePath, contentModified) {
+      try {
+        const tabStore = useTabStore()
+        const patch = { filePath }
+        if (contentModified !== undefined) {
+          patch.contentModified = contentModified
+        }
+        tabStore.updateTab(this.tabId, patch)
+      } catch {
+        // store 未初始化时忽略
+      }
+    },
 
     // 检查内容是否被修改
     checkContentModified() {
@@ -406,6 +391,14 @@ export default {
       const currentContent = this.vditor.getValue()
       const wasModified = this.isContentModified
       this.isContentModified = currentContent !== this.originalContent
+
+      // 同步修改状态到 Pinia tab store
+      try {
+        const tabStore = useTabStore()
+        tabStore.updateTab(this.tabId, { contentModified: this.isContentModified })
+      } catch {
+        // store 未初始化时忽略（如测试环境）
+      }
 
       // 调试日志:只在状态变化时输出
       if (wasModified !== this.isContentModified) {
@@ -445,6 +438,9 @@ export default {
       this.currentFilePath = null
       this.originalContent = ''
       this.isContentModified = false
+
+      // 同步文件路径到 tab store（清空）
+      this.syncFilePathToTab(null)
 
       // 清除 store 中的记录
       await clearLastFilePath()
@@ -574,14 +570,31 @@ export default {
       this.vditor.setValue(convertedContent)
 
       this.currentFilePath = filePath
-      this.originalContent = data
+      // 保存转换后的内容作为基准，确保 checkContentModified 比较的是同一种格式
+      this.originalContent = convertedContent
       this.isContentModified = false
+
+      // 同步文件路径和修改状态到 tab store
+      this.syncFilePathToTab(filePath, false)
 
       await saveLastFilePath(filePath)
       await this.updateWindowTitle()
 
-      // 加载新文件后恢复滚动位置
-      this.scrollMemory?.restoreScrollPosition(filePath)
+      // 恢复滚动位置：单文档模式直接恢复，多标签模式仅恢复当前激活标签
+      if (this.tabId === 'default') {
+        // 单文档模式
+        this.scrollMemory?.restoreScrollPosition(filePath)
+      } else {
+        // 多标签模式：仅激活标签立即恢复，其他标签切换时再恢复
+        try {
+          const tabStore = useTabStore()
+          if (tabStore.activeTabId === this.tabId) {
+            this.scrollMemory?.restoreScrollPosition(filePath)
+          }
+        } catch {
+          this.scrollMemory?.restoreScrollPosition(filePath)
+        }
+      }
 
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
       return true
@@ -699,8 +712,12 @@ export default {
 
         // 立即更新状态(在显示通知之前)
         this.currentFilePath = filePath
-        this.originalContent = currentContent
+        // 用编辑器当前内容（convertToAssetUrl 格式）作为基准，确保后续比较格式一致
+        this.originalContent = this.vditor.getValue()
         this.isContentModified = false
+
+        // 同步文件路径和修改状态到 tab store，使标签标题动态更新并移除 * 标记
+        this.syncFilePathToTab(filePath, false)
 
         // 保存到 store
         await saveLastFilePath(filePath)
@@ -727,14 +744,11 @@ export default {
       }
     },
     async exportFile() {
-      // 如果当前有未保存的修改,提示用户
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
       try {
         let content = this.vditor.getValue()
-
-        // 检查内容是否为空
         if (!content.trim()) {
           ElNotification.warning({
             title: this.t.exportFile.emptyContent.title,
@@ -744,88 +758,57 @@ export default {
           return false
         }
 
-        // 使用工具模块将 tmd URL 转换为相对路径（导出前处理）
-        content = imagePathMapper.convertToRelative(content);
-        console.log('[Export] 已转换 tmd URL 为相对路径');
-
-        // 打开保存对话框
+        content = imagePathMapper.convertToRelative(content)
         const filePath = await save({
-          filters: [{
-            name: 'MarkDownFile',
-            extensions: ['md']
-          }]
+          filters: [{ name: 'MarkDownFile', extensions: ['md'] }]
         })
-
         if (!filePath) {
           ElNotification.error(this.t.exportFile.pathError)
           return false
         }
 
-        console.log('[DEBUG] 开始导出文件到:', filePath)
         await writeTextFile(filePath, content)
-
         const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
-        ElMessage.success({
-          message: `${this.t.exportFile.success.title}: ${fileName}`,
-          duration: 2000
-        })
+        ElMessage.success({ message: `${this.t.exportFile.success.title}: ${fileName}`, duration: 2000 })
         return true
       } catch (error) {
-        console.error('[ERROR] 文件导出失败:', error)
         ElNotification.error(this.t.exportFile.exportError)
         return false
       }
     },
 
-    async exportPdf() {
+    /**
+     * 通用导出处理（PDF / HTML）
+     * @param {'pdf'|'html'} type - 导出类型
+     */
+    async _handleExport(type) {
       const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
       if (result === 'cancel') return false
 
-      const pdfConfig = this.t.exportPdf
-      const exportResult = await exportTo('pdf', this, {
+      const config = this.t[type === 'pdf' ? 'exportPdf' : 'exportHtml']
+      const exportResult = await exportTo(type, this, {
         onProgress: (current, total) => {
           if (current === 0) {
-            ElNotification.info({ title: pdfConfig.processingImages.title, message: pdfConfig.processingImages.message.replace('{count}', total), duration: 0 })
+            ElNotification.info({ title: config.processingImages.title, message: config.processingImages.message.replace('{count}', total), duration: 0 })
           } else if (current < total) {
             ElNotification.closeAll()
-            ElNotification.info({ title: pdfConfig.processingImages.title, message: pdfConfig.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
+            ElNotification.info({ title: config.processingImages.title, message: config.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
           }
         },
       })
 
       ElNotification.closeAll()
       if (exportResult.success) {
-        ElNotification.success({ title: pdfConfig.success.title, message: pdfConfig.fileSaved, duration: 3000 })
+        ElNotification.success({ title: config.success.title, message: config.fileSaved, duration: 3000 })
       } else if (exportResult.error) {
-        ElNotification.error({ title: pdfConfig.exportError?.title, message: exportResult.error.message, duration: 3000 })
+        ElNotification.error({ title: config.exportError?.title, message: exportResult.error.message, duration: 3000 })
       }
       return exportResult.success
     },
 
-    async exportHtml() {
-      const result = await checkUnsavedChanges(this.isContentModified, this.t.exportFile.unsavedChanges)
-      if (result === 'cancel') return false
+    async exportPdf() { return this._handleExport('pdf') },
 
-      const htmlConfig = this.t.exportHtml
-      const exportResult = await exportTo('html', this, {
-        onProgress: (current, total) => {
-          if (current === 0) {
-            ElNotification.info({ title: htmlConfig.processingImages.title, message: htmlConfig.processingImages.message.replace('{count}', total), duration: 0 })
-          } else if (current < total) {
-            ElNotification.closeAll()
-            ElNotification.info({ title: htmlConfig.processingImages.title, message: htmlConfig.imageProgress.message.replace('{current}', current).replace('{total}', total), duration: 0 })
-          }
-        },
-      })
-
-      ElNotification.closeAll()
-      if (exportResult.success) {
-        ElNotification.success({ title: htmlConfig.success.title, message: htmlConfig.fileSaved, duration: 3000 })
-      } else if (exportResult.error) {
-        ElNotification.error({ title: htmlConfig.exportError?.title, message: exportResult.error.message, duration: 3000 })
-      }
-      return exportResult.success
-    },
+    async exportHtml() { return this._handleExport('html') },
     async printPage() {
       const result = await exportTo('print', this)
       return result.success
@@ -866,305 +849,6 @@ export default {
       })
     },
 
-    // ========== 文件上传 ==========
-
-    // 处理文件上传(图片和非图片分离处理)
-    async handleUpload(files) {
-      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
-
-      // 显示上传中通知
-      const uploadingNotification = ElNotification.info({
-        title: this.t.uploading?.title || '上传中',
-        message: this.t.uploading?.message || '正在上传文件...',
-        duration: 0,
-        showClose: false,
-      });
-
-      try {
-        // 检查是否启用了图床上传
-        const imageHostConfig = await getImageHostConfig();
-
-        // 判断是否启用图床: enabled=true 且 current 有值
-        if (imageHostConfig && imageHostConfig.enabled && imageHostConfig.current) {
-          console.log('[Upload] 使用图床上传');
-          return await this.handleUploadToImageHost(files, imageHostConfig);
-        }
-
-        // 使用本地存储(原有逻辑)
-        console.log('[Upload] 使用本地存储');
-        return await this.handleLocalUpload(files);
-      } catch (error) {
-        console.warn('[Upload] 上传过程异常,回退到本地存储:', error);
-        return await this.handleLocalUpload(files);
-      } finally {
-        // 关闭上传中通知
-        uploadingNotification.close();
-      }
-    },
-    
-    // 本地存储上传(原有逻辑提取)
-    async handleLocalUpload(files) {
-      console.log('[Upload] 开始处理文件上传, 文件数量:', files.length);
-
-      const errFiles = [];
-      const succMap = {};
-
-      for (const file of files) {
-        try {
-          console.log('[Upload] 处理文件:', file.name);
-
-          // 判断是否为图片
-          const isImage = isImageFile(file);
-          const maxImageSize = 10 * 1024 * 1024; // 10MB
-          const maxFileSize = 50 * 1024 * 1024;  // 50MB
-
-          // 检查文件大小限制
-          if (isImage && file.size > maxImageSize) {
-            console.warn('[Upload] 图片超过 10MB 限制:', file.name);
-            errFiles.push(file.name);
-            continue;
-          }
-          if (!isImage && file.size > maxFileSize) {
-            console.warn('[Upload] 文件超过 50MB 限制:', file.name);
-            errFiles.push(file.name);
-            continue;
-          }
-
-          // 获取当前 md 文件所在目录
-          if (!this.currentFilePath) {
-            console.warn('[Upload] 未打开文件,无法确定保存位置');
-            const noFileTip = this.t.uploadNoFile || {};
-            ElMessageBox.alert(
-              noFileTip.message || '当前文档尚未保存到本地,无法确定存储位置。请先保存文件(Ctrl+S)后再上传。',
-              noFileTip.title || '请先保存文件',
-              { confirmButtonText: noFileTip.confirmButtonText || '我知道了', type: 'warning' }
-            );
-            return [{ code: 1, msg: 'File not saved', data: { errFiles: files.map(f => f.name), succMap: {} } }];
-          }
-
-          // 根据文件类型选择存储目录
-          const subDir = isImage ? 'assets/images' : 'assets/files';
-
-          // 使用 path 模块处理路径,确保跨平台兼容
-          const currentDir = await dirname(this.currentFilePath);
-          console.log('[Upload] 当前文件目录:', currentDir);
-
-          // 创建存储目录(图片 → assets/images,文件 → assets/files)
-          const assetsDirPath = subDir;
-          console.log('[Upload] 存储目录:', assetsDirPath);
-
-          // 检查目录是否存在(相对于 md 文件所在目录)
-          const fullAssetsPath = await normalize(await join(currentDir, assetsDirPath));
-          const assetsDirExists = await exists(fullAssetsPath);
-          console.log('[Upload] 完整路径:', fullAssetsPath);
-          console.log('[Upload] 目录是否存在:', assetsDirExists);
-
-          // 如果目录不存在,创建它
-          if (!assetsDirExists) {
-            console.log('[Upload] 开始创建目录...');
-
-            try {
-              // 方法1: 尝试直接使用完整路径创建(使用 parents 参数)
-              await mkdir(fullAssetsPath, { parents: true });
-              console.log('[Upload] 目录创建成功');
-            } catch (mkdirError) {
-              console.error('[Upload] mkdir 失败:', mkdirError);
-
-              // 方法2: 如果失败,尝试逐级创建
-              try {
-                console.log('[Upload] 尝试逐级创建目录...');
-                const assetsPath = await normalize(await join(currentDir, 'assets'));
-                const assetsExists = await exists(assetsPath);
-
-                if (!assetsExists) {
-                  await mkdir(assetsPath, { parents: true });
-                  console.log('[Upload] assets 目录创建成功');
-                }
-
-                await mkdir(fullAssetsPath, { parents: true });
-                console.log('[Upload] 目录创建成功:', subDir);
-              } catch (secondError) {
-                console.error('[Upload] 逐级创建也失败:', secondError);
-                throw new Error(`创建目录失败: ${secondError.message || '未知错误'}`);
-              }
-            }
-          }
-
-          // 读取文件内容并计算 Hash
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          // 计算文件的 SHA256 Hash
-          const fileHash = await calculateFileHash(file);
-          console.log('[Upload] 文件 Hash:', fileHash.substring(0, 16) + '...');
-
-          // 使用 Hash 作为文件名(避免重复)
-          const ext = file.name.split('.').pop();
-          const hashFileName = `${fileHash}.${ext}`;
-          const destPath = await normalize(await join(fullAssetsPath, hashFileName));
-
-          console.log('[Upload] 目标路径:', destPath);
-
-          // 检查文件是否已存在(去重)
-          const fileExists = await exists(destPath);
-          if (fileExists) {
-            console.log('[Upload] 文件已存在,跳过写入(去重)');
-          } else {
-            // 写入文件(使用 writeFile 进行二进制写入)
-            await writeFile(destPath, uint8Array);
-            console.log('[Upload] 文件写入成功');
-          }
-
-          // 生成相对路径和 tmd URL
-          const relativePath = `./${subDir}/${hashFileName}`;
-          const fileUrl = `http://tmd.localhost/${subDir}/${hashFileName}`;
-          console.log('[Upload] 相对路径:', relativePath);
-          console.log('[Upload] 生成的 URL:', fileUrl);
-
-          // succMap 中存储 { url, isImage } 供调用方区分插入语法
-          succMap[file.name] = { url: fileUrl, isImage };
-
-          // 添加映射关系到工具模块
-          imagePathMapper.addMapping(fileUrl, relativePath);
-          console.log('[Upload] 已添加映射关系');
-        } catch (error) {
-          console.error('[Upload] 文件上传失败:', file.name, error);
-          console.error('[Upload] 错误详情:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack
-          });
-          errFiles.push(file.name);
-        }
-      }
-
-      console.log('[Upload] 上传完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
-
-      // 如果有失败的文件,显示用户提示
-      if (errFiles.length > 0) {
-        ElNotification.error({
-          title: this.t.uploadFailed?.title || '上传失败',
-          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
-          duration: 5000
-        });
-      }
-
-      // 如果有成功的文件,显示成功提示
-      if (Object.keys(succMap).length > 0) {
-        ElNotification.success({
-          title: this.t.uploadSuccess?.title || '上传成功',
-          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
-          duration: 3000
-        });
-      }
-
-      return [
-        {
-          code: 0,
-          msg: '',
-          data: {
-            errFiles: errFiles,
-            succMap: succMap
-          }
-        }
-      ];
-    },
-    
-    // 图床上传
-    async handleUploadToImageHost(files, config) {
-      const errFiles = [];
-      const succMap = {};
-
-      for (const file of files) {
-        try {
-          console.log('[Upload] 图床上传处理文件:', file.name);
-          
-          // 判断是否为图片
-          const isImage = isImageFile(file);
-          
-          // 只上传图片文件到图床,非图片文件仍使用本地存储
-          if (!isImage) {
-            console.log('[Upload] 非图片文件,使用本地存储');
-            errFiles.push(file.name);
-            continue;
-          }
-          
-          // 根据图床类型选择上传方式
-          let imageUrl;
-          if (config.current === 'smms') {
-            // SM.MS 使用 JavaScript 端上传（支持 multipart）
-            console.log('[Upload] 使用 JavaScript 端 SM.MS 上传');
-            imageUrl = await uploadToSMMS(file, config);
-          } else {
-            // GitHub/Gitee 使用 Rust 端上传（需要文件路径）
-            console.log('[Upload] 使用 Rust 端上传:', config.current);
-            const tempPath = await this.saveFileToTemp(file);
-            imageUrl = await uploadToImageHost(tempPath, config);
-            await this.cleanupTempFile(tempPath);
-          }
-          
-          console.log('[Upload] 图床返回 URL:', imageUrl);
-          succMap[file.name] = { url: imageUrl, isImage: true };
-        } catch (error) {
-          console.error('[Upload] 图床上传失败:', file.name, error);
-          errFiles.push(file.name);
-        }
-      }
-
-      console.log('[Upload] 图床上载完成 - 成功:', Object.keys(succMap).length, '失败:', errFiles.length);
-
-      // 显示通知
-      if (errFiles.length > 0) {
-        ElNotification.error({
-          title: this.t.uploadFailed?.title || '上传失败',
-          message: this.t.uploadFailed?.message?.replace('{count}', errFiles.length) || `${errFiles.length} 个文件上传失败`,
-          duration: 5000
-        });
-      }
-
-      if (Object.keys(succMap).length > 0) {
-        ElNotification.success({
-          title: this.t.uploadSuccess?.title || '上传成功',
-          message: this.t.uploadSuccess?.message?.replace('{count}', Object.keys(succMap).length) || `${Object.keys(succMap).length} 个文件上传成功`,
-          duration: 3000
-        });
-      }
-
-      return [
-        {
-          code: 0,
-          msg: '',
-          data: {
-            errFiles: errFiles,
-            succMap: succMap
-          }
-        }
-      ];
-    },
-    
-    // 保存文件到临时目录
-    async saveFileToTemp(file) {
-      const tempDirPath = await tempDir();
-      const tempFileName = `upload_${Date.now()}_${file.name}`;
-      const tempFilePath = await join(tempDirPath, tempFileName);
-      
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await writeFile(tempFilePath, uint8Array);
-      
-      return tempFilePath;
-    },
-    
-    // 清理临时文件
-    async cleanupTempFile(filePath) {
-      try {
-        await remove(filePath);
-        console.log('[Upload] 临时文件已清理:', filePath);
-      } catch (error) {
-        console.warn('[Upload] 清理临时文件失败:', error);
-      }
-    },
-
     // ========== 滚动位置记忆 ==========
 
     /**
@@ -1175,6 +859,27 @@ export default {
       if (this.scrollMemory) {
         this.scrollMemory.setEnabled(enabled)
       }
+    },
+
+    /**
+     * 恢复当前文件的滚动位置（由父组件在切换标签时调用）
+     */
+    restoreScrollPosition() {
+      if (this.scrollMemory && this.currentFilePath) {
+        this.scrollMemory.restoreScrollPosition(this.currentFilePath)
+      }
+    },
+
+    /**
+     * 获取当前 Vditor 的编辑区域 DOM 元素（供 FindReplace 使用）
+     * @returns {HTMLElement|null}
+     */
+    getEditorElement() {
+      const vditorEle = document.getElementById(`vditor-${this.tabId}`)
+      if (!vditorEle) return null
+      return vditorEle.querySelector('.vditor-ir')
+        || vditorEle.querySelector('.vditor-sv')
+        || vditorEle.querySelector('.vditor-wysiwyg')
     },
 
     // ========== 主题管理 ==========

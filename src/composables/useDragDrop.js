@@ -19,6 +19,7 @@ import { getI18nText } from '../utils/i18n-helper.js'
 export function useDragDrop(onFileDrop, getLang) {
   const showDropOverlay = ref(false)
   let _unlistenDragDrop = null
+  let _suppressOverlay = false
 
   /**
    * 获取当前语言值
@@ -43,8 +44,10 @@ export function useDragDrop(onFileDrop, getLang) {
         const { type, paths } = event.payload
 
         if (type === 'over') {
-          // 拖入窗口 - 显示高亮遮罩
-          showDropOverlay.value = true
+          // 拖入窗口 - 显示高亮遮罩（内部拖拽时抑制）
+          if (!_suppressOverlay) {
+            showDropOverlay.value = true
+          }
           return
         }
 
@@ -96,9 +99,26 @@ export function useDragDrop(onFileDrop, getLang) {
     }
   }
 
+  /**
+   * 抑制拖拽遮罩层显示（用于内部拖拽，如标签排序）
+   */
+  function suppressOverlay() {
+    _suppressOverlay = true
+    showDropOverlay.value = false
+  }
+
+  /**
+   * 恢复拖拽遮罩层显示
+   */
+  function restoreOverlay() {
+    _suppressOverlay = false
+  }
+
   return {
     showDropOverlay,
     setupDragDrop,
-    cleanup
+    cleanup,
+    suppressOverlay,
+    restoreOverlay
   }
 }

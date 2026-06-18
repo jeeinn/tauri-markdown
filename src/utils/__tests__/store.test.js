@@ -315,6 +315,125 @@ describe('Store Utils', () => {
     })
   })
 
+  describe('多标签页持久化', () => {
+    let mockStore
+
+    beforeEach(() => {
+      mockStore = {
+        get: vi.fn(),
+        set: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      }
+      mockInvoke.mockResolvedValue(false)
+      mockStoreLoad.mockResolvedValue(mockStore)
+    })
+
+    it('saveTabs 应该将标签页数组保存到 tabs 键', async () => {
+      const tabs = [{ id: '1', title: 'tab1' }, { id: '2', title: 'tab2' }]
+      await storeModule.saveTabs(tabs)
+      expect(mockStore.set).toHaveBeenCalledWith('tabs', tabs)
+      expect(mockStore.save).toHaveBeenCalled()
+    })
+
+    it('loadTabs 应该返回已保存的标签页数组', async () => {
+      const tabs = [{ id: '1', title: 'tab1' }]
+      mockStore.get.mockResolvedValue(tabs)
+      const result = await storeModule.loadTabs()
+      expect(result).toEqual(tabs)
+      expect(mockStore.get).toHaveBeenCalledWith('tabs')
+    })
+
+    it('loadTabs 在没有数据时应该返回空数组', async () => {
+      mockStore.get.mockResolvedValue(null)
+      const result = await storeModule.loadTabs()
+      expect(result).toEqual([])
+    })
+
+    it('loadTabs 在数据非数组时应该返回空数组', async () => {
+      mockStore.get.mockResolvedValue('invalid')
+      const result = await storeModule.loadTabs()
+      expect(result).toEqual([])
+    })
+
+    it('saveActiveTabId 应该将活跃标签 ID 保存到 activeTabId 键', async () => {
+      await storeModule.saveActiveTabId('tab-123')
+      expect(mockStore.set).toHaveBeenCalledWith('activeTabId', 'tab-123')
+      expect(mockStore.save).toHaveBeenCalled()
+    })
+
+    it('loadActiveTabId 应该返回已保存的活跃标签 ID', async () => {
+      mockStore.get.mockResolvedValue('tab-123')
+      const result = await storeModule.loadActiveTabId()
+      expect(result).toBe('tab-123')
+      expect(mockStore.get).toHaveBeenCalledWith('activeTabId')
+    })
+
+    it('loadActiveTabId 在没有数据时应该返回 null', async () => {
+      mockStore.get.mockResolvedValue(null)
+      const result = await storeModule.loadActiveTabId()
+      expect(result).toBeNull()
+    })
+
+    it('clearAllTabs 应该删除 tabs 和 activeTabId 并保存', async () => {
+      await storeModule.clearAllTabs()
+      expect(mockStore.delete).toHaveBeenCalledWith('tabs')
+      expect(mockStore.delete).toHaveBeenCalledWith('activeTabId')
+      expect(mockStore.save).toHaveBeenCalled()
+    })
+  })
+
+  describe('多标签模式开关', () => {
+    let mockStore
+
+    beforeEach(() => {
+      mockStore = {
+        get: vi.fn(),
+        set: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      }
+      mockInvoke.mockResolvedValue(false)
+      mockStoreLoad.mockResolvedValue(mockStore)
+    })
+
+    it('saveMultiTabMode 应该将布尔值保存到 multi_tab_mode 键', async () => {
+      await storeModule.saveMultiTabMode(false)
+      expect(mockStore.set).toHaveBeenCalledWith('multi_tab_mode', false)
+      expect(mockStore.save).toHaveBeenCalled()
+    })
+
+    it('saveMultiTabMode(true) 应该保存 true', async () => {
+      await storeModule.saveMultiTabMode(true)
+      expect(mockStore.set).toHaveBeenCalledWith('multi_tab_mode', true)
+    })
+
+    it('getMultiTabMode 应该返回已保存的值', async () => {
+      mockStore.get.mockResolvedValue(false)
+      const result = await storeModule.getMultiTabMode()
+      expect(result).toBe(false)
+      expect(mockStore.get).toHaveBeenCalledWith('multi_tab_mode')
+    })
+
+    it('getMultiTabMode 在没有数据时应该返回 true（默认启用）', async () => {
+      mockStore.get.mockResolvedValue(null)
+      const result = await storeModule.getMultiTabMode()
+      expect(result).toBe(true)
+    })
+
+    it('getMultiTabMode 在数据为 false 时应该返回 false', async () => {
+      mockStore.get.mockResolvedValue(false)
+      const result = await storeModule.getMultiTabMode()
+      expect(result).toBe(false)
+    })
+
+    it('getMultiTabMode 在数据为 undefined 时应该返回 true', async () => {
+      mockStore.get.mockResolvedValue(undefined)
+      const result = await storeModule.getMultiTabMode()
+      expect(result).toBe(true)
+    })
+  })
+
   describe('错误处理', () => {
     it('Store 加载失败时 getLastFilePath 应该返回 null', async () => {
       const error = new Error('Store load failed')

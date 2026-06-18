@@ -20,6 +20,14 @@ export async function checkUnsavedChanges(isContentModified, i18nConfig, showThr
   // 如果需要显示三个按钮（窗口关闭场景），使用自定义对话框
   if (showThreeButtons && i18nConfig.thirdButtonText) {
     return new Promise((resolve) => {
+      let dismissed = false
+
+      const dismiss = (result) => {
+        if (dismissed) return
+        dismissed = true
+        resolve(result)
+      }
+
       ElMessageBox({
         title: i18nConfig.title,
         message: i18nConfig.message,
@@ -33,39 +41,36 @@ export async function checkUnsavedChanges(isContentModified, i18nConfig, showThr
         customClass: 'three-buttons-dialog',
         beforeClose: (action, instance, done) => {
           if (action === 'confirm') {
-            resolve('save')
+            dismiss('save')
             done()
           } else if (action === 'cancel') {
-            resolve('cancel')
+            dismiss('cancel')
             done()
           } else {
-            resolve('cancel')
+            dismiss('cancel')
             done()
           }
         }
-      }).then(() => {
-        // 这个 then 不会被触发，因为我们在 beforeClose 中处理了
-      }).catch(() => {
-        resolve('cancel')
+      }).then(() => {}).catch(() => {
+        dismiss('cancel')
       })
-      
-      // 在对话框渲染后添加第三个按钮
+
+      // 在对话框渲染后添加第三个按钮到底部
       setTimeout(() => {
         const dialogElement = document.querySelector('.three-buttons-dialog')
         if (dialogElement) {
           const footer = dialogElement.querySelector('.el-message-box__btns')
           if (footer) {
-            // 创建第三个按钮
             const thirdButton = document.createElement('button')
             thirdButton.className = 'el-button el-button--default'
             thirdButton.textContent = i18nConfig.thirdButtonText
             thirdButton.onclick = () => {
-              resolve('discard')
-              // 关闭对话框
-              const closeBtn = dialogElement.querySelector('.el-message-box__header-btn')
+              dismiss('discard')
+              // 关闭对话框（Element Plus 关闭按钮选择器）
+              const closeBtn = dialogElement.querySelector('.el-message-box__headerbtn')
               if (closeBtn) closeBtn.click()
             }
-            // 插入到最前面
+            // 插入到最前面（丢弃按钮在左侧）
             footer.insertBefore(thirdButton, footer.firstChild)
           }
         }

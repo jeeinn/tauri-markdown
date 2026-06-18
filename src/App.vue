@@ -83,6 +83,10 @@
                 {{ menuI18n.scrollRemember }}
                 <span v-if="scrollRememberEnabled" class="theme-check">✓</span>
               </el-dropdown-item>
+              <el-dropdown-item command="multi-tab-mode">
+                {{ menuI18n.multiTabMode }}
+                <span v-if="multiTabMode" class="theme-check">✓</span>
+              </el-dropdown-item>
               <el-dropdown-item divided command="image-host-settings">
                 {{ menuI18n.imageHostSettings }}
               </el-dropdown-item>
@@ -126,8 +130,33 @@
       </div>
     </div>
 
-    <!-- Vditor 编辑器 -->
-    <MyVditor ref="vditor" />
+    <!-- 多标签模式：标签栏 + 标签内容区域 -->
+    <template v-if="multiTabMode">
+      <TabBar
+        :tabs="tabStore.tabs"
+        :active-tab-id="tabStore.activeTabId"
+        :lang="currentLang"
+        @switch-tab="handleSwitchTab"
+        @close-tab="handleCloseTab"
+        @new-tab="handleNewTab"
+        @open-file="handleOpenFile"
+        @reorder-tab="handleReorderTab"
+        @tab-drag-start="dragDropManager?.suppressOverlay?.()"
+        @tab-drag-end="dragDropManager?.restoreOverlay?.()"
+      />
+      <div class="tab-contents">
+        <TabContent
+          v-for="tab in tabStore.tabs"
+          :key="tab.id"
+          :tab="tab"
+          :is-active="tab.id === tabStore.activeTabId"
+          :ref="el => setTabContentRef(tab.id, el)"
+        />
+      </div>
+    </template>
+
+    <!-- 单文档模式 -->
+    <MyVditor v-else ref="vditor" />
 
     <!-- 查找/替换组件 -->
     <FindReplace
@@ -148,25 +177,51 @@
       v-model="showImageHostSettings"
       :lang="currentLang"
     />
+
+    <!-- 拖拽文件高亮遮罩层 -->
+    <div v-if="dragDropManager?.showDropOverlay" class="drop-overlay">
+      <div class="drop-overlay-content">
+        <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="drop-text">{{ dropHintText }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import MyVditor from './components/MyVditor.vue'
+import TabBar from './components/TabBar.vue'
+import TabContent from './components/TabContent.vue'
 import FindReplace from './components/FindReplace.vue'
 import ImageHostSettings from './components/ImageHostSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { ElNotification, ElMessageBox } from 'element-plus'
-import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage } from './utils/store.js'
+// element-plus 组件在 utils 模块中直接导入
+import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage, getMultiTabMode, saveMultiTabMode } from './utils/store.js'
+import { useTabStore } from './stores/tabStore.js'
+import { useDragDrop } from './composables/useDragDrop.js'
+import { checkUnsavedChanges } from './utils/unsaved-check.js'
+import { checkForUpdate as _checkForUpdate } from './utils/update-checker.js'
+import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
+import { setupWindowCloseHandler } from './composables/useWindowCloseHandler.js'
 
 export default {
   name: 'App',
   components: {
     MyVditor,
+    TabBar,
+    TabContent,
     FindReplace,
     ImageHostSettings,
     ArrowDown,
+  },
+  setup() {
+    const tabStore = useTabStore()
+    return { tabStore }
   },
   data() {
     return {
@@ -177,158 +232,392 @@ export default {
       showZenTip: false,
       zenTipTimer: null,
       showImageHostSettings: false,
+      multiTabMode: true,
+      // Map<tabId, TabContent component ref>
+      tabContentRefs: new Map(),
+      // 拖拽文件管理器
+      dragDropManager: null,
+      showDropOverlay: false,
     }
   },
   computed: {
-    // 当前语言的菜单翻译
     menuI18n() {
       return getI18nConfig(this.currentLang).menu;
     },
-    // 当前语言的快捷键文本
     menuShortcuts() {
       return getI18nConfig(this.currentLang).shortcuts;
     },
-    // 当前语言的主题菜单文本
     menuTheme() {
       return getI18nConfig(this.currentLang).theme;
     },
-    // 当前语言的语言菜单文本
     menuLanguage() {
       return getI18nConfig(this.currentLang).language;
     },
-    // 查找/替换的 I18n 文本
     findReplaceI18n() {
       return getI18nConfig(this.currentLang).findReplace;
     },
-    // Zen 模式提示文本
+    dropHintText() {
+      return getI18nConfig(this.currentLang).dragDrop?.hint || 'Drop to open Markdown file';
+    },
     zenTipText() {
       const i18n = getI18nConfig(this.currentLang);
       return this.isZenMode ? i18n.zenTipEnter : i18n.zenTipExit;
     },
   },
   mounted() {
-    // 添加全局键盘快捷键监听
-    window.addEventListener('keydown', this.handleKeyboardShortcut);
-    // 初始化主题
+    // 初始化键盘快捷键
+    const { handleKeyboardShortcut, cleanup: cleanupShortcuts } = useKeyboardShortcuts({
+      getMultiTabMode: () => this.multiTabMode,
+      getActiveVditor: () => this.getActiveVditor(),
+      tabStore: this.tabStore,
+      persistTabs: () => this.persistTabs(),
+      openFileInTab: () => this.openFileInTab(),
+      handleCloseTab: (id) => this.handleCloseTab(id),
+      handleSwitchTab: (id) => this.handleSwitchTab(id),
+      toggleZenMode: (force) => this.toggleZenMode(force),
+    })
+    this._cleanupShortcuts = cleanupShortcuts
+    window.addEventListener('keydown', handleKeyboardShortcut)
+
     this.initTheme();
-    // 初始化视图设置
     this.initViewSettings();
-    // 启动时自动检查更新（延迟 10 秒，不阻塞主界面加载）
     setTimeout(() => this.checkForUpdate(false), 10000);
+    
+    // 初始化拖拽文件管理器
+    this.initDragDrop();
+    // 初始化窗口关闭拦截（集中处理所有标签的未保存修改）
+    this.setupWindowCloseHandler();
   },
-  
   beforeUnmount() {
-    // 移除键盘快捷键监听
-    window.removeEventListener('keydown', this.handleKeyboardShortcut);
-    // 移除系统主题变化监听
+    this._cleanupShortcuts?.()
     if (this._systemThemeMedia) {
       this._systemThemeMedia.removeEventListener('change', this._systemThemeHandler);
     }
+    // 最佳努力保存：beforeUnmount 不能是 async，但 Tauri store IPC 通常在进程退出前完成
+    // 已在每次标签操作后调用 persistTabs()，此处为兜底
+    this.tabStore.saveTabs().catch(() => {})
+    
+    // 清理拖拽文件管理器
+    if (this.dragDropManager) {
+      this.dragDropManager.cleanup();
+    }
+    // 清理窗口关闭拦截
+    this._cleanupWindowClose?.()
   },
-  
   methods: {
-    // 显示查找/替换面板
+    // ─── Tab 引用管理 ─────────────────────────────────────────────────────────
+
+    /**
+     * 设置 TabContent 的 ref（通过 v-for :ref 回调调用）
+     */
+    setTabContentRef(tabId, el) {
+      if (el) {
+        this.tabContentRefs.set(tabId, el)
+      } else {
+        this.tabContentRefs.delete(tabId)
+      }
+    },
+
+    /**
+     * 获取当前活跃标签页的 MyVditor ref
+     * 单文档模式下直接返回 this.$refs.vditor
+     */
+    getActiveVditor() {
+      if (!this.multiTabMode) {
+        return this.$refs.vditor ?? null
+      }
+      const activeId = this.tabStore.activeTabId
+      if (!activeId) return null
+      const tabContent = this.tabContentRefs.get(activeId)
+      return tabContent?.vditorRef ?? null
+    },
+
+    // ─── Tab 事件处理 ─────────────────────────────────────────────────────────
+
+    /**
+     * 新建标签页（来自 TabBar 事件）
+     */
+    handleNewTab() {
+      this.tabStore.addTab()
+      this.persistTabs()
+      this.$nextTick(() => this.scrollTabListToEnd())
+    },
+
+    /**
+     * 将标签栏滚动到最右侧，使新建的标签可见
+     */
+    scrollTabListToEnd() {
+      const tabList = document.querySelector('.tab-list')
+      if (tabList) tabList.scrollLeft = tabList.scrollWidth
+    },
+
+    /**
+     * 拖放文件打开处理
+     *
+     * 策略：
+     * - 单文档模式：直接在当前 vditor 打开文件
+     * - 多标签模式 + 当前标签为空：在当前标签打开
+     * - 多标签模式 + 当前标签有内容：新建标签页打开
+     */
+    async handleOpenFile(path) {
+      if (!path) return
+
+      const vditor = this.getActiveVditor()
+
+      // 单文档模式：直接在当前编辑器打开文件
+      if (!this.multiTabMode) {
+        if (vditor) {
+          await vditor.loadFileByPath(path)
+        }
+        return
+      }
+
+      // 多标签模式
+      const activeTab = this.tabStore.activeTab
+
+      // 判断当前标签页是否为"空"：无文件路径且无内容修改
+      const isCurrentTabEmpty = activeTab
+        && !activeTab.filePath
+        && !activeTab.contentModified
+        && vditor
+        && !vditor.isContentModified
+
+      if (isCurrentTabEmpty) {
+        // 场景 1：当前标签页为空，直接在其中打开文件
+        await vditor.loadFileByPath(path)
+      } else {
+        // 场景 2：当前标签页有内容或有修改，新建标签页打开
+        this.tabStore.addTab()  // 先创建空标签页（不传 path，避免 initialFile 问题）
+        this.persistTabs()
+        this.$nextTick(() => this.scrollTabListToEnd())
+        // 在调用时捕获目标 tab ID，防止重试期间用户切换标签导致文件加载到错误标签
+        const newTabId = this.tabStore.activeTabId
+        this._loadFileInNewTab(path, newTabId)
+      }
+    },
+
+    /**
+     * 多标签模式下打开文件：弹出文件选择框，根据当前标签状态决定在哪个标签打开
+     */
+    async openFileInTab() {
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const filePath = await open({
+        filters: [{ name: 'OpenFile', extensions: ['md', 'txt'] }]
+      })
+      if (!filePath) return
+
+      const activeTab = this.tabStore.activeTab
+      const vditor = this.getActiveVditor()
+      const isCurrentTabEmpty = activeTab
+        && !activeTab.filePath
+        && !activeTab.contentModified
+        && vditor
+        && !vditor.isContentModified
+
+      if (isCurrentTabEmpty) {
+        await vditor.loadFileByPath(filePath)
+      } else {
+        this.tabStore.addTab()
+        this.persistTabs()
+        this.$nextTick(() => this.scrollTabListToEnd())
+        const newTabId = this.tabStore.activeTabId
+        this._loadFileInNewTab(filePath, newTabId)
+      }
+    },
+
+    /**
+     * 标签拖拽排序
+     */
+    handleReorderTab(fromId, toId) {
+      this.tabStore.reorderTab(fromId, toId)
+      this.persistTabs()
+    },
+
+    /**
+     * 切换标签页并更新窗口标题
+     */
+    handleSwitchTab(tabId) {
+      this.tabStore.switchTab(tabId)
+      this.$nextTick(() => {
+        const vditor = this.getActiveVditor()
+        if (vditor) {
+          vditor.updateWindowTitle()
+          vditor.restoreScrollPosition?.()
+        }
+        // 切换标签后更新 FindReplace 的 vditor 引用并重新搜索
+        const findReplace = this.$refs.findReplace
+        if (findReplace?.visible) {
+          findReplace.vditorRef = vditor
+          findReplace.performSearch()
+        }
+      })
+    },
+
+    /**
+     * 初始化拖拽文件管理器
+     */
+    initDragDrop() {
+      this.dragDropManager = useDragDrop(
+        (filePath) => this.handleOpenFile(filePath),
+        () => this.currentLang
+      )
+      this.dragDropManager.setupDragDrop()
+    },
+
+    /**
+     * 窗口关闭拦截：统一检查所有标签的未保存修改
+     */
+    async setupWindowCloseHandler() {
+      this._cleanupWindowClose = await setupWindowCloseHandler({
+        getMultiTabMode: () => this.multiTabMode,
+        getTabStore: () => this.tabStore,
+        getTabContentRefs: () => this.tabContentRefs,
+        getVditorRef: () => this.$refs.vditor,
+        getCurrentLang: () => this.currentLang,
+      })
+    },
+
+    /**
+     * 等待新标签页的 Vditor 挂载完成，然后加载文件
+     * @param {string} path - 文件路径
+     * @param {string} targetTabId - 目标标签 ID（在调用时捕获，防止重试期间切换标签）
+     * @param {number} retryCount - 当前重试次数
+     */
+    _loadFileInNewTab(path, targetTabId, retryCount = 0) {
+      const MAX_RETRIES = 10
+      if (!targetTabId) return
+
+      const tabContent = this.tabContentRefs.get(targetTabId)
+      const vditor = tabContent?.vditorRef
+
+      if (vditor && vditor.vditor) {
+        // Vditor 已初始化，直接加载文件
+        vditor.loadFileByPath(path)
+        return
+      }
+
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => this._loadFileInNewTab(path, targetTabId, retryCount + 1), 200)
+      }
+    },
+
+    /**
+     * 关闭标签页：检查未保存修改，然后调用 store.closeTab
+     */
+    async handleCloseTab(tabId) {
+      const tab = this.tabStore.tabs.find(t => t.id === tabId)
+      if (!tab) return
+
+      const tabContent = this.tabContentRefs.get(tabId)
+      const vditor = tabContent?.vditorRef
+
+      // 检查是否有未保存修改（优先读取 vditor 实例状态）
+      const isModified = vditor ? vditor.isContentModified : tab.contentModified
+
+      if (isModified) {
+        const i18nNotif = getI18nConfig(this.currentLang).notifications
+        const fileName = tab.filePath
+          ? tab.filePath.split(/[\\/]/).pop()
+          : getI18nConfig(this.currentLang).windowTitle?.untitled || '未命名'
+
+        // 使用 tabs.closeTab（带 tabs 前缀的 i18n key）
+        const closeTabI18n = i18nNotif.tabs?.closeTab?.unsavedChanges || {
+          title: '提示',
+          message: `标签页 "${fileName}" 有未保存的修改，是否保存？`,
+          confirmButtonText: '保存并关闭',
+          cancelButtonText: '取消',
+          thirdButtonText: '丢弃',
+        }
+
+        // 替换 {fileName} 占位符
+        const msgConfig = {
+          ...closeTabI18n,
+          message: closeTabI18n.message.replace('{fileName}', fileName),
+        }
+
+        const result = await checkUnsavedChanges(true, msgConfig, true)
+
+        if (result === 'cancel') return
+
+        if (result === 'save' && vditor) {
+          const saved = await vditor.saveMdFile()
+          if (!saved) return  // 保存失败，取消关闭
+        }
+        // result === 'discard' => 直接关闭
+      }
+
+      this.tabStore.closeTab(tabId)
+
+      // 如果关闭后没有标签了，新建一个空白标签
+      if (this.tabStore.tabs.length === 0) {
+        this.tabStore.addTab()
+      }
+
+      // 持久化标签页状态
+      this.persistTabs()
+
+      // 更新窗口标题为新激活标签的文件名
+      this.$nextTick(() => {
+        this.getActiveVditor()?.updateWindowTitle()
+      })
+    },
+
+    // ─── 查找/替换 ────────────────────────────────────────────────────────────
+
     showFindReplace() {
-      // 传递 vditor ref 给 FindReplace 组件
       const findReplace = this.$refs.findReplace
       if (findReplace) {
-        findReplace.vditorRef = this.$refs.vditor
+        findReplace.vditorRef = this.getActiveVditor()
         findReplace.show()
       }
     },
 
-    // 处理内容更改事件（来自查找/替换组件）
     handleContentChanged() {
-      // 通知 MyVditor 组件检查内容修改状态
-      if (this.$refs.vditor) {
-        this.$refs.vditor.checkContentModified();
+      const vditor = this.getActiveVditor()
+      if (vditor) {
+        vditor.checkContentModified()
       }
     },
 
-    // 处理键盘快捷键
-    handleKeyboardShortcut(event) {
-      // F11: 切换 Zen 模式
-      if (event.key === 'F11') {
-        event.preventDefault();
-        this.toggleZenMode();
-        return;
-      }
+    // ─── 菜单处理 ─────────────────────────────────────────────────────────────
 
-      // ESC: 退出 Zen 模式
-      if (event.key === 'Escape' && this.isZenMode) {
-        event.preventDefault();
-        this.toggleZenMode(false);
-        return;
-      }
-
-      // 判断是否为 Mac 系统
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
-      
-      // Ctrl/Cmd + N: 新建文件
-      if (ctrlOrCmd && event.key === 'n' && !event.shiftKey) {
-        event.preventDefault();
-        this.$refs.vditor?.newFile();
-        return;
-      }
-      
-      // Ctrl/Cmd + O: 打开文件
-      if (ctrlOrCmd && event.key === 'o' && !event.shiftKey) {
-        event.preventDefault();
-        this.$refs.vditor?.openMdFile();
-        return;
-      }
-      
-      // Ctrl/Cmd + S: 保存文件
-      if (ctrlOrCmd && event.key === 's' && !event.shiftKey) {
-        event.preventDefault();
-        this.$refs.vditor?.saveMdFile();
-        return;
-      }
-      
-      // Ctrl/Cmd + Shift + S: 导出文件
-      if (ctrlOrCmd && event.shiftKey && event.key === 'S') {
-        event.preventDefault();
-        this.$refs.vditor?.exportFile();
-        return;
-      }
-
-      // Ctrl/Cmd + P: 打印
-      if (ctrlOrCmd && event.key === 'p' && !event.shiftKey) {
-        event.preventDefault();
-        this.$refs.vditor?.printPage();
-        return;
-      }
-    },
-    
-    // 处理文件菜单命令
     handleFileMenu(command) {
+      const vditor = this.getActiveVditor()
       switch (command) {
         case 'new':
-          this.$refs.vditor?.newFile();
+          if (this.multiTabMode) {
+            this.tabStore.addTab()
+            this.persistTabs()
+            this.$nextTick(() => this.scrollTabListToEnd())
+          } else {
+            vditor?.newFile()
+          }
           break;
         case 'open':
-          this.$refs.vditor?.openMdFile();
+          if (this.multiTabMode) {
+            this.openFileInTab()
+          } else {
+            vditor?.openMdFile()
+          }
           break;
         case 'save':
-          this.$refs.vditor?.saveMdFile();
+          vditor?.saveMdFile();
           break;
         case 'export-md':
-          this.$refs.vditor?.exportFile();
+          vditor?.exportFile();
           break;
         case 'export-pdf':
-          this.$refs.vditor?.exportPdf();
+          vditor?.exportPdf();
           break;
         case 'export-html':
-          this.$refs.vditor?.exportHtml();
+          vditor?.exportHtml();
           break;
         case 'print':
-          this.$refs.vditor?.printPage();
+          vditor?.printPage();
           break;
       }
     },
-    
-    // 处理外观菜单命令
+
     handleAppearanceMenu(command) {
       if (typeof command !== 'string') return;
       if (command.startsWith('theme-')) {
@@ -338,20 +627,28 @@ export default {
         this.toggleZenMode();
       }
     },
-    
-    // 处理设置菜单命令
+
     async handleSettingsMenu(command) {
-      if (command === 'scroll-remember') {
+      if (command === 'multi-tab-mode') {
+        this.multiTabMode = !this.multiTabMode
+        await saveMultiTabMode(this.multiTabMode)
+        // 切换到多标签模式时，如果没有标签则新建一个，避免空白页面
+        if (this.multiTabMode && this.tabStore.tabs.length === 0) {
+          this.tabStore.addTab()
+          this.persistTabs()
+        }
+      } else if (command === 'scroll-remember') {
         this.scrollRememberEnabled = !this.scrollRememberEnabled
         await saveScrollRememberEnabled(this.scrollRememberEnabled)
-        // 通知子组件更新状态
-        this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
+        // 通知所有标签页的 vditor 组件更新状态
+        for (const [, tabContent] of this.tabContentRefs) {
+          tabContent?.vditorRef?.setScrollRememberEnabled(this.scrollRememberEnabled)
+        }
       } else if (command === 'image-host-settings') {
         this.showImageHostSettings = true
       }
     },
-    
-    // 处理帮助菜单命令
+
     async handleHelpMenu(command) {
       if (command === 'viewLog') {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -360,102 +657,36 @@ export default {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('open_devtools');
       } else if (command === 'about') {
-        this.$refs.vditor?.showAbout();
+        this.getActiveVditor()?.showAbout();
       } else if (command === 'checkUpdate') {
         this.checkForUpdate(true);
       }
     },
 
-    // 检查更新
-    async checkForUpdate(manual = false) {
-      try {
-        const { check } = await import('@tauri-apps/plugin-updater');
-        const { relaunch } = await import('@tauri-apps/plugin-process');
-        const updaterI18n = this.menuI18n.updater || {};
+    // ─── 更新检查 ─────────────────────────────────────────────────────────────
 
-        console.log('[updater] checking for update...');
-        const update = await check();
-        console.log('[updater] check result:', update);
-        if (update) {
-          ElMessageBox({
-            title: updaterI18n.available || '发现新版本',
-            message: (updaterI18n.availableMsg || '新版本 {version} 已发布，是否立即更新？').replace('{version}', update.version),
-            showCancelButton: true,
-            confirmButtonText: '更新',
-            cancelButtonText: '取消',
-            beforeClose: async (action, instance, done) => {
-              if (action === 'confirm') {
-                instance.confirmButtonLoading = true;
-                instance.confirmButtonText = updaterI18n.downloading || '正在下载...';
-                try {
-                  let progressText = '';
-                  let downloaded = 0;
-                  let contentLength = 0;
-                  await update.downloadAndInstall((event) => {
-                    if (event.event === 'Started') {
-                      contentLength = event.data.contentLength || 0;
-                      const totalMB = contentLength > 0 ? (contentLength / 1024 / 1024).toFixed(2) : '未知';
-                      instance.message = `${updaterI18n.downloading || '正在下载更新'} (总大小: ${totalMB} MB)...`;
-                    } else if (event.event === 'Progress') {
-                      downloaded += event.data.chunkLength || 0;
-                      const percent = contentLength > 0 ? Math.round((downloaded / contentLength) * 100) : 0;
-                      const downloadedMB = (downloaded / 1024 / 1024).toFixed(2);
-                      const msg = `${(updaterI18n.downloadProgress || '下载进度: {progress}%').replace('{progress}', percent)} (${downloadedMB} MB)`;
-                      if (msg !== progressText) {
-                        instance.message = msg;
-                        progressText = msg;
-                      }
-                    } else if (event.event === 'Finished') {
-                      instance.message = updaterI18n.downloadComplete || '下载完成，准备安装...';
-                    }
-                  });
-                  done();
-                  ElMessageBox({
-                    title: updaterI18n.available || '更新就绪',
-                    message: updaterI18n.installConfirm || '更新已下载完成，是否立即重启应用以完成安装？',
-                    showCancelButton: true,
-                    confirmButtonText: '重启',
-                    cancelButtonText: '稍后',
-                  }).then(() => relaunch()).catch(() => {});
-                } catch (err) {
-                  done();
-                  ElNotification.error({ title: updaterI18n.error || '更新失败', message: (updaterI18n.errorMsg || '更新失败: {error}').replace('{error}', String(err)) });
-                }
-              } else {
-                done();
-              }
-            },
-          }).catch(() => {});
-        } else if (manual) {
-          ElNotification.info({ title: updaterI18n.noUpdate || '检查更新', message: updaterI18n.noUpdateMsg || '当前版本已是最新' });
-        }
-      } catch (err) {
-        console.error('[updater] check error:', err);
-        if (manual) {
-          const updaterI18n = this.menuI18n.updater || {};
-          ElNotification.error({ title: updaterI18n.error || '更新失败', message: (updaterI18n.errorMsg || '检查更新时发生错误: {error}').replace('{error}', String(err)) });
-        }
-      }
+    async checkForUpdate(manual = false) {
+      await _checkForUpdate({ i18n: this.menuI18n.updater || {}, manual })
     },
 
-    // 切换语言
+    // ─── 语言切换 ─────────────────────────────────────────────────────────────
+
     async switchLanguage(lang) {
       this.currentLang = lang;
-      // 保存语言设置到 store
       await saveLanguage(lang);
-      // 调用子组件的语言切换方法
-      if (this.$refs.vditor) {
-        this.$refs.vditor.switchLanguage(lang);
+      // 通知所有标签页的 vditor 切换语言
+      for (const [, tabContent] of this.tabContentRefs) {
+        tabContent?.vditorRef?.switchLanguage(lang)
       }
     },
 
-    // 初始化主题
+    // ─── 主题管理 ─────────────────────────────────────────────────────────────
+
     async initTheme() {
       const savedTheme = await getTheme();
       this.currentTheme = savedTheme;
       this.applyTheme(savedTheme);
 
-      // 监听系统主题变化
       this._systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
       this._systemThemeHandler = () => {
         if (this.currentTheme === 'auto') {
@@ -465,56 +696,115 @@ export default {
       this._systemThemeMedia.addEventListener('change', this._systemThemeHandler);
     },
 
-    // 处理主题菜单命令（内部使用）
     handleThemeMenu(theme) {
       this.currentTheme = theme;
       this.applyTheme(theme);
       saveTheme(theme);
     },
 
-    // 应用主题
     applyTheme(theme) {
       const isDark = theme === 'dark' || (theme === 'auto' && this.getSystemTheme() === 'dark');
       const html = document.documentElement;
-
       if (isDark) {
         html.classList.add('dark');
       } else {
         html.classList.remove('dark');
       }
-
-      // 同步 Vditor 编辑器主题
-      this.$refs.vditor?.setVditorTheme(isDark);
+      // 同步所有标签页的 vditor 主题
+      for (const [, tabContent] of this.tabContentRefs) {
+        tabContent?.vditorRef?.setVditorTheme(isDark)
+      }
     },
 
-    // 获取系统主题
     getSystemTheme() {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     },
 
-    // 初始化视图设置
+    // ─── 初始化视图设置 ───────────────────────────────────────────────────────
+
     async initViewSettings() {
+      // 加载多标签模式设置
+      this.multiTabMode = await getMultiTabMode()
+
+      // 多标签模式下加载标签页状态
+      if (this.multiTabMode) {
+        await this.tabStore.loadTabs()
+        if (this.tabStore.tabs.length === 0) {
+          this.tabStore.addTab()
+        }
+      }
+
       this.scrollRememberEnabled = await getScrollRememberEnabled()
       this.isZenMode = await getZenMode()
-      // 初始化语言设置
+
       const savedLang = await getLanguage()
       if (savedLang && savedLang !== this.currentLang) {
         this.currentLang = savedLang
-        this.$refs.vditor?.switchLanguage(savedLang)
       }
-      // 通知子组件同步状态
-      this.$refs.vditor?.setScrollRememberEnabled(this.scrollRememberEnabled)
+
+      // 等待子组件 mount 并初始化 vditor，然后应用设置
+      this.$nextTick(() => {
+        if (this.multiTabMode) {
+          this._applySettingsToAllTabs(savedLang)
+        } else {
+          // 单文档模式：直接应用到唯一的 vditor
+          const vditor = this.$refs.vditor
+          if (vditor) {
+            vditor.setScrollRememberEnabled(this.scrollRememberEnabled)
+            if (savedLang && savedLang !== 'zh_CN') {
+              vditor.switchLanguage(savedLang)
+            }
+          }
+          this.applyZenMode(this.isZenMode)
+        }
+      })
+    },
+
+    /**
+     * 将设置应用到所有标签页的 vditor 实例
+     * 会重试最多 5 次（每次间隔 200ms），以应对 vditor 初始化延迟
+     */
+    _applySettingsToAllTabs(savedLang, retryCount = 0) {
+      const MAX_RETRIES = 5
+      const hasUninitialized = Array.from(this.tabContentRefs.values()).some(
+        tc => tc?.vditorRef && !tc.vditorRef.vditor
+      )
+
+      if (hasUninitialized && retryCount < MAX_RETRIES) {
+        setTimeout(() => this._applySettingsToAllTabs(savedLang, retryCount + 1), 200)
+        return
+      }
+
+      for (const [, tabContent] of this.tabContentRefs) {
+        tabContent?.vditorRef?.setScrollRememberEnabled(this.scrollRememberEnabled)
+        if (savedLang && savedLang !== 'zh_CN') {
+          tabContent?.vditorRef?.switchLanguage(savedLang)
+        }
+      }
       this.applyZenMode(this.isZenMode)
     },
 
-    // 切换 Zen 模式
+    // ─── Tab 持久化 ─────────────────────────────────────────────────────────
+
+    /**
+     * 持久化当前标签页状态到磁盘
+     */
+    async persistTabs() {
+      try {
+        await this.tabStore.saveTabs()
+      } catch (error) {
+        console.error('[App] 持久化标签页状态失败:', error)
+      }
+    },
+
+    // ─── Zen 模式 ─────────────────────────────────────────────────────────────
+
     async toggleZenMode(forceState = null) {
       const newState = forceState !== null ? forceState : !this.isZenMode
       this.isZenMode = newState
       await saveZenMode(newState)
       this.applyZenMode(newState)
-      
-      // 显示提示
+
       this.showZenTip = true
       if (this.zenTipTimer) clearTimeout(this.zenTipTimer)
       this.zenTipTimer = setTimeout(() => {
@@ -522,19 +812,18 @@ export default {
       }, 2000)
     },
 
-    // 应用 Zen 模式样式
     applyZenMode(isZen) {
       const appElement = document.getElementById('app')
       if (isZen) {
         appElement.classList.add('zen-mode')
         document.body.classList.add('zen-mode')
-        // 通知 Vditor 组件进入 Zen 模式
-        this.$refs.vditor?.toggleZenMode(true)
       } else {
         appElement.classList.remove('zen-mode')
         document.body.classList.remove('zen-mode')
-        // 通知 Vditor 组件退出 Zen 模式
-        this.$refs.vditor?.toggleZenMode(false)
+      }
+      // 通知所有标签页的 vditor
+      for (const [, tabContent] of this.tabContentRefs) {
+        tabContent?.vditorRef?.toggleZenMode(isZen)
       }
     },
   }
@@ -595,7 +884,6 @@ export default {
   overflow: hidden;
 }
 
-/* 菜单项内容左对齐 + 统一高度 */
 .shortcut {
   margin-left: 30px;
   font-size: 12px;
@@ -608,7 +896,6 @@ export default {
   font-weight: bold;
 }
 
-/* 菜单分组标题 */
 .menu-group-title {
   padding: 8px 20px 4px;
   font-size: 12px;
@@ -619,7 +906,6 @@ export default {
   pointer-events: none;
 }
 
-/* 语言标签 */
 .language-label {
   font-size: 12px;
   color: #909399;
@@ -627,7 +913,6 @@ export default {
   white-space: nowrap;
 }
 
-/* 查找按钮 - 样式与 menu-item 保持一致 */
 .find-btn {
   background: none;
   border: none;
@@ -646,7 +931,6 @@ export default {
   color: #409eff;
 }
 
-/* 暗色主题下查找按钮样式 */
 html.dark .find-btn {
   color: #cfd3dc;
 }
@@ -656,7 +940,15 @@ html.dark .find-btn:hover {
   color: #409eff;
 }
 
-/* Zen 模式提示框 */
+/* 标签内容区域：占据剩余高度 */
+.tab-contents {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 .zen-tip {
   position: fixed;
   top: 50%;
@@ -679,7 +971,6 @@ html.dark .find-btn:hover {
   animation: zen-tip-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Zen 提示框入场动画 */
 @keyframes zen-tip-enter {
   from {
     opacity: 0;
@@ -691,7 +982,6 @@ html.dark .find-btn:hover {
   }
 }
 
-/* 深色主题下增强 Zen 提示框可见度 */
 .dark .zen-tip {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -708,57 +998,5 @@ html.dark .find-btn:hover {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-/* 夜间模式适配 */
-</style>
-
-<style>
-/* 全局样式：统一所有下拉菜单宽度 */
-.el-dropdown-menu {
-  min-width: 200px !important;
-}
-
-/* 嵌套子菜单也保持相同宽度 */
-.el-dropdown-menu .el-dropdown-menu {
-  min-width: 200px !important;
-}
-
-/* 全局样式：强制所有下拉菜单项左对齐 + 统一高度 */
-.el-dropdown-menu .el-dropdown-menu__item {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  text-align: left !important;
-  padding: 0 20px !important;
-  line-height: 36px !important;
-}
-
-.el-dropdown-menu .el-dropdown-menu__item > span,
-.el-dropdown-menu .el-dropdown-menu__item > div {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  width: 100% !important;
-  text-align: left !important;
-}
-
-/* 专治嵌套子菜单——通过 popper-class 精准定位 */
-.nested-dropdown-popper .el-dropdown-menu__item {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  text-align: left !important;
-  padding: 0 20px !important;
-  line-height: 36px !important;
-}
-
-.nested-dropdown-popper .el-dropdown-menu__item > span,
-.nested-dropdown-popper .el-dropdown-menu__item > div {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  width: 100% !important;
-  text-align: left !important;
 }
 </style>

@@ -7,6 +7,7 @@ const LAST_FILE_KEY = 'last_opened_file'
 const THEME_KEY = 'app_theme'
 const ZEN_MODE_KEY = 'is_zen_mode'
 const LANGUAGE_KEY = 'app_language'
+const MULTI_TAB_MODE_KEY = 'multi_tab_mode'
 
 let storeInstance = null
 let isPortableMode = null
@@ -248,5 +249,111 @@ export async function getZenMode() {
   } catch (error) {
     console.error('[Store] 获取 Zen 模式状态失败:', error)
     return false
+  }
+}
+
+// ─── 多标签页持久化 ───────────────────────────────────────────────────────────
+
+const TABS_KEY = 'tabs'
+const ACTIVE_TAB_ID_KEY = 'activeTabId'
+
+/**
+ * 序列化并保存标签页数组
+ * @param {Array} tabsArray - Tab 对象数组
+ */
+export async function saveTabs(tabsArray) {
+  try {
+    const store = await getStore()
+    await store.set(TABS_KEY, tabsArray)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存标签页数组失败:', error)
+  }
+}
+
+/**
+ * 读取并返回标签页数组；若无记录则返回空数组
+ * @returns {Promise<Array>} Tab 对象数组
+ */
+export async function loadTabs() {
+  try {
+    const store = await getStore()
+    const tabs = await store.get(TABS_KEY)
+    return Array.isArray(tabs) ? tabs : []
+  } catch (error) {
+    console.error('[Store] 读取标签页数组失败:', error)
+    return []
+  }
+}
+
+/**
+ * 保存当前活跃标签页 ID
+ * @param {string|null} id - 活跃标签 ID
+ */
+export async function saveActiveTabId(id) {
+  try {
+    const store = await getStore()
+    await store.set(ACTIVE_TAB_ID_KEY, id)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存活跃标签 ID 失败:', error)
+  }
+}
+
+/**
+ * 读取并返回活跃标签页 ID；若无记录则返回 null
+ * @returns {Promise<string|null>} 活跃标签 ID 或 null
+ */
+export async function loadActiveTabId() {
+  try {
+    const store = await getStore()
+    const id = await store.get(ACTIVE_TAB_ID_KEY)
+    return id ?? null
+  } catch (error) {
+    console.error('[Store] 读取活跃标签 ID 失败:', error)
+    return null
+  }
+}
+
+/**
+ * 清除所有标签页持久化数据
+ */
+export async function clearAllTabs() {
+  try {
+    const store = await getStore()
+    await store.delete(TABS_KEY)
+    await store.delete(ACTIVE_TAB_ID_KEY)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 清除标签页数据失败:', error)
+  }
+}
+
+/**
+ * 保存多标签模式开关状态
+ * @param {boolean} enabled - 是否启用多标签模式
+ */
+export async function saveMultiTabMode(enabled) {
+  try {
+    const store = await getStore()
+    await store.set(MULTI_TAB_MODE_KEY, enabled)
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存多标签模式设置失败:', error)
+  }
+}
+
+/**
+ * 读取多标签模式开关状态；默认为 true（启用）
+ * @returns {Promise<boolean>}
+ */
+export async function getMultiTabMode() {
+  try {
+    const store = await getStore()
+    const value = await store.get(MULTI_TAB_MODE_KEY)
+    return value !== false
+  } catch (error) {
+    console.error('[Store] 读取多标签模式设置失败:', error)
+    return true
   }
 }

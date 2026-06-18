@@ -34,6 +34,7 @@ export class ScrollMemoryManager {
     // 回调函数（由外部传入）
     this._onFilePathChange = options.onFilePathChange || (() => null)
     this._getCurrentFilePath = options.getCurrentFilePath || (() => null)
+    this._onScrollChange = options.onScrollChange || (() => {})
     
     // 模式切换监听器取消订阅函数
     this._unsubscribeModeSwitch = null
@@ -191,7 +192,10 @@ export class ScrollMemoryManager {
     if (!isFinite(pct)) return
     
     this.scrollPositionsCache[filePath] = pct
-    
+
+    // 通知外部滚动位置变化（用于同步到 tab store）
+    this._onScrollChange(pct)
+
     // 防抖写入 Store
     if (this._storeSaveTimer) clearTimeout(this._storeSaveTimer)
     this._storeSaveTimer = setTimeout(() => {
