@@ -205,6 +205,7 @@ import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnable
 import { useTabStore } from './stores/tabStore.js'
 import { checkUnsavedChanges } from './utils/unsaved-check.js'
 import { useDragDrop } from './composables/useDragDrop.js'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 export default {
   name: 'App',
@@ -269,6 +270,8 @@ export default {
     
     // 初始化拖拽文件管理器
     this.initDragDrop();
+    // 初始化窗口关闭拦截（集中处理所有标签的未保存修改）
+    this.setupWindowCloseHandler();
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeyboardShortcut);
@@ -282,6 +285,10 @@ export default {
     // 清理拖拽文件管理器
     if (this.dragDropManager) {
       this.dragDropManager.cleanup();
+    }
+    // 清理窗口关闭拦截
+    if (this._unlistenCloseRequest) {
+      this._unlistenCloseRequest();
     }
   },
   methods: {
@@ -413,6 +420,68 @@ export default {
         () => this.currentLang
       )
       this.dragDropManager.setupDragDrop()
+    },
+
+    /**
+     * 窗口关闭拦截：统一检查所有标签的未保存修改
+     *
+     * 无修改 → 直接退出
+     * 有修改 → 弹窗 → 保存并关闭 / 丢弃(退出) / 取消(不退出)
+     */
+    async setupWindowCloseHandler() {
+      try {
+        const appWindow = getCurrentWindow()
+        this._unlistenCloseRequest = await appWindow.onCloseRequested(async (event) => {
+          event.preventDefault()
+
+          // 收集有未保存修改的标签/编辑器
+          const modifiedItems = []
+          if (this.multiTabMode) {
+            for (const tab of this.tabStore.tabs) {
+              const tc = this.tabContentRefs.get(tab.id)
+              const vd = tc?.vditorRef
+              if (vd ? vd.isContentModified : tab.contentModified) {
+                modifiedItems.push(vd)
+              }
+            }
+          } else {
+            const vd = this.$refs.vditor
+            if (vd?.isContentModified) modifiedItems.push(vd)
+          }
+
+          // 无修改，直接退出
+          if (modifiedItems.length === 0) {
+            await appWindow.destroy()
+            return
+          }
+
+          // 有修改，弹窗提示
+          const i18nNotif = getI18nConfig(this.currentLang).notifications
+          const msgConfig = i18nNotif.closeWindow?.unsavedChanges || {
+            title: '提示', message: '有未保存的修改，是否保存？',
+            confirmButtonText: '保存并关闭', cancelButtonText: '取消', thirdButtonText: '丢弃'
+          }
+          const result = await checkUnsavedChanges(true, msgConfig, true)
+
+          if (result === 'discard') {
+            // 丢弃修改，退出软件
+            await appWindow.destroy()
+          } else if (result === 'save') {
+            // 保存所有有修改的编辑器，然后退出
+            let allSaved = true
+            for (const vd of modifiedItems) {
+              if (vd) {
+                const saved = await vd.saveMdFile()
+                if (!saved) { allSaved = false; break }
+              }
+            }
+            if (allSaved) await appWindow.destroy()
+          }
+          // cancel → 窗口保持打开
+        })
+      } catch (error) {
+        console.error('[WindowClose] 初始化窗口关闭拦截失败:', error)
+      }
     },
 
     /**

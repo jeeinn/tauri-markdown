@@ -52,7 +52,6 @@ export default {
       isContentModified: false, // 内容是否被修改
       originalContent: '', // 原始文件内容,用于对比
       isSaving: false, // 是否正在保存(防止保存过程中触发修改检测)
-      _unlistenCloseRequest: null, // 窗口关闭事件取消监听函数
       _handleLinkClick: null, // 链接点击拦截处理函数
       // 滚动位置记忆管理器
       scrollMemory: null,
@@ -80,9 +79,6 @@ export default {
       this.scrollMemory?.flushScrollPosition()
     }
     window.addEventListener('beforeunload', this._handleBeforeUnload)
-
-    // 初始化 Tauri 窗口关闭拦截
-    this.setupWindowCloseHandler();
   },
   beforeUnmount() {
     // 销毁 Vditor 实例释放内存
@@ -110,12 +106,6 @@ export default {
       }
     }
     
-    // 清理窗口关闭事件监听
-    if (this._unlistenCloseRequest) {
-      this._unlistenCloseRequest();
-      this._unlistenCloseRequest = null;
-    }
-
     // 清理链接点击拦截监听
     if (this._handleLinkClick) {
       const vditorEle = document.getElementById(`vditor-${this.tabId}`);
@@ -153,54 +143,6 @@ export default {
             this.updateWindowTitle()
           }
         }, 100)
-      }
-    },
-
-    // ========== 窗口管理 ==========
-
-    // 初始化窗口关闭拦截
-    async setupWindowCloseHandler() {
-      try {
-        const appWindow = getCurrentWindow();
-        this._unlistenCloseRequest = await appWindow.onCloseRequested(async (event) => {
-          // 检查是否有未保存的修改
-          if (this.isContentModified) {
-            // 阻止默认关闭行为
-            event.preventDefault();
-
-            try {
-              // 显示保存提示对话框，使用三按钮模式
-              const result = await checkUnsavedChanges(
-                this.isContentModified,
-                this.t.closeWindow.unsavedChanges,
-                true // 显示三个按钮
-              );
-
-              // 根据用户选择执行不同操作
-              if (result === 'discard') {
-                // 用户选择"不保存"，直接关闭窗口
-                await appWindow.destroy();
-              } else if (result === 'save') {
-                // 用户点击"保存并关闭",执行保存
-                const saved = await this.saveMdFile();
-                if (saved) {
-                  // 保存成功,关闭窗口
-                  await appWindow.destroy();
-                }
-                // 如果保存失败,窗口保持打开
-              }
-              // 如果用户点击"取消"或关闭对话框，窗口保持打开(不做任何操作)
-            } catch {
-              // 用户点击"取消"或关闭对话框，窗口保持打开(不做任何操作)
-            }
-          } else {
-            // 没有未保存的修改,关闭前保存滚动位置
-            this.scrollMemory?.flushScrollPosition();
-          }
-        });
-        console.log('[WindowClose] 窗口关闭拦截已初始化');
-      } catch (error) {
-        console.error('[WindowClose] 初始化窗口关闭拦截失败:', error);
       }
     },
 
