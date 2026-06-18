@@ -52,6 +52,8 @@
 import { ref, computed } from 'vue'
 import { getTabTitle } from '../utils/tab-utils.js'
 
+const DEBUG = import.meta.env.DEV
+
 const props = defineProps({
   tabs: {
     type: Array,
@@ -210,7 +212,7 @@ function handleTabMouseDown(event, tabId) {
   dragStartY = event.clientY
   draggingTabId.value = tabId
   isDragging = false
-  console.log('[TabDrag] mousedown:', tabId)
+  if (DEBUG) console.log('[TabDrag] mousedown:', tabId)
 }
 
 /**
@@ -226,7 +228,7 @@ function handleTabMouseMove(event) {
   if (!isDragging) {
     if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return
     isDragging = true
-    console.log('[TabDrag] drag started')
+    if (DEBUG) console.log('[TabDrag] drag started')
     emit('tab-drag-start')
   }
 
@@ -243,7 +245,7 @@ function handleTabMouseMove(event) {
   const tabEl = targetEl?.closest('.tab-item')
   const targetId = tabEl?.dataset?.tabId || null
   if (targetId && dragOverTabId.value !== targetId) {
-    console.log('[TabDrag] over:', targetId)
+    if (DEBUG) console.log('[TabDrag] over:', targetId)
   }
   dragOverTabId.value = targetId
 }
@@ -255,7 +257,7 @@ function handleTabMouseUp(event) {
   if (!draggingTabId.value) return
 
   if (isDragging && dragOverTabId.value && dragOverTabId.value !== draggingTabId.value) {
-    console.log('[TabDrag] reorder:', draggingTabId.value, '->', dragOverTabId.value)
+    if (DEBUG) console.log('[TabDrag] reorder:', draggingTabId.value, '->', dragOverTabId.value)
     emit('reorder-tab', draggingTabId.value, dragOverTabId.value)
   }
 
