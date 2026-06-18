@@ -645,15 +645,20 @@ export default {
       await saveLastFilePath(filePath)
       await this.updateWindowTitle()
 
-      // 恢复滚动位置：仅当前激活标签立即恢复，其他标签切换时再恢复
-      try {
-        const tabStore = useTabStore()
-        if (tabStore.activeTabId === this.tabId) {
+      // 恢复滚动位置：单文档模式直接恢复，多标签模式仅恢复当前激活标签
+      if (this.tabId === 'default') {
+        // 单文档模式
+        this.scrollMemory?.restoreScrollPosition(filePath)
+      } else {
+        // 多标签模式：仅激活标签立即恢复，其他标签切换时再恢复
+        try {
+          const tabStore = useTabStore()
+          if (tabStore.activeTabId === this.tabId) {
+            this.scrollMemory?.restoreScrollPosition(filePath)
+          }
+        } catch {
           this.scrollMemory?.restoreScrollPosition(filePath)
         }
-      } catch {
-        // 单文档模式或 store 未初始化时直接恢复
-        this.scrollMemory?.restoreScrollPosition(filePath)
       }
 
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
