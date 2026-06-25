@@ -56,6 +56,7 @@ export default {
       externalChangeDialogOpen: false, // 外部变更对话框是否已打开
       externalChangeProcessing: false, // 外部变更处理中（防止并发重复弹窗）
       lastPromptedExternalContent: null, // 已提示过的外部磁盘内容（避免重复弹窗）
+      fileMissing: false, // 磁盘文件已被外部删除
       fileWatcher: null, // 外部文件变更监听器
       _handleLinkClick: null, // 链接点击拦截处理函数
       // 滚动位置记忆管理器
@@ -464,6 +465,7 @@ export default {
       this.originalContent = ''
       this.isContentModified = false
       this.lastPromptedExternalContent = null
+      this.fileMissing = false
 
       // 同步文件路径到 tab store（清空）
       this.patchTab({ filePath: null, fileMissing: false })
@@ -557,6 +559,7 @@ export default {
 
       if (type === 'deleted') {
         await this.fileWatcher?.stopWatch()
+        this.fileMissing = true
         this.patchTab({ fileMissing: true })
         const fileName = getFileNameFromPath(filePath)
         ElNotification.warning({
@@ -697,6 +700,7 @@ export default {
       this.originalContent = convertedContent
       this.isContentModified = false
       this.lastPromptedExternalContent = null
+      this.fileMissing = false
 
       // 同步文件路径和修改状态到 tab store
       this.syncFilePathToTab(filePath, false)
@@ -799,8 +803,8 @@ export default {
         currentContent = imagePathMapper.convertToRelative(currentContent);
         console.log('[Save] 已转换 tmd URL 为相对路径');
 
-        if (!this.isContentModified && this.originalContent !== '') {
-          // 内容未修改,提示用户
+        if (!this.isContentModified && this.originalContent !== '' && !this.fileMissing) {
+          // 内容未修改,提示用户（磁盘文件已删除时允许在原路径重建）
           this.isSaving = false
           ElMessage.info({
             message: this.t.saveFile.notModified.message,
@@ -833,6 +837,7 @@ export default {
 
         // 立即更新状态(在显示通知之前)
         this.currentFilePath = filePath
+        this.fileMissing = false
         // 用编辑器当前内容（convertToAssetUrl 格式）作为基准，确保后续比较格式一致
         this.originalContent = this.vditor.getValue()
         this.isContentModified = false
