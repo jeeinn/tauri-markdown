@@ -17,7 +17,8 @@
         :data-tab-id="tab.id"
         :class="{
           'tab-active': tab.id === activeTabId,
-          'tab-drag-over': dragOverTabId === tab.id && dragOverTabId !== draggingTabId
+          'tab-drag-over': dragOverTabId === tab.id && dragOverTabId !== draggingTabId,
+          'tab-file-missing': tab.fileMissing,
         }"
         :title="tab.filePath || getTabTitle(tab, lang)"
         :aria-label="getTabTitle(tab, lang)"
@@ -387,6 +388,16 @@ function handleTabClick(event, tabId) {
   border-bottom: 2px solid #409eff;
 }
 
+/* 磁盘文件已删除/丢失 */
+.tab-item.tab-file-missing .tab-title {
+  color: #f56c6c;
+  text-decoration: line-through;
+}
+
+.tab-item.tab-file-missing.tab-active .tab-title {
+  color: #f56c6c;
+}
+
 /* 标签标题（超长截断） */
 .tab-title {
   flex: 1;
@@ -475,6 +486,10 @@ html.dark .tab-item.tab-active {
   background: #141414;
   color: #e5eaf3;
   border-bottom-color: #409eff;
+}
+
+html.dark .tab-item.tab-file-missing .tab-title {
+  color: #f89898;
 }
 
 html.dark .tab-close {

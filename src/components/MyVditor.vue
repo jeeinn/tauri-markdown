@@ -25,6 +25,9 @@ import { createScrollMemoryManager } from '../utils/scroll-memory.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useTabStore } from '../stores/tabStore.js'
+import { createFileWatcher } from '../composables/useFileWatcher.js'
+import { isExternalContentChanged, normalizeDiskContentForCompare } from '../utils/file-content-compare.js'
+import { replaceFileNamePlaceholder, getFileNameFromPath } from '../utils/string-helper.js'
 // 导入工具函数
 import { uploadFiles } from '../utils/file-upload.js'
 
@@ -50,6 +53,11 @@ export default {
       isContentModified: false, // 内容是否被修改
       originalContent: '', // 原始文件内容,用于对比
       isSaving: false, // 是否正在保存(防止保存过程中触发修改检测)
+      externalChangeDialogOpen: false, // 外部变更对话框是否已打开
+      externalChangeProcessing: false, // 外部变更处理中（防止并发重复弹窗）
+      lastPromptedExternalContent: null, // 已提示过的外部磁盘内容（避免重复弹窗）
+      fileMissing: false, // 磁盘文件已被外部删除
+      fileWatcher: null, // 外部文件变更监听器
       _handleLinkClick: null, // 链接点击拦截处理函数
       // 滚动位置记忆管理器
       scrollMemory: null,
@@ -70,6 +78,7 @@ export default {
     },
   },
   mounted() {
+    this.fileWatcher = createFileWatcher()
     this.initVditor();
 
     // beforeunload 仅用于保存滚动位置(Tauri 窗口关闭由 onCloseRequested 处理)
@@ -93,6 +102,10 @@ export default {
 
     // 清理滚动记忆管理器
     this.scrollMemory?.destroy()
+
+    // 停止外部文件监听
+    this.fileWatcher?.stopWatch().catch(() => {})
+    this.fileWatcher = null
 
     // 取消模式切换监听器订阅
     if (this._unsubscribeModeSwitch) {
@@ -372,7 +385,18 @@ export default {
         if (contentModified !== undefined) {
           patch.contentModified = contentModified
         }
+        if (filePath) {
+          patch.fileMissing = false
+        }
         tabStore.updateTab(this.tabId, patch)
+      } catch {
+        // store 未初始化时忽略
+      }
+    },
+
+    patchTab(patch) {
+      try {
+        useTabStore().updateTab(this.tabId, patch)
       } catch {
         // store 未初始化时忽略
       }
@@ -435,12 +459,16 @@ export default {
     async clearCurrentFile() {
       const oldFilePath = this.currentFilePath
 
+      await this.fileWatcher?.stopWatch()
+
       this.currentFilePath = null
       this.originalContent = ''
       this.isContentModified = false
+      this.lastPromptedExternalContent = null
+      this.fileMissing = false
 
       // 同步文件路径到 tab store（清空）
-      this.syncFilePathToTab(null)
+      this.patchTab({ filePath: null, fileMissing: false })
 
       // 清除 store 中的记录
       await clearLastFilePath()
@@ -454,12 +482,12 @@ export default {
       await this.updateWindowTitle()
     },
 
-    // 显示文件冲突对话框
+    // 显示文件冲突对话框（保存时覆盖外部修改）
     async showFileConflictDialog(filePath) {
       const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
       try {
         await ElMessageBox.confirm(
-          this.t.fileConflict.message.replace('{fileName}', fileName),
+          replaceFileNamePlaceholder(this.t.fileConflict.message, fileName),
           this.t.fileConflict.title,
           {
             confirmButtonText: this.t.fileConflict.confirmButtonText,
@@ -472,6 +500,113 @@ export default {
       } catch (error) {
         // 用户取消操作
         return false
+      }
+    },
+
+    // 显示外部文件变更对话框（是否重新加载）
+    async showExternalChangeDialog(filePath) {
+      const fileName = getFileNameFromPath(filePath)
+      const i18n = this.t.fileExternalChange
+      const messageKey = this.isContentModified ? 'messageWithUnsaved' : 'message'
+      try {
+        await ElMessageBox.confirm(
+          replaceFileNamePlaceholder(i18n[messageKey], fileName),
+          i18n.title,
+          {
+            confirmButtonText: i18n.confirmButtonText,
+            cancelButtonText: i18n.cancelButtonText,
+            type: 'warning',
+            distinguishCancelAndClose: true,
+          }
+        )
+        return true
+      } catch {
+        return false
+      }
+    },
+
+    /**
+     * 为当前打开的文件启动外部变更监听
+     * @param {string} filePath
+     */
+    async setupFileWatcher(filePath) {
+      if (!this.fileWatcher || !filePath) return
+
+      try {
+        await this.fileWatcher.startWatch(filePath, {
+          shouldIgnore: () => (
+            this.isSaving
+            || this.externalChangeDialogOpen
+            || this.externalChangeProcessing
+          ),
+          onChange: (event) => this.handleExternalFileChange(event),
+        })
+      } catch (error) {
+        console.error('[FileWatcher] 启动文件监听失败:', error)
+      }
+    },
+
+    /**
+     * 处理外部文件变更事件
+     * @param {{ type: 'modified'|'deleted', filePath: string }} event
+     */
+    async handleExternalFileChange(event) {
+      const { type, filePath } = event
+
+      if (this.externalChangeDialogOpen || this.externalChangeProcessing) return
+      if (this.isSaving) return
+      if (this.currentFilePath !== filePath) return
+
+      if (type === 'deleted') {
+        await this.fileWatcher?.stopWatch()
+        this.fileMissing = true
+        this.patchTab({ fileMissing: true })
+        const fileName = getFileNameFromPath(filePath)
+        ElNotification.warning({
+          title: this.t.fileExternalDeleted.title,
+          message: replaceFileNamePlaceholder(this.t.fileExternalDeleted.message, fileName),
+          duration: 5000,
+        })
+        return
+      }
+
+      this.externalChangeProcessing = true
+      try {
+        let diskContent
+        try {
+          diskContent = await readTextFile(filePath)
+        } catch (error) {
+          console.error('[FileWatcher] 读取磁盘文件失败:', error)
+          return
+        }
+
+        const normalizedDisk = normalizeDiskContentForCompare(diskContent)
+        if (normalizedDisk === this.originalContent) {
+          return
+        }
+        if (normalizedDisk === this.lastPromptedExternalContent) {
+          return
+        }
+
+        // 同步占用该外部版本，避免快速连续保存时重复弹窗
+        this.lastPromptedExternalContent = normalizedDisk
+
+        this.externalChangeDialogOpen = true
+        try {
+          const confirmed = await this.showExternalChangeDialog(filePath)
+          if (!confirmed) return
+
+          this.lastPromptedExternalContent = null
+          this.fileWatcher?.suppressEvents()
+          const loaded = await this.loadFileByPath(filePath)
+          if (!loaded) {
+            ElNotification.error(this.t.openFile.readError)
+          }
+        } finally {
+          this.externalChangeDialogOpen = false
+        }
+      } finally {
+        this.externalChangeProcessing = false
       }
     },
 
@@ -564,6 +699,8 @@ export default {
       // 保存转换后的内容作为基准，确保 checkContentModified 比较的是同一种格式
       this.originalContent = convertedContent
       this.isContentModified = false
+      this.lastPromptedExternalContent = null
+      this.fileMissing = false
 
       // 同步文件路径和修改状态到 tab store
       this.syncFilePathToTab(filePath, false)
@@ -588,6 +725,7 @@ export default {
       }
 
       await invoke('log_message', { msg: `loadFileByPath: success, file loaded: ${filePath}` });
+      await this.setupFileWatcher(filePath)
       return true
     },
     // 新建空白文档
@@ -665,8 +803,8 @@ export default {
         currentContent = imagePathMapper.convertToRelative(currentContent);
         console.log('[Save] 已转换 tmd URL 为相对路径');
 
-        if (!this.isContentModified && this.originalContent !== '') {
-          // 内容未修改,提示用户
+        if (!this.isContentModified && this.originalContent !== '' && !this.fileMissing) {
+          // 内容未修改,提示用户（磁盘文件已删除时允许在原路径重建）
           this.isSaving = false
           ElMessage.info({
             message: this.t.saveFile.notModified.message,
@@ -681,8 +819,8 @@ export default {
           // 读取当前磁盘上的文件内容
           const diskContent = await readTextFile(filePath)
 
-          // 如果磁盘内容与原始内容不同,说明文件被外部修改
-          if (diskContent !== this.originalContent) {
+          // 统一转换格式后再比较，避免相对路径图片导致误判
+          if (isExternalContentChanged(diskContent, this.originalContent)) {
             const confirmed = await this.showFileConflictDialog(filePath)
             if (!confirmed) {
               this.isSaving = false
@@ -691,12 +829,15 @@ export default {
           }
         }
 
-        // 执行保存
+        // 执行保存（写入前抑制 watch，避免自身保存触发外部变更提示）
         console.log('[DEBUG] 开始保存文件到:', filePath)
+        this.fileWatcher?.suppressEvents()
         await writeTextFile(filePath, currentContent)
+        this.fileWatcher?.suppressEvents()
 
         // 立即更新状态(在显示通知之前)
         this.currentFilePath = filePath
+        this.fileMissing = false
         // 用编辑器当前内容（convertToAssetUrl 格式）作为基准，确保后续比较格式一致
         this.originalContent = this.vditor.getValue()
         this.isContentModified = false
@@ -706,6 +847,9 @@ export default {
 
         // 保存到 store
         await saveLastFilePath(filePath)
+
+        // Save As 或首次保存后启动外部变更监听
+        await this.setupFileWatcher(filePath)
 
         // 清除保存标志
         this.isSaving = false

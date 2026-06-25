@@ -66,6 +66,7 @@ export const useTabStore = defineStore('tab', () => {
       id: generateTabId(),
       filePath,
       contentModified: false,
+      fileMissing: false,
       active: true,
       scrollPosition: 0,
       editMode: 'ir',
@@ -193,6 +194,7 @@ export const useTabStore = defineStore('tab', () => {
       id: raw.id || generateTabId(),
       filePath: raw.filePath ?? null,
       contentModified: false, // 恢复时总是从 false 开始（磁盘内容即最新）
+      fileMissing: false,
       active: raw.active ?? false,
       scrollPosition: typeof raw.scrollPosition === 'number' ? raw.scrollPosition : 0,
       editMode: ['ir', 'sv', 'wysiwyg'].includes(raw.editMode) ? raw.editMode : 'ir',

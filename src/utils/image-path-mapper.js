@@ -68,6 +68,28 @@ class ImagePathMapper {
   }
 
   /**
+   * 将内容中的相对路径转换为 tmd URL（纯函数，不修改 mapping，用于内容比较）
+   * @param {string} content
+   * @returns {string}
+   */
+  convertToAssetUrlPure(content) {
+    if (!content) return content;
+
+    let result = content;
+    let match;
+
+    this.relativePathPattern.lastIndex = 0;
+
+    while ((match = this.relativePathPattern.exec(content)) !== null) {
+      const [fullMatch, , relPath] = match;
+      const tmdUrl = `http://tmd.localhost/${relPath}`;
+      result = result.replace(fullMatch, fullMatch.replace(`./${relPath}`, tmdUrl));
+    }
+
+    return result;
+  }
+
+  /**
    * 将内容中的相对路径转换为 tmd URL（加载时使用）
    * 匹配任意 ./ 开头的相对路径图片（不限定目录）
    *

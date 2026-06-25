@@ -63,6 +63,16 @@ describe('getTabTitle', () => {
     expect(getTabTitle({ filePath: '/home/user/note.md', contentModified: true })).toBe('* note.md')
   })
 
+  it('fileMissing 为 true 时标题不变，样式由 TabBar 处理', () => {
+    expect(getTabTitle({ filePath: '/home/user/note.md', contentModified: false, fileMissing: true }))
+      .toBe('note.md')
+  })
+
+  it('同时未保存且文件丢失时仅显示 * 前缀', () => {
+    expect(getTabTitle({ filePath: '/home/user/note.md', contentModified: true, fileMissing: true }))
+      .toBe('* note.md')
+  })
+
   it('filePath 为空字符串 → "未命名"', () => {
     expect(getTabTitle({ filePath: '', contentModified: false })).toBe('未命名')
   })
