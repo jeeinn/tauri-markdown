@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-25
+
+### Added
+- **External File Change Detection**: Monitor currently opened file for external modifications and prompt users to reload or keep current content
+- **Single-Instance External Open**: Handle files opened via system "Open With" feature in single-instance mode
+- **File Missing State Management**: Track and handle deleted external files with user notifications and recovery options
+- **File Watcher Composable**: New `useFileWatcher` composable with debounced filesystem watching and event suppression
+- **Content Comparison Utility**: New `file-content-compare` utility for normalized disk-vs-editor content comparison
+- **i18n for External Changes**: Added Chinese, English, Japanese, Korean translations for file change dialogs
+
+### Changed
+- **File Watch Capabilities**: Enabled `watch` feature for `tauri-plugin-fs` and added `fs:allow-watch`/`fs:allow-unwatch` permissions
+- **Save Conflict Detection**: Unified save-time and watch-time conflict detection using `isExternalContentChanged`
+
 ## [0.7.0] - 2026-06-18
 
 ### Added
@@ -212,7 +226,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.0...v0.6.1
