@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::http::{header::CONTENT_TYPE, Request, Response};
-use tauri::{Manager, State, UriSchemeContext};
+use tauri::{Emitter, Manager, State, UriSchemeContext};
 use serde::{Serialize, Deserialize};
 use base64::Engine;
 
@@ -272,17 +272,9 @@ fn tmd_protocol_handler<R: tauri::Runtime>(
 
 // ── 启动 ─────────────────────────────────────────────
 
-/// 从命令行参数中提取被打开的文件路径（Windows / Linux "打开方式" 传入）
-fn extract_opened_file() -> Option<PathBuf> {
-    log("extract_opened_file: scanning args...");
-    let args: Vec<String> = std::env::args().collect();
-    log(&format!("  total args: {}", args.len()));
-    for (i, arg) in args.iter().enumerate() {
-        log(&format!("  args[{i}]: {arg}"));
-    }
-
-    let result = args
-        .into_iter()
+/// 从命令行参数列表中提取被打开的文件路径（Windows / Linux "打开方式" 传入）
+fn parse_opened_file_from_args(args: &[String]) -> Option<PathBuf> {
+    args.iter()
         .skip(1)
         .find(|arg| !arg.starts_with('-'))
         .and_then(|arg| {
@@ -290,7 +282,7 @@ fn extract_opened_file() -> Option<PathBuf> {
             // 只有 file:// 开头才走 URL 路径转换；Windows 盘符路径（C:\...）会被
             // url::Url::parse 误识别为 scheme，所以其余情况一律按文件路径处理
             if arg.starts_with("file://") {
-                if let Ok(url) = url::Url::parse(&arg) {
+                if let Ok(url) = url::Url::parse(arg) {
                     log(&format!("  parsed as file URL: {url}"));
                     return url.to_file_path().ok().filter(|p| {
                         let exists = p.exists();
@@ -299,14 +291,42 @@ fn extract_opened_file() -> Option<PathBuf> {
                     });
                 }
             }
-            let p = PathBuf::from(&arg);
+            let p = PathBuf::from(arg);
             let exists = p.exists();
             log(&format!("  treated as path: {:?}, exists: {}", p, exists));
             if exists { Some(p) } else { None }
-        });
+        })
+}
 
+/// 从当前进程命令行参数中提取被打开的文件路径
+fn extract_opened_file() -> Option<PathBuf> {
+    log("extract_opened_file: scanning args...");
+    let args: Vec<String> = std::env::args().collect();
+    log(&format!("  total args: {}", args.len()));
+    for (i, arg) in args.iter().enumerate() {
+        log(&format!("  args[{i}]: {arg}"));
+    }
+
+    let result = parse_opened_file_from_args(&args);
     log(&format!("extract_opened_file result: {:?}", result));
     result
+}
+
+/// 将外部打开的文件路径通知给已运行的实例（聚焦窗口并 emit 事件）
+fn notify_open_external_file(app: &tauri::AppHandle, path: PathBuf) {
+    let path_str = path.to_string_lossy().into_owned();
+    log(&format!("notify_open_external_file: {path_str}"));
+
+    let state: State<OpenedFile> = app.state();
+    *state.0.lock().unwrap() = Some(path);
+
+    let _ = app.emit("open-external-file", &path_str);
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
 fn main() {
@@ -326,7 +346,24 @@ fn main() {
         log(&format!("Using portable data directory: {:?}", exe_dir));
     }
 
-    let app = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // 单实例插件必须最先注册：Windows「打开方式」再次启动时，将文件路径转发给已运行实例
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            log(&format!("single-instance callback, args: {:?}", args));
+            if let Some(path) = parse_opened_file_from_args(&args) {
+                notify_open_external_file(app, path);
+            } else if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    let app = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
@@ -369,9 +406,7 @@ fn main() {
             log(&format!("RunEvent::Opened received, urls: {:?}", urls));
             for url in urls {
                 if let Ok(path) = url.to_file_path() {
-                    log(&format!("  opened file: {:?}", path));
-                    let state: State<OpenedFile> = app.state();
-                    *state.0.lock().unwrap() = Some(path);
+                    notify_open_external_file(app, path);
                     break;
                 }
             }

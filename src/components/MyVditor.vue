@@ -477,18 +477,9 @@ export default {
 
     async autoLoadLastFile() {
       try {
-        // 优先处理通过“打开方式”传入的文件(由 Rust 端通过 command 获取)
-        const openedFile = await invoke('take_opened_file');
-        await invoke('log_message', { msg: `autoLoadLastFile: take_opened_file returned: ${openedFile}` });
-        if (openedFile) {
-          console.log('[DEBUG] 检测到通过打开方式传入的文件:', openedFile);
-          const success = await this.loadFileByPath(openedFile);
-          await invoke('log_message', { msg: `autoLoadLastFile: loadFileByPath(${openedFile}) => ${success}` });
-          return;
-        }
-
+        // 外部打开的文件由 App.vue 统一处理（take_opened_file / open-external-file 事件）
         console.log('[DEBUG] 开始自动加载上次文件...')
-        await invoke('log_message', { msg: 'autoLoadLastFile: no opened file, loading last file from store' });
+        await invoke('log_message', { msg: 'autoLoadLastFile: loading last file from store' });
         const lastFilePath = await getLastFilePath()
         console.log('[DEBUG] 从 store 获取的文件路径:', lastFilePath)
         await invoke('log_message', { msg: `autoLoadLastFile: lastFilePath from store: ${lastFilePath}` });

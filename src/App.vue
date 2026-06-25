@@ -156,7 +156,7 @@
     </template>
 
     <!-- 单文档模式 -->
-    <MyVditor v-else ref="vditor" />
+    <MyVditor v-else ref="vditor" :initial-file="startupOpenedFile" />
 
     <!-- 查找/替换组件 -->
     <FindReplace
@@ -208,6 +208,8 @@ import { checkUnsavedChanges } from './utils/unsaved-check.js'
 import { checkForUpdate as _checkForUpdate } from './utils/update-checker.js'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
 import { setupWindowCloseHandler } from './composables/useWindowCloseHandler.js'
+import { listen } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
 
 export default {
   name: 'App',
@@ -233,6 +235,8 @@ export default {
       zenTipTimer: null,
       showImageHostSettings: false,
       multiTabMode: true,
+      // 通过「打开方式」/ 单实例回调传入的启动文件路径（单文档模式传给 MyVditor）
+      startupOpenedFile: null,
       // Map<tabId, TabContent component ref>
       tabContentRefs: new Map(),
       // 拖拽文件管理器
@@ -280,6 +284,7 @@ export default {
     window.addEventListener('keydown', handleKeyboardShortcut)
 
     this.initTheme();
+    this.setupExternalFileListener();
     this.initViewSettings();
     setTimeout(() => this.checkForUpdate(false), 10000);
     
@@ -303,8 +308,38 @@ export default {
     }
     // 清理窗口关闭拦截
     this._cleanupWindowClose?.()
+    // 清理外部文件打开事件监听
+    this._unlistenExternalFile?.()
   },
   methods: {
+    // ─── 外部文件打开（Windows「打开方式」/ 单实例转发）────────────────────
+
+    /**
+     * 监听已运行实例收到的新文件打开请求（由 Rust single-instance 插件 emit）
+     */
+    async setupExternalFileListener() {
+      this._unlistenExternalFile = await listen('open-external-file', (event) => {
+        const path = event.payload
+        if (path) {
+          invoke('log_message', { msg: `[App] open-external-file event: ${path}` })
+          this.handleOpenFile(path)
+        }
+      })
+    },
+
+    /**
+     * 等待编辑器就绪后打开文件（用于启动时或外部打开）
+     */
+    async openFileWhenReady(path, retryCount = 0) {
+      const MAX_RETRIES = 30
+      const vditor = this.getActiveVditor()
+      if (!vditor?.vditor && retryCount < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 100))
+        return this.openFileWhenReady(path, retryCount + 1)
+      }
+      await this.handleOpenFile(path)
+    },
+
     // ─── Tab 引用管理 ─────────────────────────────────────────────────────────
 
     /**
@@ -723,8 +758,19 @@ export default {
     // ─── 初始化视图设置 ───────────────────────────────────────────────────────
 
     async initViewSettings() {
+      // 优先消费「打开方式」传入的文件路径（仅取一次）
+      const openedFile = await invoke('take_opened_file')
+      if (openedFile) {
+        await invoke('log_message', { msg: `[App] initViewSettings: startup opened file: ${openedFile}` })
+      }
+
       // 加载多标签模式设置
       this.multiTabMode = await getMultiTabMode()
+
+      // 单文档模式：将外部文件路径传给 MyVditor 的 initial-file
+      if (!this.multiTabMode && openedFile) {
+        this.startupOpenedFile = openedFile
+      }
 
       // 多标签模式下加载标签页状态
       if (this.multiTabMode) {
@@ -743,21 +789,25 @@ export default {
       }
 
       // 等待子组件 mount 并初始化 vditor，然后应用设置
-      this.$nextTick(() => {
-        if (this.multiTabMode) {
-          this._applySettingsToAllTabs(savedLang)
-        } else {
-          // 单文档模式：直接应用到唯一的 vditor
-          const vditor = this.$refs.vditor
-          if (vditor) {
-            vditor.setScrollRememberEnabled(this.scrollRememberEnabled)
-            if (savedLang && savedLang !== 'zh_CN') {
-              vditor.switchLanguage(savedLang)
-            }
-          }
-          this.applyZenMode(this.isZenMode)
+      await new Promise(resolve => this.$nextTick(resolve))
+
+      if (this.multiTabMode) {
+        this._applySettingsToAllTabs(savedLang)
+        // 多标签模式：在当前/新建标签中打开外部文件
+        if (openedFile) {
+          await this.openFileWhenReady(openedFile)
         }
-      })
+      } else {
+        // 单文档模式：直接应用到唯一的 vditor
+        const vditor = this.$refs.vditor
+        if (vditor) {
+          vditor.setScrollRememberEnabled(this.scrollRememberEnabled)
+          if (savedLang && savedLang !== 'zh_CN') {
+            vditor.switchLanguage(savedLang)
+          }
+        }
+        this.applyZenMode(this.isZenMode)
+      }
     },
 
     /**
