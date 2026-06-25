@@ -146,6 +146,10 @@ export default {
         confirmButtonText: '重新加载',
         cancelButtonText: '保留当前内容',
       },
+      fileExternalDeleted: {
+        title: '文件已删除',
+        message: '标签页中的文件 "{fileName}" 已在外部被删除，编辑器仍保留当前内容。',
+      },
       // 自动加载上次文件
       autoLoad: {
         fileNotExist: {
@@ -508,6 +512,10 @@ export default {
         confirmButtonText: 'Reload',
         cancelButtonText: 'Keep Current Content',
       },
+      fileExternalDeleted: {
+        title: 'File Deleted',
+        message: 'File "{fileName}" in this tab was deleted externally. The editor still keeps the current content.',
+      },
       autoLoad: {
         fileNotExist: {
           title: 'File Not Found',
@@ -864,6 +872,10 @@ export default {
         confirmButtonText: '再読み込み',
         cancelButtonText: '現在の内容を保持',
       },
+      fileExternalDeleted: {
+        title: 'ファイルが削除されました',
+        message: 'このタブのファイル "{fileName}" は外部で削除されました。エディターの内容は保持されています。',
+      },
       autoLoad: {
         fileNotExist: {
           title: 'ファイルが見つかりません',
@@ -1219,6 +1231,10 @@ export default {
         messageWithUnsaved: '파일 "{fileName}"이(가) 외부에서 수정되었습니다.\n\n다시 불러오면 저장하지 않은 변경 사항이 사라집니다. 계속하시겠습니까?',
         confirmButtonText: '다시 불러오기',
         cancelButtonText: '현재 내용 유지',
+      },
+      fileExternalDeleted: {
+        title: '파일이 삭제됨',
+        message: '이 탭의 파일 "{fileName}"이(가) 외부에서 삭제되었습니다. 편집기 내용은 유지됩니다.',
       },
       autoLoad: {
         fileNotExist: {

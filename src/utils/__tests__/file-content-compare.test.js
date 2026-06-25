@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../utils/image-path-mapper.js', () => ({
   default: {
-    convertToAssetUrl: vi.fn((content) => `converted:${content}`),
+    convertToAssetUrlPure: vi.fn((content) => `converted:${content}`),
   },
 }))
 
@@ -24,12 +24,12 @@ describe('file-content-compare', () => {
   describe('normalizeDiskContentForCompare', () => {
     it('空内容应返回空字符串', () => {
       expect(normalizeDiskContentForCompare('')).toBe('')
-      expect(imagePathMapper.convertToAssetUrl).not.toHaveBeenCalled()
+      expect(imagePathMapper.convertToAssetUrlPure).not.toHaveBeenCalled()
     })
 
-    it('应通过 imagePathMapper 转换磁盘内容', () => {
+    it('应通过无副作用转换比较磁盘内容', () => {
       const result = normalizeDiskContentForCompare('# hello')
-      expect(imagePathMapper.convertToAssetUrl).toHaveBeenCalledWith('# hello')
+      expect(imagePathMapper.convertToAssetUrlPure).toHaveBeenCalledWith('# hello')
       expect(result).toBe('converted:# hello')
     })
   })

@@ -2,7 +2,7 @@
  * 磁盘文件内容与编辑器基准内容的比较工具
  *
  * 编辑器内 originalContent 为 convertToAssetUrl 后的格式，
- * 比较前需将磁盘原始内容做相同转换。
+ * 比较前需将磁盘原始内容做相同转换（无副作用，不写 mapping）。
  */
 
 import imagePathMapper from './image-path-mapper.js'
@@ -14,7 +14,7 @@ import imagePathMapper from './image-path-mapper.js'
  */
 export function normalizeDiskContentForCompare(diskRaw) {
   if (!diskRaw) return ''
-  return imagePathMapper.convertToAssetUrl(diskRaw)
+  return imagePathMapper.convertToAssetUrlPure(diskRaw)
 }
 
 /**
