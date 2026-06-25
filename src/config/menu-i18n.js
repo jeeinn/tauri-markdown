@@ -138,6 +138,14 @@ export default {
         confirmButtonText: '覆盖保存',
         cancelButtonText: '取消',
       },
+      // 外部文件变更（重新加载）
+      fileExternalChange: {
+        title: '文件已变更',
+        message: '文件 "{fileName}" 已在外部被修改。\n\n是否重新加载？',
+        messageWithUnsaved: '文件 "{fileName}" 已在外部被修改。\n\n重新加载将丢失当前未保存的修改，是否继续？',
+        confirmButtonText: '重新加载',
+        cancelButtonText: '保留当前内容',
+      },
       // 自动加载上次文件
       autoLoad: {
         fileNotExist: {
@@ -493,6 +501,13 @@ export default {
         confirmButtonText: 'Overwrite',
         cancelButtonText: 'Cancel',
       },
+      fileExternalChange: {
+        title: 'File Changed',
+        message: 'File "{fileName}" has been modified externally.\n\nDo you want to reload?',
+        messageWithUnsaved: 'File "{fileName}" has been modified externally.\n\nReloading will discard your unsaved changes. Continue?',
+        confirmButtonText: 'Reload',
+        cancelButtonText: 'Keep Current Content',
+      },
       autoLoad: {
         fileNotExist: {
           title: 'File Not Found',
@@ -842,6 +857,13 @@ export default {
         confirmButtonText: '上書き保存',
         cancelButtonText: 'キャンセル',
       },
+      fileExternalChange: {
+        title: 'ファイルが変更されました',
+        message: 'ファイル "{fileName}" は外部で変更されました。\n\n再読み込みしますか？',
+        messageWithUnsaved: 'ファイル "{fileName}" は外部で変更されました。\n\n再読み込みすると未保存の変更が失われます。続行しますか？',
+        confirmButtonText: '再読み込み',
+        cancelButtonText: '現在の内容を保持',
+      },
       autoLoad: {
         fileNotExist: {
           title: 'ファイルが見つかりません',
@@ -1190,6 +1212,13 @@ export default {
         message: '파일 "{fileName}"이(가) 외부에서 수정되었습니다.\n\n외부 변경 사항을 덮어쓰시겠습니까?',
         confirmButtonText: '덮어쓰기',
         cancelButtonText: '취소',
+      },
+      fileExternalChange: {
+        title: '파일이 변경됨',
+        message: '파일 "{fileName}"이(가) 외부에서 수정되었습니다.\n\n다시 불러오시겠습니까?',
+        messageWithUnsaved: '파일 "{fileName}"이(가) 외부에서 수정되었습니다.\n\n다시 불러오면 저장하지 않은 변경 사항이 사라집니다. 계속하시겠습니까?',
+        confirmButtonText: '다시 불러오기',
+        cancelButtonText: '현재 내용 유지',
       },
       autoLoad: {
         fileNotExist: {
