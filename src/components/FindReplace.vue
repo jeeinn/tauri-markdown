@@ -455,7 +455,8 @@ export default {
       // Ctrl+F 或 Cmd+F 打开查找
       if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
         event.preventDefault()
-        this.show()
+        // 通知父组件更新 vditorRef（父组件会调用 show）
+        this.$emit('shortcut-show')
         return
       }
 

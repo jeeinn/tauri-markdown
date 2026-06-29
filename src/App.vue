@@ -163,6 +163,7 @@
       ref="findReplace"
       :lang="currentLang"
       @content-changed="handleContentChanged"
+      @shortcut-show="showFindReplace"
     />
 
     <!-- Zen 模式提示框 -->
