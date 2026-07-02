@@ -29,6 +29,7 @@ nul
 .claude
 .lingma
 .codegraph/daemon.pid
+.cursor
 
 
 # Vitest
