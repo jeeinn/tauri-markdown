@@ -1,3 +1,13 @@
+/* Vditor 编辑器字号（由设置面板通过 CSS 变量控制） */
+.vditor-container {
+  --vditor-editor-font-size: 16px;
+}
+
+.vditor-container .vditor-reset,
+.vditor-container .vditor-sv {
+  font-size: var(--vditor-editor-font-size) !important;
+}
+
 /* Vditor 工具栏左对齐样式 */
 /* 确保工具栏从左边缘开始，没有额外的左边距 */
 .vditor .vditor-toolbar {

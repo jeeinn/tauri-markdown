@@ -39,6 +39,7 @@ export default {
   props: {
     tabId: { type: String, default: 'default' },
     initialFile: { type: String, default: null },
+    editorFontSize: { type: Number, default: 16 },
   },
   data() {
     return {
@@ -75,6 +76,11 @@ export default {
     // 获取当前语言的窗口标题配置
     wt() {
       return getI18nConfig(this.lang).windowTitle;
+    },
+  },
+  watch: {
+    editorFontSize(size) {
+      this.setEditorFontSize(size);
     },
   },
   mounted() {
@@ -324,6 +330,7 @@ export default {
         const actuallyDark = document.documentElement.classList.contains('dark')
         this.isDarkTheme = actuallyDark
         this.setVditorTheme(actuallyDark);
+        this.setEditorFontSize(this.editorFontSize);
 
         // 初始化后加载文件
         // 使用 initVditor 时的快照值，而非响应式 prop，避免 Vue 更新时误触发
@@ -981,6 +988,19 @@ export default {
       new WebviewWindow('theUniqueLabel', {
         url: url
       })
+    },
+
+    // ========== 编辑器字号 ==========
+
+    /**
+     * 设置编辑器内容字号（由父组件调用）
+     * @param {number} size - 字号（px）
+     */
+    setEditorFontSize(size) {
+      const container = document.getElementById(`vditor-${this.tabId}`)?.closest('.vditor-container');
+      if (container) {
+        container.style.setProperty('--vditor-editor-font-size', `${size}px`);
+      }
     },
 
     // ========== 滚动位置记忆 ==========
