@@ -509,9 +509,10 @@ export default {
      */
     handleSwitchTab(tabId) {
       this.tabStore.switchTab(tabId)
-      this.$nextTick(() => {
+      this.$nextTick(async () => {
         const vditor = this.getActiveVditor()
         if (vditor) {
+          await vditor.syncAssetBaseDir?.()
           vditor.updateWindowTitle()
           vditor.restoreScrollPosition?.()
         }

@@ -92,11 +92,15 @@ fn switch_log_to_app_data(app_handle: &tauri::AppHandle) {
 /// 当前打开的 md 文件所在目录，由 JS 端在打开/切换文件时更新
 struct CurrentDir(Mutex<Option<PathBuf>>);
 
-/// JS 端调用，设置当前 md 文件所在目录
+/// JS 端调用，设置当前 md 文件所在目录（空字符串表示清除）
 #[tauri::command]
 fn set_current_dir(dir: String, state: State<'_, CurrentDir>) {
     log(&format!("set_current_dir: {dir}"));
-    *state.0.lock().unwrap() = Some(PathBuf::from(&dir));
+    if dir.trim().is_empty() {
+        *state.0.lock().unwrap() = None;
+    } else {
+        *state.0.lock().unwrap() = Some(PathBuf::from(&dir));
+    }
 }
 
 /// 便携模式标记（通过 .portable 文件检测）
@@ -308,6 +312,7 @@ fn tmd_protocol_handler<R: tauri::Runtime>(
     request: Request<Vec<u8>>,
 ) -> Response<Vec<u8>> {
     let relative_path = extract_path(request.uri());
+    log(&format!("tmd_protocol: request path={relative_path}"));
 
     let app_handle = ctx.app_handle();
     let state: State<CurrentDir> = app_handle.state();
@@ -316,27 +321,39 @@ fn tmd_protocol_handler<R: tauri::Runtime>(
     let base = match base_dir {
         Some(dir) => dir,
         None => {
+            log("tmd_protocol: CurrentDir not set, returning placeholder");
             return placeholder_response();
         }
     };
 
     let full_path = base.join(&relative_path);
+    log(&format!("tmd_protocol: resolved full_path={:?}", full_path));
 
     let canonical = match std::fs::canonicalize(&full_path) {
         Ok(p) => p,
-        Err(_) => {
+        Err(e) => {
+            log(&format!(
+                "tmd_protocol: canonicalize failed for {:?}: {e}",
+                full_path
+            ));
             return placeholder_response();
         }
     };
 
     let content = match std::fs::read(&canonical) {
         Ok(c) => c,
-        Err(_) => {
+        Err(e) => {
+            log(&format!("tmd_protocol: read failed for {:?}: {e}", canonical));
             return placeholder_response();
         }
     };
 
     let mime = guess_mime(&relative_path);
+    log(&format!(
+        "tmd_protocol: served {:?} ({} bytes, mime={mime})",
+        canonical,
+        content.len()
+    ));
 
     Response::builder()
         .status(200)

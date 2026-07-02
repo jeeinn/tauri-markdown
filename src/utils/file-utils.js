@@ -17,11 +17,14 @@ export async function calculateFileHash(file) {
   return hashHex
 }
 
+const IMAGE_EXT_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|ico|avif|jfif|heic|heif|tiff?)$/i
+
 /**
- * 判断文件是否为图片
+ * 判断文件是否为图片（MIME 类型 + 扩展名兜底，兼容 Windows 剪贴板/文件选择器 type 为空）
  * @param {File} file - 文件对象
  * @returns {boolean} 是否为图片文件
  */
 export function isImageFile(file) {
-  return file.type && file.type.startsWith('image/')
+  if (file.type && file.type.startsWith('image/')) return true
+  return IMAGE_EXT_PATTERN.test(file.name || '')
 }
