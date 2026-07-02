@@ -299,6 +299,38 @@ export default {
         title: '上传失败',
         message: '{count} 个文件上传失败，请检查文件权限和存储空间',
       },
+      uploadFailedImageHost: {
+        title: '图床上传失败',
+        message: '{count} 个文件上传失败，请检查网络连接和图床配置',
+      },
+      uploadFallbackPrompt: {
+        title: '图床上传失败',
+        message: '图床上传失败（{reason}），是否将 {count} 个文件回退保存到本地？',
+        confirmButtonText: '回退到本地',
+        cancelButtonText: '取消',
+      },
+      uploadFallbackSuccess: {
+        title: '已回退到本地存储',
+        message: '图床上传失败，已将 {count} 个文件保存到本地 assets 目录',
+      },
+      uploadErrorDetail: {
+        message: '{name}: {reason}',
+      },
+      uploadErrorNetwork: {
+        message: '网络连接失败',
+      },
+      uploadErrorMkdir: {
+        message: '创建目录失败',
+      },
+      uploadErrorWrite: {
+        message: '文件写入失败',
+      },
+      uploadErrorSizeLimit: {
+        message: '文件超过大小限制',
+      },
+      uploadErrorUnknown: {
+        message: '未知错误',
+      },
       uploadNoFile: {
         title: '请先保存文件',
         message: '当前文档尚未保存到本地，无法确定存储位置。请先保存文件（Ctrl+S）后再上传。',
@@ -671,6 +703,38 @@ export default {
       uploadFailed: {
         title: 'Upload Failed',
         message: '{count} file(s) failed to upload, please check file permissions and storage space',
+      },
+      uploadFailedImageHost: {
+        title: 'Image Host Upload Failed',
+        message: '{count} file(s) failed to upload, please check network connection and image host settings',
+      },
+      uploadFallbackPrompt: {
+        title: 'Image Host Upload Failed',
+        message: 'Image host upload failed ({reason}). Save {count} file(s) to local storage?',
+        confirmButtonText: 'Save Locally',
+        cancelButtonText: 'Cancel',
+      },
+      uploadFallbackSuccess: {
+        title: 'Saved to Local Storage',
+        message: 'Image host upload failed; {count} file(s) were saved to local assets folder',
+      },
+      uploadErrorDetail: {
+        message: '{name}: {reason}',
+      },
+      uploadErrorNetwork: {
+        message: 'Network connection failed',
+      },
+      uploadErrorMkdir: {
+        message: 'Failed to create directory',
+      },
+      uploadErrorWrite: {
+        message: 'Failed to write file',
+      },
+      uploadErrorSizeLimit: {
+        message: 'File exceeds size limit',
+      },
+      uploadErrorUnknown: {
+        message: 'Unknown error',
       },
       uploadNoFile: {
         title: 'Save File First',
@@ -1045,6 +1109,38 @@ export default {
         title: 'アップロード失敗',
         message: '{count} ファイルのアップロードに失敗しました。ファイルの権限とストレージ容量を確認してください',
       },
+      uploadFailedImageHost: {
+        title: '画像ホストのアップロード失敗',
+        message: '{count} ファイルのアップロードに失敗しました。ネットワーク接続と画像ホスト設定を確認してください',
+      },
+      uploadFallbackPrompt: {
+        title: '画像ホストのアップロード失敗',
+        message: '画像ホストへのアップロードに失敗しました（{reason}）。{count} ファイルをローカルに保存しますか？',
+        confirmButtonText: 'ローカルに保存',
+        cancelButtonText: 'キャンセル',
+      },
+      uploadFallbackSuccess: {
+        title: 'ローカルに保存しました',
+        message: '画像ホストへのアップロードに失敗したため、{count} ファイルをローカルの assets フォルダに保存しました',
+      },
+      uploadErrorDetail: {
+        message: '{name}: {reason}',
+      },
+      uploadErrorNetwork: {
+        message: 'ネットワーク接続に失敗しました',
+      },
+      uploadErrorMkdir: {
+        message: 'ディレクトリの作成に失敗しました',
+      },
+      uploadErrorWrite: {
+        message: 'ファイルの書き込みに失敗しました',
+      },
+      uploadErrorSizeLimit: {
+        message: 'ファイルサイズが上限を超えています',
+      },
+      uploadErrorUnknown: {
+        message: '不明なエラー',
+      },
       uploadNoFile: {
         title: 'ファイルを先に保存してください',
         message: '現在のドキュメントはローカルに保存されていません。アップロードする前に、ファイルを保存(Ctrl+S)してください。',
@@ -1417,6 +1513,38 @@ export default {
       uploadFailed: {
         title: '업로드 실패',
         message: '{count} 파일 업로드에 실패했습니다. 파일 권한과 저장 공간을 확인해주세요',
+      },
+      uploadFailedImageHost: {
+        title: '이미지 호스트 업로드 실패',
+        message: '{count} 파일 업로드에 실패했습니다. 네트워크 연결과 이미지 호스트 설정을 확인해주세요',
+      },
+      uploadFallbackPrompt: {
+        title: '이미지 호스트 업로드 실패',
+        message: '이미지 호스트 업로드 실패 ({reason}). {count}개 파일을 로컬에 저장하시겠습니까?',
+        confirmButtonText: '로컬에 저장',
+        cancelButtonText: '취소',
+      },
+      uploadFallbackSuccess: {
+        title: '로컬 저장으로 전환됨',
+        message: '이미지 호스트 업로드 실패로 {count}개 파일을 로컬 assets 폴더에 저장했습니다',
+      },
+      uploadErrorDetail: {
+        message: '{name}: {reason}',
+      },
+      uploadErrorNetwork: {
+        message: '네트워크 연결 실패',
+      },
+      uploadErrorMkdir: {
+        message: '디렉터리 생성 실패',
+      },
+      uploadErrorWrite: {
+        message: '파일 쓰기 실패',
+      },
+      uploadErrorSizeLimit: {
+        message: '파일 크기 제한 초과',
+      },
+      uploadErrorUnknown: {
+        message: '알 수 없는 오류',
       },
       uploadNoFile: {
         title: '파일을 먼저 저장하세요',
