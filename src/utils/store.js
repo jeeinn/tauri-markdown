@@ -120,6 +120,18 @@ export async function getTheme() {
 const SCROLL_POSITIONS_KEY = 'last_scroll_positions'
 const SCROLL_POSITION_EXPIRY_DAYS = 30 // 滚动位置过期天数
 const SCROLL_REMEMBER_ENABLED_KEY = 'scroll_remember_enabled' // 滚动记忆开关
+const EDITOR_FONT_SIZE_KEY = 'editor_font_size'
+
+export const DEFAULT_EDITOR_FONT_SIZE = 16
+export const MIN_EDITOR_FONT_SIZE = 10
+export const MAX_EDITOR_FONT_SIZE = 100
+
+/** 将字号限制在合法范围内并取整 */
+export function clampEditorFontSize(size) {
+  const n = Number(size)
+  if (Number.isNaN(n)) return DEFAULT_EDITOR_FONT_SIZE
+  return Math.min(MAX_EDITOR_FONT_SIZE, Math.max(MIN_EDITOR_FONT_SIZE, Math.round(n)))
+}
 
 export async function saveScrollPosition(filePath, percentage) {
   try {
@@ -205,6 +217,28 @@ export async function getScrollRememberEnabled() {
   } catch (error) {
     console.error('[Store] 获取滚动记忆开关失败:', error)
     return true // 默认启用
+  }
+}
+
+export async function saveEditorFontSize(size) {
+  try {
+    const store = await getStore()
+    await store.set(EDITOR_FONT_SIZE_KEY, clampEditorFontSize(size))
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存编辑器字号失败:', error)
+  }
+}
+
+export async function getEditorFontSize() {
+  try {
+    const store = await getStore()
+    const size = await store.get(EDITOR_FONT_SIZE_KEY)
+    if (size === null || size === undefined) return DEFAULT_EDITOR_FONT_SIZE
+    return clampEditorFontSize(size)
+  } catch (error) {
+    console.error('[Store] 获取编辑器字号失败:', error)
+    return DEFAULT_EDITOR_FONT_SIZE
   }
 }
 

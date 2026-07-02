@@ -5,6 +5,7 @@
       :key="tab.id"
       :tab-id="tab.id"
       :initial-file="tab.filePath"
+      :editor-font-size="editorFontSize"
     />
   </div>
 </template>
@@ -15,7 +16,8 @@ import MyVditor from './MyVditor.vue'
 
 const props = defineProps({
   tab: { type: Object, required: true },
-  isActive: { type: Boolean, default: false }
+  isActive: { type: Boolean, default: false },
+  editorFontSize: { type: Number, default: 16 },
 })
 
 // 暴露 MyVditor 的 ref，供父组件调用其方法（如 newFile、saveMdFile 等）

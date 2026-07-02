@@ -90,6 +90,9 @@
               <el-dropdown-item divided command="image-host-settings">
                 {{ menuI18n.imageHostSettings }}
               </el-dropdown-item>
+              <el-dropdown-item command="font-size-settings">
+                {{ menuI18n.fontSizeSettings }}
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -162,13 +165,14 @@
           :key="tab.id"
           :tab="tab"
           :is-active="tab.id === tabStore.activeTabId"
+          :editor-font-size="editorFontSize"
           :ref="el => setTabContentRef(tab.id, el)"
         />
       </div>
     </template>
 
     <!-- 单文档模式 -->
-    <MyVditor v-else ref="vditor" :initial-file="startupOpenedFile" />
+    <MyVditor v-else ref="vditor" :initial-file="startupOpenedFile" :editor-font-size="editorFontSize" />
 
     <!-- 查找/替换组件 -->
     <FindReplace
@@ -191,6 +195,14 @@
       :lang="currentLang"
     />
 
+    <FontSizeSettings
+      v-model="showFontSizeSettings"
+      :lang="currentLang"
+      :font-size="editorFontSize"
+      @preview="handleFontSizePreview"
+      @save="handleFontSizeSave"
+    />
+
     <!-- 拖拽文件高亮遮罩层 -->
     <div v-if="dragDropManager?.showDropOverlay" class="drop-overlay">
       <div class="drop-overlay-content">
@@ -211,10 +223,11 @@ import TabBar from './components/TabBar.vue'
 import TabContent from './components/TabContent.vue'
 import FindReplace from './components/FindReplace.vue'
 import ImageHostSettings from './components/ImageHostSettings.vue'
+import FontSizeSettings from './components/FontSizeSettings.vue'
 import { getI18nConfig } from './utils/i18n-helper.js'
 import { ArrowDown } from '@element-plus/icons-vue'
 // element-plus 组件在 utils 模块中直接导入
-import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage, getMultiTabMode, saveMultiTabMode } from './utils/store.js'
+import { getTheme, saveTheme, getScrollRememberEnabled, saveScrollRememberEnabled, getZenMode, saveZenMode, getLanguage, saveLanguage, getMultiTabMode, saveMultiTabMode, getEditorFontSize, saveEditorFontSize, DEFAULT_EDITOR_FONT_SIZE } from './utils/store.js'
 import { useTabStore } from './stores/tabStore.js'
 import { useDragDrop } from './composables/useDragDrop.js'
 import { checkUnsavedChanges } from './utils/unsaved-check.js'
@@ -233,6 +246,7 @@ export default {
     TabContent,
     FindReplace,
     ImageHostSettings,
+    FontSizeSettings,
     ArrowDown,
   },
   setup() {
@@ -248,6 +262,8 @@ export default {
       showZenTip: false,
       zenTipTimer: null,
       showImageHostSettings: false,
+      showFontSizeSettings: false,
+      editorFontSize: DEFAULT_EDITOR_FONT_SIZE,
       multiTabMode: true,
       // 通过「打开方式」/ 单实例回调传入的启动文件路径（单文档模式传给 MyVditor）
       startupOpenedFile: null,
@@ -723,6 +739,8 @@ export default {
         }
       } else if (command === 'image-host-settings') {
         this.showImageHostSettings = true
+      } else if (command === 'font-size-settings') {
+        this.showFontSizeSettings = true
       }
     },
 
@@ -823,6 +841,7 @@ export default {
       }
 
       this.scrollRememberEnabled = await getScrollRememberEnabled()
+      this.editorFontSize = await getEditorFontSize()
       this.isZenMode = await getZenMode()
 
       const savedLang = await getLanguage()
@@ -844,6 +863,7 @@ export default {
         const vditor = this.$refs.vditor
         if (vditor) {
           vditor.setScrollRememberEnabled(this.scrollRememberEnabled)
+          vditor.setEditorFontSize(this.editorFontSize)
           if (savedLang && savedLang !== 'zh_CN') {
             vditor.switchLanguage(savedLang)
           }
@@ -869,11 +889,31 @@ export default {
 
       for (const [, tabContent] of this.tabContentRefs) {
         tabContent?.vditorRef?.setScrollRememberEnabled(this.scrollRememberEnabled)
+        tabContent?.vditorRef?.setEditorFontSize(this.editorFontSize)
         if (savedLang && savedLang !== 'zh_CN') {
           tabContent?.vditorRef?.switchLanguage(savedLang)
         }
       }
       this.applyZenMode(this.isZenMode)
+    },
+
+    // ─── 编辑器字号 ───────────────────────────────────────────────────────────
+
+    applyEditorFontSize(size) {
+      for (const [, tabContent] of this.tabContentRefs) {
+        tabContent?.vditorRef?.setEditorFontSize(size)
+      }
+      this.$refs.vditor?.setEditorFontSize(size)
+    },
+
+    handleFontSizePreview(size) {
+      this.applyEditorFontSize(size)
+    },
+
+    async handleFontSizeSave(size) {
+      this.editorFontSize = size
+      await saveEditorFontSize(size)
+      this.applyEditorFontSize(size)
     },
 
     // ─── Tab 持久化 ─────────────────────────────────────────────────────────

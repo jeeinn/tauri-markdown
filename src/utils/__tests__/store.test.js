@@ -434,6 +434,46 @@ describe('Store Utils', () => {
     })
   })
 
+  describe('编辑器字号', () => {
+    let mockStore
+
+    beforeEach(() => {
+      mockStore = {
+        get: vi.fn(),
+        set: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      }
+      mockInvoke.mockResolvedValue(false)
+      mockStoreLoad.mockResolvedValue(mockStore)
+    })
+
+    it('clampEditorFontSize 应该限制在 10-100 范围内', () => {
+      expect(storeModule.clampEditorFontSize(5)).toBe(10)
+      expect(storeModule.clampEditorFontSize(120)).toBe(100)
+      expect(storeModule.clampEditorFontSize(16.7)).toBe(17)
+      expect(storeModule.clampEditorFontSize('abc')).toBe(storeModule.DEFAULT_EDITOR_FONT_SIZE)
+    })
+
+    it('saveEditorFontSize 应该保存 clamp 后的字号', async () => {
+      await storeModule.saveEditorFontSize(24)
+      expect(mockStore.set).toHaveBeenCalledWith('editor_font_size', 24)
+      expect(mockStore.save).toHaveBeenCalled()
+    })
+
+    it('getEditorFontSize 在没有数据时应该返回默认值 16', async () => {
+      mockStore.get.mockResolvedValue(null)
+      const result = await storeModule.getEditorFontSize()
+      expect(result).toBe(16)
+    })
+
+    it('getEditorFontSize 应该返回已保存并 clamp 后的值', async () => {
+      mockStore.get.mockResolvedValue(200)
+      const result = await storeModule.getEditorFontSize()
+      expect(result).toBe(100)
+    })
+  })
+
   describe('错误处理', () => {
     it('Store 加载失败时 getLastFilePath 应该返回 null', async () => {
       const error = new Error('Store load failed')
