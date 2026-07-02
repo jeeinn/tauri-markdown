@@ -380,6 +380,23 @@ export default {
     // ========== 文件管理 ==========
 
     /**
+     * 同步当前文档目录到 Rust 端，供 tmd 协议解析本地图片预览
+     * 在打开/保存/切换标签后调用，确保 http://tmd.localhost/ 能正确加载 assets
+     */
+    async syncAssetBaseDir() {
+      try {
+        if (this.currentFilePath) {
+          const baseDir = await dirname(this.currentFilePath)
+          await invoke('set_current_dir', { dir: baseDir })
+        } else {
+          await invoke('set_current_dir', { dir: '' })
+        }
+      } catch (error) {
+        console.error('[AssetDir] 同步文档目录失败:', error)
+      }
+    },
+
+    /**
      * 同步当前文件路径到 Pinia tab store
      * 使 TabBar 中的标签标题能动态显示文件名
      * @param {string|null} filePath
@@ -690,9 +707,8 @@ export default {
 
       const data = await readTextFile(filePath)
 
-      const baseDir = await dirname(filePath);
-
-      await invoke('set_current_dir', { dir: baseDir });
+      this.currentFilePath = filePath
+      await this.syncAssetBaseDir()
 
       const convertedContent = imagePathMapper.convertToAssetUrl(data);
       console.log('[Load] 已转换相对路径为 tmd URL');
@@ -702,7 +718,6 @@ export default {
 
       this.vditor.setValue(convertedContent)
 
-      this.currentFilePath = filePath
       // 保存转换后的内容作为基准，确保 checkContentModified 比较的是同一种格式
       this.originalContent = convertedContent
       this.isContentModified = false
@@ -848,6 +863,9 @@ export default {
         // 用编辑器当前内容（convertToAssetUrl 格式）作为基准，确保后续比较格式一致
         this.originalContent = this.vditor.getValue()
         this.isContentModified = false
+
+        // 同步 Rust 端 CurrentDir，使保存后立即插入的图片能正常预览
+        await this.syncAssetBaseDir()
 
         // 同步文件路径和修改状态到 tab store，使标签标题动态更新并移除 * 标记
         this.syncFilePathToTab(filePath, false)
