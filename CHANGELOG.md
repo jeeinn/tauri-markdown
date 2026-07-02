@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-02
+
+### Added
+- **Editor Font Size Settings**: Adjustable editor font size with persistent preference via settings menu
+- **Reveal in Folder**: Open the current file's location in the system file manager from the menu
+
+### Fixed
+- **Local Image Preview**: Sync document directory to Rust backend after save and tab switch, fixing image preview failures for newly saved documents (fixes #85)
+- **Image Detection on Windows**: Recognize images by file extension when MIME type is missing (clipboard paste / file picker)
+- **tmd Protocol Diagnostics**: Log failure reasons in app.log when local asset URLs cannot be resolved
+
+### Changed
+- **Upload Error Feedback**: Show specific failure reasons (network, directory creation, write errors) in upload notifications
+- **Image Host Fallback**: Prompt to save locally when image host upload fails, with dedicated i18n messages for image host errors
+
 ## [0.8.1] - 2026-06-29
 
 ### Fixed
@@ -231,7 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2022-09-25
 Demo
 
-[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/jeeinn/tauri-markdown/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/jeeinn/tauri-markdown/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jeeinn/tauri-markdown/compare/v0.6.3...v0.7.0
