@@ -141,17 +141,92 @@ fn log_message(msg: String) {
     log(&format!("[JS] {msg}"));
 }
 
+/// 在系统文件管理器中打开路径；文件存在时选中该文件，否则尝试打开父目录
+fn reveal_path_in_file_manager(path: &std::path::Path) -> Result<(), String> {
+    log(&format!("reveal_path_in_file_manager: {:?}", path));
+
+    if path.exists() {
+        #[cfg(target_os = "windows")]
+        {
+            if path.is_file() {
+                std::process::Command::new("explorer")
+                    .args(["/select,", &path.to_string_lossy()])
+                    .spawn()
+                    .map_err(|e| format!("failed to open explorer: {e}"))?;
+            } else {
+                std::process::Command::new("explorer")
+                    .arg(path)
+                    .spawn()
+                    .map_err(|e| format!("failed to open explorer: {e}"))?;
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open")
+                .args(["-R", &path.to_string_lossy()])
+                .spawn()
+                .map_err(|e| format!("failed to open finder: {e}"))?;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let open_path = if path.is_file() {
+                path.parent().unwrap_or(path)
+            } else {
+                path
+            };
+            std::process::Command::new("xdg-open")
+                .arg(open_path)
+                .spawn()
+                .map_err(|e| format!("failed to open file manager: {e}"))?;
+        }
+        return Ok(());
+    }
+
+    if let Some(parent) = path.parent().filter(|p| p.exists()) {
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("explorer")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| format!("failed to open explorer: {e}"))?;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| format!("failed to open finder: {e}"))?;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("xdg-open")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| format!("failed to open file manager: {e}"))?;
+        }
+        return Ok(());
+    }
+
+    Err(format!("path not found: {}", path.display()))
+}
+
 /// JS 端调用，在文件管理器中打开日志文件所在目录并选中该文件
 #[tauri::command]
 fn open_log_folder() {
     let path = current_log_path();
     log(&format!("open_log_folder: {:?}", path));
-    #[cfg(target_os = "windows")]
-    { let _ = std::process::Command::new("explorer").args(["/select,", &path.to_string_lossy()]).spawn(); }
-    #[cfg(target_os = "macos")]
-    { let _ = std::process::Command::new("open").args(["-R", &path.to_string_lossy()]).spawn(); }
-    #[cfg(target_os = "linux")]
-    { let _ = std::process::Command::new("xdg-open").arg(path.parent().unwrap_or(&path)).spawn(); }
+    if let Err(err) = reveal_path_in_file_manager(&path) {
+        log(&format!("open_log_folder failed: {err}"));
+    }
+}
+
+/// JS 端调用，在文件管理器中定位并选中指定文件
+#[tauri::command]
+fn reveal_file_in_folder(file_path: String) -> Result<(), String> {
+    if file_path.trim().is_empty() {
+        return Err("empty path".to_string());
+    }
+    reveal_path_in_file_manager(PathBuf::from(&file_path).as_path())
 }
 
 /// JS 端调用，打开开发者工具
@@ -380,6 +455,7 @@ fn main() {
             take_opened_file,
             log_message,
             open_log_folder,
+            reveal_file_in_folder,
             get_portable_mode,
             get_store_path,
             open_devtools,

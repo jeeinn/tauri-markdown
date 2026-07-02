@@ -113,6 +113,18 @@
 
       <!-- 语言切换器 -->
       <div class="menubar-right">
+        <!-- 在文件夹中显示 -->
+        <button
+          class="find-btn"
+          @click="revealCurrentFileInFolder"
+          :title="revealInFolderI18n.tooltip"
+          :disabled="!hasActiveFilePath"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h12a2 2 0 0 1 2 2v1"/>
+            <path d="M5 19h14a2 2 0 0 0 2-2v-5H5v7z"/>
+          </svg>
+        </button>
         <!-- 查找按钮 -->
         <button class="find-btn" @click="showFindReplace" :title="findReplaceI18n.tooltip">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -211,6 +223,7 @@ import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
 import { setupWindowCloseHandler } from './composables/useWindowCloseHandler.js'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'App',
@@ -260,6 +273,12 @@ export default {
     },
     findReplaceI18n() {
       return getI18nConfig(this.currentLang).findReplace;
+    },
+    revealInFolderI18n() {
+      return getI18nConfig(this.currentLang).revealInFolder;
+    },
+    hasActiveFilePath() {
+      return !!this.getCurrentActiveFilePath();
     },
     dropHintText() {
       return getI18nConfig(this.currentLang).dragDrop?.hint || 'Drop to open Markdown file';
@@ -596,6 +615,28 @@ export default {
       this.$nextTick(() => {
         this.getActiveVditor()?.updateWindowTitle()
       })
+    },
+
+    // ─── 在文件夹中显示 ────────────────────────────────────────────────────────
+
+    getCurrentActiveFilePath() {
+      if (this.multiTabMode) {
+        return this.tabStore.activeTab?.filePath || null;
+      }
+      return this.getActiveVditor()?.currentFilePath || null;
+    },
+
+    async revealCurrentFileInFolder() {
+      const filePath = this.getCurrentActiveFilePath();
+      if (!filePath) {
+        ElMessage.warning(this.revealInFolderI18n.noFile);
+        return;
+      }
+      try {
+        await invoke('reveal_file_in_folder', { filePath });
+      } catch {
+        ElMessage.error(this.revealInFolderI18n.failed);
+      }
     },
 
     // ─── 查找/替换 ────────────────────────────────────────────────────────────
@@ -977,16 +1018,21 @@ export default {
   transition: all 0.3s;
 }
 
-.find-btn:hover {
+.find-btn:hover:not(:disabled) {
   background: #e4e7ed;
   color: #409eff;
+}
+
+.find-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 html.dark .find-btn {
   color: #cfd3dc;
 }
 
-html.dark .find-btn:hover {
+html.dark .find-btn:hover:not(:disabled) {
   background: #363637;
   color: #409eff;
 }

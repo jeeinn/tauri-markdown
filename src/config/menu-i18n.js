@@ -75,6 +75,11 @@ export default {
       hideReplace: '隐藏替换',
       tooltip: '查找/替换 (Ctrl+F)',
     },
+    revealInFolder: {
+      tooltip: '在文件夹中显示',
+      noFile: '当前文档尚未保存，无法定位文件夹',
+      failed: '无法打开文件所在文件夹',
+    },
     zenTipEnter: '已进入 Zen 模式，按 ESC 退出',
     zenTipExit: '已退出 Zen 模式',
     notifications: {
@@ -445,6 +450,11 @@ export default {
       hideReplace: 'Hide Replace',
       tooltip: 'Find/Replace (Ctrl+F)',
     },
+    revealInFolder: {
+      tooltip: 'Reveal in Folder',
+      noFile: 'The current document has not been saved yet',
+      failed: 'Unable to open the folder containing this file',
+    },
     zenTipEnter: 'Entered Zen Mode, press ESC to exit',
     zenTipExit: 'Exited Zen Mode',
     notifications: {
@@ -805,6 +815,11 @@ export default {
       hideReplace: '置換を非表示',
       tooltip: '検索/置換 (Ctrl+F)',
     },
+    revealInFolder: {
+      tooltip: 'フォルダーで表示',
+      noFile: '現在のドキュメントは未保存のため、フォルダーを開けません',
+      failed: 'ファイルのあるフォルダーを開けませんでした',
+    },
     zenTipEnter: 'Zen モードに入りました。ESC キーを押して終了します',
     zenTipExit: 'Zen モードを終了しました',
     notifications: {
@@ -1164,6 +1179,11 @@ export default {
       showReplace: '바꾸기 표시',
       hideReplace: '바꾸기 숨기기',
       tooltip: '찾기/바꾸기 (Ctrl+F)',
+    },
+    revealInFolder: {
+      tooltip: '폴더에서 표시',
+      noFile: '현재 문서가 아직 저장되지 않아 폴더를 열 수 없습니다',
+      failed: '파일이 있는 폴더를 열 수 없습니다',
     },
     zenTipEnter: 'Zen 모드로 진입했습니다. ESC 키를 눌러 종료하세요',
     zenTipExit: 'Zen 모드를 종료했습니다',
