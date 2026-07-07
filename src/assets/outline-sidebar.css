@@ -1,0 +1,60 @@
+/* 大纲侧栏增强：拖拽调宽 + 长标题横向滚动 */
+
+.vditor-outline.outline-sidebar-enhanced {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* 覆盖 Vditor 默认省略号，允许横向滚动查看完整标题 */
+.vditor-outline.outline-sidebar-enhanced li > span > span {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+/* 恢复滚动条（Vditor 默认隐藏） */
+.vditor-outline.outline-sidebar-enhanced::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+  height: 6px;
+}
+
+.vditor-outline.outline-sidebar-enhanced::-webkit-scrollbar-thumb {
+  background: var(--border-color, #d1d5db);
+  border-radius: 3px;
+}
+
+.vditor-outline.outline-sidebar-enhanced::-webkit-scrollbar-thumb:hover {
+  background: var(--toolbar-icon-hover-color, #6b7280);
+}
+
+/* 拖拽手柄 */
+.outline-sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  z-index: 2;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.outline-sidebar-resize-handle--right {
+  right: -2px;
+}
+
+.outline-sidebar-resize-handle--left {
+  left: -2px;
+}
+
+.outline-sidebar-resize-handle:hover,
+.outline-sidebar-resize-handle.is-dragging {
+  background: color-mix(in srgb, var(--toolbar-icon-hover-color, #3b82f6) 40%, transparent);
+}
+
+html.outline-sidebar-dragging,
+html.outline-sidebar-dragging * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
