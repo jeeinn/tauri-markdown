@@ -8,6 +8,7 @@
 import Vditor from 'vditor'
 import 'vditor/dist/index.css'
 import '../assets/vditor-custom.css'
+import '../assets/outline-sidebar.css'
 import {ElMessageBox, ElNotification, ElMessage} from "element-plus"
 import vditorConf from '../config/vditor-config.js'
 import { getI18nConfig, getI18nText } from '../utils/i18n-helper.js'
@@ -22,6 +23,7 @@ import { dirname } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { exportTo } from '../utils/export-lib.js'
 import { createScrollMemoryManager } from '../utils/scroll-memory.js'
+import { createOutlineSidebarManager } from '../utils/outline-sidebar.js'
 import modeSwitchListener from '../utils/mode-switch-listener.js'
 import { checkUnsavedChanges } from '../utils/unsaved-check.js'
 import { useTabStore } from '../stores/tabStore.js'
@@ -62,6 +64,8 @@ export default {
       _handleLinkClick: null, // 链接点击拦截处理函数
       // 滚动位置记忆管理器
       scrollMemory: null,
+      // 大纲侧栏增强（拖拽调宽）
+      outlineSidebar: null,
       // 主题状态跟踪
       isDarkTheme: false,
       // 模式切换监听器取消订阅函数
@@ -108,6 +112,10 @@ export default {
 
     // 清理滚动记忆管理器
     this.scrollMemory?.destroy()
+
+    // 清理大纲侧栏增强
+    this.outlineSidebar?.destroy()
+    this.outlineSidebar = null
 
     // 停止外部文件监听
     this.fileWatcher?.stopWatch().catch(() => {})
@@ -259,6 +267,9 @@ export default {
 
     // 初始化 Vditor 编辑器
     initVditor() {
+      // 销毁现有实例前先清理侧栏增强
+      this.outlineSidebar?.destroy()
+
       // 销毁现有实例
       if (this.vditor) {
         this.vditor.destroy();
@@ -345,6 +356,14 @@ export default {
         this.updateWindowTitle();
         // 设置链接点击拦截（用系统默认浏览器打开 http/https 链接）
         this.setupLinkClickHandler();
+
+        // 大纲侧栏：拖拽调宽 + 长标题横向滚动
+        if (!this.outlineSidebar) {
+          this.outlineSidebar = createOutlineSidebarManager({
+            getVditor: () => this.vditor,
+          })
+        }
+        this.outlineSidebar.setup();
       };
 
       // 创建新实例

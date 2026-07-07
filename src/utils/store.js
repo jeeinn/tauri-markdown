@@ -121,10 +121,22 @@ const SCROLL_POSITIONS_KEY = 'last_scroll_positions'
 const SCROLL_POSITION_EXPIRY_DAYS = 30 // 滚动位置过期天数
 const SCROLL_REMEMBER_ENABLED_KEY = 'scroll_remember_enabled' // 滚动记忆开关
 const EDITOR_FONT_SIZE_KEY = 'editor_font_size'
+const OUTLINE_WIDTH_KEY = 'outline_sidebar_width'
 
 export const DEFAULT_EDITOR_FONT_SIZE = 16
 export const MIN_EDITOR_FONT_SIZE = 10
 export const MAX_EDITOR_FONT_SIZE = 100
+
+export const DEFAULT_OUTLINE_WIDTH = 250
+export const MIN_OUTLINE_WIDTH = 180
+export const MAX_OUTLINE_WIDTH = 500
+
+/** 将大纲侧栏宽度限制在合法范围内并取整 */
+export function clampOutlineWidth(width) {
+  const n = Number(width)
+  if (Number.isNaN(n)) return DEFAULT_OUTLINE_WIDTH
+  return Math.min(MAX_OUTLINE_WIDTH, Math.max(MIN_OUTLINE_WIDTH, Math.round(n)))
+}
 
 /** 将字号限制在合法范围内并取整 */
 export function clampEditorFontSize(size) {
@@ -239,6 +251,28 @@ export async function getEditorFontSize() {
   } catch (error) {
     console.error('[Store] 获取编辑器字号失败:', error)
     return DEFAULT_EDITOR_FONT_SIZE
+  }
+}
+
+export async function saveOutlineWidth(width) {
+  try {
+    const store = await getStore()
+    await store.set(OUTLINE_WIDTH_KEY, clampOutlineWidth(width))
+    await store.save()
+  } catch (error) {
+    console.error('[Store] 保存大纲侧栏宽度失败:', error)
+  }
+}
+
+export async function getOutlineWidth() {
+  try {
+    const store = await getStore()
+    const width = await store.get(OUTLINE_WIDTH_KEY)
+    if (width === null || width === undefined) return DEFAULT_OUTLINE_WIDTH
+    return clampOutlineWidth(width)
+  } catch (error) {
+    console.error('[Store] 获取大纲侧栏宽度失败:', error)
+    return DEFAULT_OUTLINE_WIDTH
   }
 }
 

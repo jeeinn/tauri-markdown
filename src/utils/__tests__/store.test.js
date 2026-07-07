@@ -472,6 +472,25 @@ describe('Store Utils', () => {
       const result = await storeModule.getEditorFontSize()
       expect(result).toBe(100)
     })
+
+    it('clampOutlineWidth 应该限制在 180-500 范围内', () => {
+      expect(storeModule.clampOutlineWidth(100)).toBe(180)
+      expect(storeModule.clampOutlineWidth(600)).toBe(500)
+      expect(storeModule.clampOutlineWidth(320.6)).toBe(321)
+      expect(storeModule.clampOutlineWidth('abc')).toBe(storeModule.DEFAULT_OUTLINE_WIDTH)
+    })
+
+    it('saveOutlineWidth 应该保存 clamp 后的宽度', async () => {
+      await storeModule.saveOutlineWidth(320)
+      expect(mockStore.set).toHaveBeenCalledWith('outline_sidebar_width', 320)
+      expect(mockStore.save).toHaveBeenCalled()
+    })
+
+    it('getOutlineWidth 在没有数据时应该返回默认值 250', async () => {
+      mockStore.get.mockResolvedValue(null)
+      const result = await storeModule.getOutlineWidth()
+      expect(result).toBe(250)
+    })
   })
 
   describe('错误处理', () => {
